@@ -70,6 +70,57 @@ class FuelPriceService
     }
 
     /**
+     * Regroupe des recharges (chacune avec session_date + quantity_kwh) par une clé
+     * arbitraire, en appliquant à chacune le prix carburant réel de SA date de recharge
+     * (et non un prix moyen ou une date de bucket approximative).
+     *
+     * @param iterable<object{session_date: mixed, quantity_kwh: mixed}> $rows
+     * @return array<string, array{liters: float, essence_cost: float, diesel_cost: float, known: int, count: int}>
+     */
+    public function equivalentByGroup(iterable $rows, callable $groupKeyFn): array
+    {
+        $prices = FuelPrice::all()->keyBy(fn ($p) => $p->date->format('Y-m-d'));
+        $groups = [];
+
+        foreach ($rows as $row) {
+            $key = $groupKeyFn($row);
+            $dateKey = Carbon::parse($row->session_date)->format('Y-m-d');
+            $priceRow = $prices->get($dateKey);
+            $essencePrice = $priceRow ? (float) $priceRow->essence_price : self::DEFAULT_ESSENCE_PRICE;
+            $dieselPrice = $priceRow ? (float) $priceRow->diesel_price : self::DEFAULT_DIESEL_PRICE;
+            $liters = $this->equivalentLiters((float) $row->quantity_kwh);
+
+            $groups[$key] ??= ['liters' => 0.0, 'essence_cost' => 0.0, 'diesel_cost' => 0.0, 'known' => 0, 'count' => 0];
+            $groups[$key]['liters'] += $liters;
+            $groups[$key]['essence_cost'] += $liters * $essencePrice;
+            $groups[$key]['diesel_cost'] += $liters * $dieselPrice;
+            $groups[$key]['known'] += $priceRow ? 1 : 0;
+            $groups[$key]['count'] += 1;
+        }
+
+        return $groups;
+    }
+
+    /**
+     * @param iterable<object{session_date: mixed, quantity_kwh: mixed}> $rows
+     * @return array{liters: float, essence_cost: float, diesel_cost: float, known_price_sessions: int, total_sessions: int, estimated: bool}
+     */
+    public function equivalentTotals(iterable $rows): array
+    {
+        $groups = $this->equivalentByGroup($rows, fn () => 'all');
+        $g = $groups['all'] ?? ['liters' => 0.0, 'essence_cost' => 0.0, 'diesel_cost' => 0.0, 'known' => 0, 'count' => 0];
+
+        return [
+            'liters' => round($g['liters'], 2),
+            'essence_cost' => round($g['essence_cost'], 2),
+            'diesel_cost' => round($g['diesel_cost'], 2),
+            'known_price_sessions' => $g['known'],
+            'total_sessions' => $g['count'],
+            'estimated' => $g['count'] > 0 && $g['known'] < $g['count'],
+        ];
+    }
+
+    /**
      * Moyenne nationale instantanée SP95 / Gazole via l'API ouverte
      * data.economie.gouv.fr (pas d'authentification, pas d'historique disponible :
      * on l'appelle une fois par jour et on garde le résultat dans fuel_prices).

@@ -116,19 +116,27 @@ function Dashboard({ apiUrl, fuelPricesUrl, vehicles }) {
 
                     {data.fuel_equivalent && (
                         <>
-                            <h2 className="title is-6 mb-2">Équivalent essence</h2>
+                            <h2 className="title is-6 mb-2">Équivalent carburant</h2>
                             <div className="columns is-mobile is-multiline mb-1">
-                                <StatTile label="Essence équivalente" value={data.fuel_equivalent.liters} suffix=" L" />
-                                <StatTile label="Coût essence équivalent" value={data.fuel_equivalent.cost.toFixed(2)} suffix=" €" />
+                                <StatTile label="Équivalent (litres)" value={data.fuel_equivalent.liters} suffix=" L" />
+                                <StatTile label="Coût essence équivalent" value={data.fuel_equivalent.essence_cost.toFixed(2)} suffix=" €" />
                                 <StatTile
-                                    label={data.fuel_equivalent.savings >= 0 ? 'Économie vs essence' : 'Surcoût vs essence'}
-                                    value={Math.abs(data.fuel_equivalent.savings).toFixed(2)}
+                                    label={data.fuel_equivalent.savings_essence >= 0 ? 'Économie vs essence' : 'Surcoût vs essence'}
+                                    value={Math.abs(data.fuel_equivalent.savings_essence).toFixed(2)}
+                                    suffix=" €"
+                                />
+                                <StatTile label="Coût diesel équivalent" value={data.fuel_equivalent.diesel_cost.toFixed(2)} suffix=" €" />
+                                <StatTile
+                                    label={data.fuel_equivalent.savings_diesel >= 0 ? 'Économie vs diesel' : 'Surcoût vs diesel'}
+                                    value={Math.abs(data.fuel_equivalent.savings_diesel).toFixed(2)}
                                     suffix=" €"
                                 />
                             </div>
                             <p className="is-size-7 has-text-grey mb-5">
-                                Conversion : 15 kWh ≈ 6 L / 100 km. Prix essence (SP95) utilisé : {data.fuel_equivalent.essence_price} €/L
-                                {data.fuel_equivalent.estimated ? ' (estimé, prix du jour indisponible)' : ' (moyenne nationale du jour)'}.
+                                Conversion : 15 kWh ≈ 6 L / 100 km. Prix appliqués par date de recharge réelle
+                                (moyenne pondérée obtenue : {data.fuel_equivalent.avg_essence_price ?? '—'} €/L essence, {data.fuel_equivalent.avg_diesel_price ?? '—'} €/L diesel) —
+                                {' '}{data.fuel_equivalent.known_price_sessions}/{data.fuel_equivalent.total_sessions} recharge(s) avec un prix du jour connu
+                                {data.fuel_equivalent.estimated && ", le reste utilise l'estimation par défaut (1,95 €/L)"}.
                                 {' '}
                                 <a href={fuelPricesUrl}>Voir l'historique des prix carburants →</a>
                             </p>
@@ -151,13 +159,14 @@ function Dashboard({ apiUrl, fuelPricesUrl, vehicles }) {
 
                         <div className="column is-6">
                             <div className="box">
-                                <h2 className="title is-5">Coût électrique vs équivalent essence (€)</h2>
+                                <h2 className="title is-5">Coût électrique vs équivalent carburant (€)</h2>
                                 <Line
                                     data={{
                                         labels: data.labels,
                                         datasets: [
                                             { label: 'Coût électrique (€)', data: data.cost, borderColor: '#3273dc', backgroundColor: '#3273dc', tension: 0.2 },
-                                            { label: 'Équivalent essence (€)', data: data.fuel_equivalent_cost, borderColor: '#ff3860', backgroundColor: '#ff3860', tension: 0.2, borderDash: [6, 4] },
+                                            { label: 'Équivalent essence (€)', data: data.fuel_equivalent_essence_cost, borderColor: '#ff3860', backgroundColor: '#ff3860', tension: 0.2, borderDash: [6, 4] },
+                                            { label: 'Équivalent diesel (€)', data: data.fuel_equivalent_diesel_cost, borderColor: '#ffa94d', backgroundColor: '#ffa94d', tension: 0.2, borderDash: [2, 3] },
                                         ],
                                     }}
                                     options={{ responsive: true, plugins: { legend: { display: true } } }}

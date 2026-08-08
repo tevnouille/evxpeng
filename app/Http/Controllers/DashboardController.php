@@ -46,18 +46,21 @@ class DashboardController extends Controller
             ->orderByDesc('kwh')
             ->get();
 
-        $fuelEquivalentCostByPeriod = $rows->map(function ($row) use ($fuelPriceService) {
-            $prices = $fuelPriceService->pricesForDate($row->period_start);
-            $liters = $fuelPriceService->equivalentLiters((float) $row->kwh);
+        // Equivalent carburant calcule au niveau de chaque recharge individuelle
+        // (prix du jour de LA recharge, pas une date de bucket approximative),
+        // puis regroupe par periode pour rester aligne avec $rows.
+        $sessionRows = ChargingSession::selectRaw("$periodExpr as period, session_date, quantity_kwh")
+            ->when($vehicleId, fn ($query) => $query->where('vehicle_id', $vehicleId))
+            ->get();
 
-            return round($liters * $prices['essence'], 2);
-        });
+        $equivalentByPeriod = $fuelPriceService->equivalentByGroup($sessionRows, fn ($row) => $row->period);
 
-        $totalKwh = (float) $rows->sum('kwh');
+        $totalLiters = array_sum(array_column($equivalentByPeriod, 'liters'));
+        $totalEssenceCost = array_sum(array_column($equivalentByPeriod, 'essence_cost'));
+        $totalDieselCost = array_sum(array_column($equivalentByPeriod, 'diesel_cost'));
+        $knownPriceSessions = array_sum(array_column($equivalentByPeriod, 'known'));
+        $totalSessions = array_sum(array_column($equivalentByPeriod, 'count'));
         $totalElectricCost = (float) $rows->sum('cost');
-        $totalLiters = $fuelPriceService->equivalentLiters($totalKwh);
-        $totalFuelCost = (float) $fuelEquivalentCostByPeriod->sum();
-        $todayPrices = $fuelPriceService->pricesForDate(now());
 
         return response()->json([
             'granularity' => $granularity,
@@ -66,14 +69,19 @@ class DashboardController extends Controller
             'cost' => $rows->pluck('cost')->map(fn ($v) => (float) $v)->values(),
             'avg_cost_per_kwh' => $rows->map(fn ($r) => $r->kwh > 0 ? round($r->cost / $r->kwh, 4) : 0)->values(),
             'sessions_count' => $rows->pluck('sessions_count')->map(fn ($v) => (int) $v)->values(),
-            'fuel_equivalent_cost' => $fuelEquivalentCostByPeriod->values(),
+            'fuel_equivalent_essence_cost' => $rows->map(fn ($r) => round($equivalentByPeriod[$r->period]['essence_cost'] ?? 0, 2))->values(),
+            'fuel_equivalent_diesel_cost' => $rows->map(fn ($r) => round($equivalentByPeriod[$r->period]['diesel_cost'] ?? 0, 2))->values(),
             'fuel_equivalent' => [
                 'liters' => round($totalLiters, 2),
-                'cost' => round($totalFuelCost, 2),
-                'essence_price' => $todayPrices['essence'],
-                'diesel_price' => $todayPrices['diesel'],
-                'estimated' => $todayPrices['estimated'],
-                'savings' => round($totalFuelCost - $totalElectricCost, 2),
+                'essence_cost' => round($totalEssenceCost, 2),
+                'diesel_cost' => round($totalDieselCost, 2),
+                'avg_essence_price' => $totalLiters > 0 ? round($totalEssenceCost / $totalLiters, 3) : null,
+                'avg_diesel_price' => $totalLiters > 0 ? round($totalDieselCost / $totalLiters, 3) : null,
+                'savings_essence' => round($totalEssenceCost - $totalElectricCost, 2),
+                'savings_diesel' => round($totalDieselCost - $totalElectricCost, 2),
+                'known_price_sessions' => $knownPriceSessions,
+                'total_sessions' => $totalSessions,
+                'estimated' => $totalSessions > 0 && $knownPriceSessions < $totalSessions,
             ],
             'by_provider' => $byProvider->map(fn ($p) => [
                 'name' => $p->name,
