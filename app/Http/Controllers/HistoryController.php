@@ -57,7 +57,15 @@ class HistoryController extends Controller
 
         $totalKwh = (float) $sessions->sum('quantity_kwh');
         $totalCost = (float) $sessions->sum('total_cost');
-        $fuelEquivalent = $fuelPriceService->equivalentTotals($sessions);
+
+        $equivalenceRows = $sessions->map(fn ($session) => (object) [
+            'session_date' => $session->session_date,
+            'quantity_kwh' => (float) $session->quantity_kwh,
+            'kwh_per_100km' => $session->vehicle->kwh_per_100km,
+            'essence_l_per_100km' => $session->vehicle->essence_l_per_100km,
+            'diesel_l_per_100km' => $session->vehicle->diesel_l_per_100km,
+        ]);
+        $fuelEquivalent = $fuelPriceService->equivalentTotals($equivalenceRows);
 
         return view('history.show', [
             'sessions' => $sessions,
@@ -71,11 +79,12 @@ class HistoryController extends Controller
                 'sessions_count' => $sessions->count(),
             ],
             'fuelEquivalent' => [
-                'liters' => $fuelEquivalent['liters'],
+                'essence_liters' => $fuelEquivalent['essence_liters'],
+                'diesel_liters' => $fuelEquivalent['diesel_liters'],
                 'essence_cost' => $fuelEquivalent['essence_cost'],
                 'diesel_cost' => $fuelEquivalent['diesel_cost'],
-                'avg_essence_price' => $fuelEquivalent['liters'] > 0 ? round($fuelEquivalent['essence_cost'] / $fuelEquivalent['liters'], 3) : null,
-                'avg_diesel_price' => $fuelEquivalent['liters'] > 0 ? round($fuelEquivalent['diesel_cost'] / $fuelEquivalent['liters'], 3) : null,
+                'avg_essence_price' => $fuelEquivalent['essence_liters'] > 0 ? round($fuelEquivalent['essence_cost'] / $fuelEquivalent['essence_liters'], 3) : null,
+                'avg_diesel_price' => $fuelEquivalent['diesel_liters'] > 0 ? round($fuelEquivalent['diesel_cost'] / $fuelEquivalent['diesel_liters'], 3) : null,
                 'savings_essence' => round($fuelEquivalent['essence_cost'] - $totalCost, 2),
                 'savings_diesel' => round($fuelEquivalent['diesel_cost'] - $totalCost, 2),
                 'known_price_sessions' => $fuelEquivalent['known_price_sessions'],

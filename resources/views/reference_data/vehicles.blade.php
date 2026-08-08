@@ -7,26 +7,41 @@
     <h1 class="title mt-2">Véhicules</h1>
 
     <div class="columns">
-        <div class="column is-6">
+        <div class="column is-10">
             <div class="box">
                 <form method="POST" action="{{ route('reference-data.vehicles.store') }}">
                     @csrf
-                    <div class="field has-addons">
-                        <div class="control is-expanded">
+                    <div class="columns is-multiline is-vcentered">
+                        <div class="column is-4">
+                            <label class="label is-small">Nom</label>
                             <input class="input" type="text" name="name" placeholder="Nom du véhicule" required>
                         </div>
-                        <div class="control">
-                            <button type="submit" class="button is-primary">Ajouter</button>
+                        <div class="column is-2">
+                            <label class="label is-small">Conso. (kWh/100km)</label>
+                            <input class="input" type="number" step="0.1" min="0" name="kwh_per_100km" placeholder="ex. 15">
                         </div>
-                    </div>
-                    <div class="field">
-                        <label class="checkbox">
-                            <input type="checkbox" name="is_default" value="1">
-                            Définir par défaut
-                        </label>
+                        <div class="column is-2">
+                            <label class="label is-small">Équiv. essence (L/100km)</label>
+                            <input class="input" type="number" step="0.1" min="0" name="essence_l_per_100km" placeholder="ex. 6">
+                        </div>
+                        <div class="column is-2">
+                            <label class="label is-small">Équiv. diesel (L/100km)</label>
+                            <input class="input" type="number" step="0.1" min="0" name="diesel_l_per_100km" placeholder="ex. 6">
+                        </div>
+                        <div class="column is-2">
+                            <label class="checkbox">
+                                <input type="checkbox" name="is_default" value="1">
+                                Par défaut
+                            </label>
+                            <button type="submit" class="button is-primary is-fullwidth mt-2">Ajouter</button>
+                        </div>
                     </div>
                 </form>
             </div>
+
+            <p class="is-size-7 has-text-grey mb-3">
+                Les équivalents essence/diesel laissés vides utilisent une valeur par défaut (15 kWh, 6 L essence, 6 L diesel pour 100 km).
+            </p>
 
             <div class="table-container">
                 <table class="table is-fullwidth is-striped">
@@ -37,19 +52,26 @@
                                     <form method="POST" action="{{ route('reference-data.vehicles.update', $vehicle) }}">
                                         @csrf
                                         @method('PUT')
-                                        <div class="field has-addons mb-1">
-                                            <div class="control is-expanded">
+                                        <div class="columns is-multiline is-vcentered mb-0">
+                                            <div class="column is-4">
                                                 <input class="input" type="text" name="name" value="{{ $vehicle->name }}" required>
                                             </div>
-                                            <div class="control">
-                                                <button type="submit" class="button is-info is-light">Enregistrer</button>
+                                            <div class="column is-2">
+                                                <input class="input" type="number" step="0.1" min="0" name="kwh_per_100km" value="{{ $vehicle->kwh_per_100km }}" placeholder="ex. 15">
                                             </div>
-                                        </div>
-                                        <div class="field">
-                                            <label class="checkbox">
-                                                <input type="checkbox" name="is_default" value="1" @checked($vehicle->is_default)>
-                                                Par défaut {{ $vehicle->is_default ? '(actuel)' : '' }}
-                                            </label>
+                                            <div class="column is-2">
+                                                <input class="input" type="number" step="0.1" min="0" name="essence_l_per_100km" value="{{ $vehicle->essence_l_per_100km }}" placeholder="ex. 6">
+                                            </div>
+                                            <div class="column is-2">
+                                                <input class="input" type="number" step="0.1" min="0" name="diesel_l_per_100km" value="{{ $vehicle->diesel_l_per_100km }}" placeholder="ex. 6">
+                                            </div>
+                                            <div class="column is-2">
+                                                <label class="checkbox">
+                                                    <input type="checkbox" name="is_default" value="1" @checked($vehicle->is_default)>
+                                                    Par défaut {{ $vehicle->is_default ? '(actuel)' : '' }}
+                                                </label>
+                                                <button type="submit" class="button is-info is-light is-fullwidth mt-2">Enregistrer</button>
+                                            </div>
                                         </div>
                                     </form>
                                 </td>

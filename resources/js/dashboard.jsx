@@ -118,13 +118,14 @@ function Dashboard({ apiUrl, fuelPricesUrl, vehicles }) {
                         <>
                             <h2 className="title is-6 mb-2">Équivalent carburant</h2>
                             <div className="columns is-mobile is-multiline mb-1">
-                                <StatTile label="Équivalent (litres)" value={data.fuel_equivalent.liters} suffix=" L" />
+                                <StatTile label="Essence équivalente" value={data.fuel_equivalent.essence_liters} suffix=" L" />
                                 <StatTile label="Coût essence équivalent" value={data.fuel_equivalent.essence_cost.toFixed(2)} suffix=" €" />
                                 <StatTile
                                     label={data.fuel_equivalent.savings_essence >= 0 ? 'Économie vs essence' : 'Surcoût vs essence'}
                                     value={Math.abs(data.fuel_equivalent.savings_essence).toFixed(2)}
                                     suffix=" €"
                                 />
+                                <StatTile label="Diesel équivalent" value={data.fuel_equivalent.diesel_liters} suffix=" L" />
                                 <StatTile label="Coût diesel équivalent" value={data.fuel_equivalent.diesel_cost.toFixed(2)} suffix=" €" />
                                 <StatTile
                                     label={data.fuel_equivalent.savings_diesel >= 0 ? 'Économie vs diesel' : 'Surcoût vs diesel'}
@@ -133,7 +134,8 @@ function Dashboard({ apiUrl, fuelPricesUrl, vehicles }) {
                                 />
                             </div>
                             <p className="is-size-7 has-text-grey mb-5">
-                                Conversion : 15 kWh ≈ 6 L / 100 km. Prix appliqués par date de recharge réelle
+                                Consommation par véhicule (Administration → Véhicules), par défaut 15 kWh / 6 L essence / 6 L diesel pour 100 km.
+                                Prix appliqués par date de recharge réelle
                                 (moyenne pondérée obtenue : {data.fuel_equivalent.avg_essence_price ?? '—'} €/L essence, {data.fuel_equivalent.avg_diesel_price ?? '—'} €/L diesel) —
                                 {' '}{data.fuel_equivalent.known_price_sessions}/{data.fuel_equivalent.total_sessions} recharge(s) avec un prix du jour connu
                                 {data.fuel_equivalent.estimated && ", le reste utilise l'estimation par défaut (1,95 €/L)"}.

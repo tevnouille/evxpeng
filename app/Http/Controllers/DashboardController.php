@@ -46,16 +46,25 @@ class DashboardController extends Controller
             ->orderByDesc('kwh')
             ->get();
 
-        // Equivalent carburant calcule au niveau de chaque recharge individuelle
-        // (prix du jour de LA recharge, pas une date de bucket approximative),
-        // puis regroupe par periode pour rester aligne avec $rows.
-        $sessionRows = ChargingSession::selectRaw("$periodExpr as period, session_date, quantity_kwh")
-            ->when($vehicleId, fn ($query) => $query->where('vehicle_id', $vehicleId))
+        // Equivalent carburant calcule au niveau de chaque recharge individuelle :
+        // prix du jour de LA recharge (pas une date de bucket approximative) et
+        // consommation propre au VEHICULE de cette recharge (jointure + COALESCE
+        // vers les valeurs par defaut si le vehicule ne les a pas renseignees).
+        $sessionRows = ChargingSession::query()
+            ->join('vehicles', 'vehicles.id', '=', 'charging_sessions.vehicle_id')
+            ->when($vehicleId, fn ($query) => $query->where('charging_sessions.vehicle_id', $vehicleId))
+            ->selectRaw(
+                "$periodExpr as period, charging_sessions.session_date, charging_sessions.quantity_kwh, " .
+                'COALESCE(vehicles.kwh_per_100km, ' . FuelPriceService::DEFAULT_KWH_PER_100KM . ') as kwh_per_100km, ' .
+                'COALESCE(vehicles.essence_l_per_100km, ' . FuelPriceService::DEFAULT_ESSENCE_L_PER_100KM . ') as essence_l_per_100km, ' .
+                'COALESCE(vehicles.diesel_l_per_100km, ' . FuelPriceService::DEFAULT_DIESEL_L_PER_100KM . ') as diesel_l_per_100km'
+            )
             ->get();
 
         $equivalentByPeriod = $fuelPriceService->equivalentByGroup($sessionRows, fn ($row) => $row->period);
 
-        $totalLiters = array_sum(array_column($equivalentByPeriod, 'liters'));
+        $totalEssenceLiters = array_sum(array_column($equivalentByPeriod, 'essence_liters'));
+        $totalDieselLiters = array_sum(array_column($equivalentByPeriod, 'diesel_liters'));
         $totalEssenceCost = array_sum(array_column($equivalentByPeriod, 'essence_cost'));
         $totalDieselCost = array_sum(array_column($equivalentByPeriod, 'diesel_cost'));
         $knownPriceSessions = array_sum(array_column($equivalentByPeriod, 'known'));
@@ -72,11 +81,12 @@ class DashboardController extends Controller
             'fuel_equivalent_essence_cost' => $rows->map(fn ($r) => round($equivalentByPeriod[$r->period]['essence_cost'] ?? 0, 2))->values(),
             'fuel_equivalent_diesel_cost' => $rows->map(fn ($r) => round($equivalentByPeriod[$r->period]['diesel_cost'] ?? 0, 2))->values(),
             'fuel_equivalent' => [
-                'liters' => round($totalLiters, 2),
+                'essence_liters' => round($totalEssenceLiters, 2),
+                'diesel_liters' => round($totalDieselLiters, 2),
                 'essence_cost' => round($totalEssenceCost, 2),
                 'diesel_cost' => round($totalDieselCost, 2),
-                'avg_essence_price' => $totalLiters > 0 ? round($totalEssenceCost / $totalLiters, 3) : null,
-                'avg_diesel_price' => $totalLiters > 0 ? round($totalDieselCost / $totalLiters, 3) : null,
+                'avg_essence_price' => $totalEssenceLiters > 0 ? round($totalEssenceCost / $totalEssenceLiters, 3) : null,
+                'avg_diesel_price' => $totalDieselLiters > 0 ? round($totalDieselCost / $totalDieselLiters, 3) : null,
                 'savings_essence' => round($totalEssenceCost - $totalElectricCost, 2),
                 'savings_diesel' => round($totalDieselCost - $totalElectricCost, 2),
                 'known_price_sessions' => $knownPriceSessions,

@@ -32,7 +32,12 @@ class ReferenceDataController extends Controller
 
     public function storeVehicle(Request $request): RedirectResponse
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:255', 'unique:vehicles,name']]);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255', 'unique:vehicles,name'],
+            'kwh_per_100km' => ['nullable', 'numeric', 'min:0'],
+            'essence_l_per_100km' => ['nullable', 'numeric', 'min:0'],
+            'diesel_l_per_100km' => ['nullable', 'numeric', 'min:0'],
+        ]);
 
         $vehicle = Vehicle::create($data);
 
@@ -45,7 +50,12 @@ class ReferenceDataController extends Controller
 
     public function updateVehicle(Request $request, Vehicle $vehicle): RedirectResponse
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:255', 'unique:vehicles,name,' . $vehicle->id]]);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255', 'unique:vehicles,name,' . $vehicle->id],
+            'kwh_per_100km' => ['nullable', 'numeric', 'min:0'],
+            'essence_l_per_100km' => ['nullable', 'numeric', 'min:0'],
+            'diesel_l_per_100km' => ['nullable', 'numeric', 'min:0'],
+        ]);
 
         $vehicle->update($data);
 

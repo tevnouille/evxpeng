@@ -10,10 +10,13 @@ class Vehicle extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'is_default'];
+    protected $fillable = ['name', 'is_default', 'kwh_per_100km', 'essence_l_per_100km', 'diesel_l_per_100km'];
 
     protected $casts = [
         'is_default' => 'boolean',
+        'kwh_per_100km' => 'decimal:2',
+        'essence_l_per_100km' => 'decimal:2',
+        'diesel_l_per_100km' => 'decimal:2',
     ];
 
     public function chargingSessions(): HasMany
