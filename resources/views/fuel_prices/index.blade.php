@@ -6,9 +6,10 @@
     <a href="{{ route('dashboard') }}" class="is-size-7">&larr; Dashboard</a>
     <h1 class="title mt-2">Historique des prix carburants</h1>
     <p class="subtitle is-6">
-        Moyenne nationale instantanée (SP95 / Gazole), relevée une fois par jour via l'API ouverte
-        <a href="https://data.economie.gouv.fr" target="_blank" rel="noopener">data.economie.gouv.fr</a>.
-        Pas d'historique avant la première visite du dashboard un jour donné.
+        Moyenne nationale quotidienne (SP95 / Gazole). Historique depuis le 1er janvier reconstruit à partir de
+        l'archive officielle <a href="https://donnees.roulez-eco.fr" target="_blank" rel="noopener">donnees.roulez-eco.fr</a>
+        (<code>php artisan fuel-prices:backfill</code>) ; le jour courant est relevé en direct via l'API
+        <a href="https://data.economie.gouv.fr" target="_blank" rel="noopener">data.economie.gouv.fr</a> à chaque visite du dashboard.
     </p>
 
     <div class="table-container">
