@@ -8,6 +8,7 @@ use App\Models\PowerRating;
 use App\Models\Provider;
 use App\Models\Vehicle;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -79,7 +80,8 @@ class ChargingSessionController extends Controller
             'vehicle_id' => ['required', 'exists:vehicles,id'],
             'location_choice' => ['required', 'string'],
             'location_other' => ['required_if:location_choice,other', 'nullable', 'string', 'max:255'],
-            'provider_id' => ['required', 'exists:providers,id'],
+            'provider_choice' => ['required', 'string'],
+            'provider_other' => ['required_if:provider_choice,other', 'nullable', 'string', 'max:255'],
             'power_rating_id' => ['required', 'exists:power_ratings,id'],
             'quantity_kwh' => ['required', 'numeric', 'min:0'],
             'charge_duration' => ['nullable', 'date_format:H:i'],
@@ -89,15 +91,25 @@ class ChargingSessionController extends Controller
             'comment' => ['nullable', 'string'],
         ]);
 
-        if ($validated['location_choice'] === 'other') {
-            $location = Location::firstOrCreate(['name' => trim($validated['location_other'])]);
-        } else {
-            $location = Location::findOrFail($validated['location_choice']);
-        }
+        $location = $this->resolveChoice(Location::class, $validated['location_choice'], $validated['location_other'] ?? null);
+        $provider = $this->resolveChoice(Provider::class, $validated['provider_choice'], $validated['provider_other'] ?? null);
 
-        unset($validated['location_choice'], $validated['location_other']);
+        unset($validated['location_choice'], $validated['location_other'], $validated['provider_choice'], $validated['provider_other']);
         $validated['location_id'] = $location->id;
+        $validated['provider_id'] = $provider->id;
 
         return $validated;
+    }
+
+    /**
+     * @param class-string<Model> $modelClass
+     */
+    private function resolveChoice(string $modelClass, string $choice, ?string $otherValue): Model
+    {
+        if ($choice === 'other') {
+            return $modelClass::firstOrCreate(['name' => trim($otherValue)]);
+        }
+
+        return $modelClass::findOrFail($choice);
     }
 }

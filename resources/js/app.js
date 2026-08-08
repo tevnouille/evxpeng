@@ -45,6 +45,21 @@ function makeSearchable(select) {
     });
 }
 
+function setupOtherToggle(selectId, wrapperId) {
+    const select = document.getElementById(selectId);
+    const wrapper = document.getElementById(wrapperId);
+
+    if (!select || !wrapper) {
+        return;
+    }
+
+    const toggle = () => {
+        wrapper.style.display = select.value === 'other' ? 'block' : 'none';
+    };
+    select.addEventListener('change', toggle);
+    toggle();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('select[data-searchable]').forEach(makeSearchable);
 
@@ -74,14 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
         unitCost.addEventListener('input', recompute);
     }
 
-    const locationChoice = document.getElementById('location_choice');
-    const locationOtherWrapper = document.getElementById('location_other_wrapper');
-
-    if (locationChoice && locationOtherWrapper) {
-        const toggleLocationOther = () => {
-            locationOtherWrapper.style.display = locationChoice.value === 'other' ? 'block' : 'none';
-        };
-        locationChoice.addEventListener('change', toggleLocationOther);
-        toggleLocationOther();
-    }
+    setupOtherToggle('location_choice', 'location_other_wrapper');
+    setupOtherToggle('provider_choice', 'provider_other_wrapper');
 });

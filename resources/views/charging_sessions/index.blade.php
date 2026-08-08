@@ -66,13 +66,17 @@
                         <label class="label">Fournisseur borne</label>
                         <div class="control">
                             <div class="select is-fullwidth">
-                                <select name="provider_id" id="provider_id" required data-searchable>
-                                    <option value="" disabled {{ old('provider_id', $editing?->provider_id) ? '' : 'selected' }}>-- choisir --</option>
+                                <select name="provider_choice" id="provider_choice" required data-searchable>
+                                    <option value="" disabled {{ old('provider_choice', $editing?->provider_id) ? '' : 'selected' }}>-- choisir --</option>
                                     @foreach ($providers as $provider)
-                                        <option value="{{ $provider->id }}" @selected(old('provider_id', $editing?->provider_id) == $provider->id)>{{ $provider->name }}</option>
+                                        <option value="{{ $provider->id }}" @selected(old('provider_choice', $editing?->provider_id) == $provider->id)>{{ $provider->name }}</option>
                                     @endforeach
+                                    <option value="other" @selected(old('provider_choice') === 'other')>Autre…</option>
                                 </select>
                             </div>
+                        </div>
+                        <div class="control mt-2" id="provider_other_wrapper" style="display: {{ old('provider_choice') === 'other' ? 'block' : 'none' }};">
+                            <input class="input" type="text" name="provider_other" placeholder="Nouveau fournisseur" value="{{ old('provider_other') }}">
                         </div>
                         <p class="help"><a href="{{ route('reference-data.index') }}">Ajouter / éditer / supprimer un fournisseur</a></p>
                     </div>
