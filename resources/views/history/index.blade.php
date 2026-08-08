@@ -47,10 +47,12 @@
             <div class="column is-3-desktop is-4-tablet is-6-mobile">
                 <a href="{{ route('history.show', ['year' => $year, 'month' => $number]) }}" class="box has-text-centered has-text-link" style="display: block;">
                     <p class="title is-5">{{ $name }}</p>
-                    <p class="has-text-grey">{{ $stats['count'] }} recharge(s)</p>
                     @if ($stats['count'] > 0)
+                        <p class="has-text-grey">{{ $stats['count'] }} recharge(s)</p>
                         <p class="has-text-grey">{{ number_format($stats['kwh'], 2, ',', ' ') }} kWh</p>
                         <p class="has-text-grey">{{ number_format($stats['cost'], 2, ',', ' ') }} €</p>
+                    @else
+                        <p class="has-text-grey">Aucune recharge enregistrée</p>
                     @endif
                 </a>
             </div>
