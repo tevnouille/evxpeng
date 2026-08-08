@@ -4,6 +4,9 @@
 
 @section('content')
     <h1 class="title">{{ $editing ? 'Modifier une recharge' : 'Nouvelle recharge' }}</h1>
+    @if ($duplicateFrom)
+        <p class="notification is-info is-light">Localisation, fournisseur, puissance et coût unitaire repris de la recharge du {{ $duplicateFrom->session_date->format('d/m/Y') }}.</p>
+    @endif
 
     <div class="box">
         <form method="POST" action="{{ $editing ? route('charging-sessions.update', $editing) : route('charging-sessions.store') }}">
@@ -46,9 +49,9 @@
                         <div class="control">
                             <div class="select is-fullwidth">
                                 <select name="location_choice" id="location_choice" required data-searchable>
-                                    <option value="" disabled {{ old('location_choice', $editing?->location_id) ? '' : 'selected' }}>-- choisir --</option>
+                                    <option value="" disabled {{ old('location_choice', $editing?->location_id ?? $duplicateFrom?->location_id) ? '' : 'selected' }}>-- choisir --</option>
                                     @foreach ($locations as $location)
-                                        <option value="{{ $location->id }}" @selected(old('location_choice', $editing?->location_id) == $location->id)>{{ $location->name }}</option>
+                                        <option value="{{ $location->id }}" @selected(old('location_choice', $editing?->location_id ?? $duplicateFrom?->location_id) == $location->id)>{{ $location->name }}</option>
                                     @endforeach
                                     <option value="other" @selected(old('location_choice') === 'other')>Autre…</option>
                                 </select>
@@ -67,9 +70,9 @@
                         <div class="control">
                             <div class="select is-fullwidth">
                                 <select name="provider_choice" id="provider_choice" required data-searchable>
-                                    <option value="" disabled {{ old('provider_choice', $editing?->provider_id) ? '' : 'selected' }}>-- choisir --</option>
+                                    <option value="" disabled {{ old('provider_choice', $editing?->provider_id ?? $duplicateFrom?->provider_id) ? '' : 'selected' }}>-- choisir --</option>
                                     @foreach ($providers as $provider)
-                                        <option value="{{ $provider->id }}" @selected(old('provider_choice', $editing?->provider_id) == $provider->id)>{{ $provider->name }}</option>
+                                        <option value="{{ $provider->id }}" @selected(old('provider_choice', $editing?->provider_id ?? $duplicateFrom?->provider_id) == $provider->id)>{{ $provider->name }}</option>
                                     @endforeach
                                     <option value="other" @selected(old('provider_choice') === 'other')>Autre…</option>
                                 </select>
@@ -88,9 +91,9 @@
                         <div class="control">
                             <div class="select is-fullwidth">
                                 <select name="power_rating_id" id="power_rating_id" required data-searchable>
-                                    <option value="" disabled {{ old('power_rating_id', $editing?->power_rating_id) ? '' : 'selected' }}>-- choisir --</option>
+                                    <option value="" disabled {{ old('power_rating_id', $editing?->power_rating_id ?? $duplicateFrom?->power_rating_id) ? '' : 'selected' }}>-- choisir --</option>
                                     @foreach ($powerRatings as $powerRating)
-                                        <option value="{{ $powerRating->id }}" @selected(old('power_rating_id', $editing?->power_rating_id) == $powerRating->id)>{{ rtrim(rtrim($powerRating->kw, '0'), '.') }} kW</option>
+                                        <option value="{{ $powerRating->id }}" @selected(old('power_rating_id', $editing?->power_rating_id ?? $duplicateFrom?->power_rating_id) == $powerRating->id)>{{ rtrim(rtrim($powerRating->kw, '0'), '.') }} kW</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -134,7 +137,7 @@
                         <label class="label">Coût unitaire (€/kWh)</label>
                         <div class="control">
                             <input class="input" type="number" step="0.0001" min="0" name="unit_cost" id="unit_cost"
-                                value="{{ old('unit_cost', $editing?->unit_cost) }}">
+                                value="{{ old('unit_cost', $editing?->unit_cost ?? $duplicateFrom?->unit_cost) }}">
                         </div>
                     </div>
                 </div>

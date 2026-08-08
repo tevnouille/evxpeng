@@ -32,6 +32,7 @@
                     <td>{{ \Illuminate\Support\Str::limit($session->comment, 30) }}</td>
                     <td class="is-flex is-flex-wrap-nowrap">
                         <a href="{{ route('charging-sessions.edit', $session) }}" class="button is-small is-info is-light mr-1">Éditer</a>
+                        <a href="{{ route('charging-sessions.index', ['duplicate' => $session->id]) }}" class="button is-small is-light mr-1">Dupliquer</a>
                         <form method="POST" action="{{ route('charging-sessions.destroy', $session) }}" onsubmit="return confirm('Supprimer cette recharge ?');">
                             @csrf
                             @method('DELETE')

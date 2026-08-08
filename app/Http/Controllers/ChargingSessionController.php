@@ -15,8 +15,14 @@ use Illuminate\View\View;
 
 class ChargingSessionController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        $duplicateFrom = null;
+
+        if ($request->filled('duplicate')) {
+            $duplicateFrom = ChargingSession::find($request->query('duplicate'));
+        }
+
         return view('charging_sessions.index', [
             'sessions' => $this->recentSessions(),
             'vehicles' => Vehicle::orderBy('name')->get(),
@@ -24,6 +30,7 @@ class ChargingSessionController extends Controller
             'providers' => Provider::orderBy('name')->get(),
             'powerRatings' => PowerRating::orderBy('kw')->get(),
             'editing' => null,
+            'duplicateFrom' => $duplicateFrom,
         ]);
     }
 
@@ -36,6 +43,7 @@ class ChargingSessionController extends Controller
             'providers' => Provider::orderBy('name')->get(),
             'powerRatings' => PowerRating::orderBy('kw')->get(),
             'editing' => $chargingSession,
+            'duplicateFrom' => null,
         ]);
     }
 
