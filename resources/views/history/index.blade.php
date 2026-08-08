@@ -20,6 +20,27 @@
         </div>
     </form>
 
+    @php
+        $chartLabels = collect($months)->values();
+        $chartKwh = collect($months)->keys()->map(fn ($n) => $statsByMonth[$n]['kwh'] ?? 0)->values();
+        $chartCost = collect($months)->keys()->map(fn ($n) => $statsByMonth[$n]['cost'] ?? 0)->values();
+    @endphp
+
+    <div class="columns is-multiline mb-5">
+        <div class="column is-6">
+            <div class="box">
+                <h2 class="title is-5">kWh par mois</h2>
+                <canvas id="history-kwh-chart" data-labels='@json($chartLabels)' data-values='@json($chartKwh)'></canvas>
+            </div>
+        </div>
+        <div class="column is-6">
+            <div class="box">
+                <h2 class="title is-5">Coût facturé par mois (€)</h2>
+                <canvas id="history-cost-chart" data-labels='@json($chartLabels)' data-values='@json($chartCost)'></canvas>
+            </div>
+        </div>
+    </div>
+
     <div class="columns is-multiline">
         @foreach ($months as $number => $name)
             @php($stats = $statsByMonth[$number] ?? ['count' => 0, 'kwh' => 0, 'cost' => 0])
@@ -36,3 +57,7 @@
         @endforeach
     </div>
 @endsection
+
+@push('scripts')
+    @vite('resources/js/history.js')
+@endpush
