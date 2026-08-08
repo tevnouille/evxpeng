@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ChargingSession;
-use App\Models\Provider;
+use App\Models\Vehicle;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -12,12 +12,15 @@ class DashboardController extends Controller
 {
     public function index(): View
     {
-        return view('dashboard.index');
+        return view('dashboard.index', [
+            'vehicles' => Vehicle::orderBy('name')->get(),
+        ]);
     }
 
     public function data(Request $request): JsonResponse
     {
         $granularity = $request->query('granularity', 'month');
+        $vehicleId = $request->query('vehicle_id');
 
         $periodExpr = match ($granularity) {
             'day' => "DATE_FORMAT(session_date, '%Y-%m-%d')",
@@ -27,12 +30,14 @@ class DashboardController extends Controller
         };
 
         $rows = ChargingSession::selectRaw("$periodExpr as period, MIN(session_date) as period_start, SUM(quantity_kwh) as kwh, SUM(total_cost) as cost, COUNT(*) as sessions_count")
+            ->when($vehicleId, fn ($query) => $query->where('vehicle_id', $vehicleId))
             ->groupBy('period')
             ->orderBy('period_start')
             ->get();
 
         $byProvider = ChargingSession::query()
             ->join('providers', 'providers.id', '=', 'charging_sessions.provider_id')
+            ->when($vehicleId, fn ($query) => $query->where('vehicle_id', $vehicleId))
             ->selectRaw('providers.name as name, SUM(quantity_kwh) as kwh, SUM(total_cost) as cost')
             ->groupBy('providers.id', 'providers.name')
             ->orderByDesc('kwh')

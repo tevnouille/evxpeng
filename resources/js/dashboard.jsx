@@ -35,8 +35,9 @@ function StatTile({ label, value, suffix }) {
     );
 }
 
-function Dashboard({ apiUrl }) {
+function Dashboard({ apiUrl, vehicles }) {
     const [granularity, setGranularity] = useState('month');
+    const [vehicleId, setVehicleId] = useState('');
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -44,7 +45,9 @@ function Dashboard({ apiUrl }) {
     useEffect(() => {
         setLoading(true);
         setError(null);
-        fetch(`${apiUrl}?granularity=${granularity}`, { headers: { Accept: 'application/json' } })
+        const params = new URLSearchParams({ granularity });
+        if (vehicleId) params.set('vehicle_id', vehicleId);
+        fetch(`${apiUrl}?${params.toString()}`, { headers: { Accept: 'application/json' } })
             .then((res) => {
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 return res.json();
@@ -52,7 +55,7 @@ function Dashboard({ apiUrl }) {
             .then(setData)
             .catch((err) => setError(err.message))
             .finally(() => setLoading(false));
-    }, [granularity, apiUrl]);
+    }, [granularity, vehicleId, apiUrl]);
 
     const totals = useMemo(() => {
         if (!data) return null;
@@ -69,17 +72,33 @@ function Dashboard({ apiUrl }) {
 
     return (
         <div>
-            <div className="field has-addons mb-5">
-                {GRANULARITIES.map((g) => (
-                    <p className="control" key={g.value}>
-                        <button
-                            className={`button ${granularity === g.value ? 'is-primary' : ''}`}
-                            onClick={() => setGranularity(g.value)}
-                        >
-                            {g.label}
-                        </button>
-                    </p>
-                ))}
+            <div className="field is-grouped is-grouped-multiline mb-5">
+                <div className="control">
+                    <div className="field has-addons">
+                        {GRANULARITIES.map((g) => (
+                            <p className="control" key={g.value}>
+                                <button
+                                    className={`button ${granularity === g.value ? 'is-primary' : ''}`}
+                                    onClick={() => setGranularity(g.value)}
+                                >
+                                    {g.label}
+                                </button>
+                            </p>
+                        ))}
+                    </div>
+                </div>
+                {vehicles.length > 0 && (
+                    <div className="control">
+                        <div className="select">
+                            <select value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
+                                <option value="">Tous les véhicules</option>
+                                {vehicles.map((v) => (
+                                    <option value={v.id} key={v.id}>{v.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {error && <div className="notification is-danger is-light">Erreur de chargement : {error}</div>}
@@ -163,5 +182,6 @@ function Dashboard({ apiUrl }) {
 
 const root = document.getElementById('ev-dashboard-root');
 if (root) {
-    createRoot(root).render(<Dashboard apiUrl={root.dataset.apiUrl} />);
+    const vehicles = JSON.parse(root.dataset.vehicles || '[]');
+    createRoot(root).render(<Dashboard apiUrl={root.dataset.apiUrl} vehicles={vehicles} />);
 }

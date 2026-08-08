@@ -8,6 +8,12 @@ services:
     volumes:
       - ./storage:/var/www/html/storage
       - ./public/build:/var/www/html/public/build:ro
+      - ./app:/var/www/html/app:ro
+      - ./bootstrap/app.php:/var/www/html/bootstrap/app.php:ro
+      - ./config:/var/www/html/config:ro
+      - ./database:/var/www/html/database:ro
+      - ./resources:/var/www/html/resources:ro
+      - ./routes:/var/www/html/routes:ro
     env_file:
       - .env
     depends_on:

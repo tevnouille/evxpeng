@@ -12,6 +12,8 @@ class ChargingSession extends Model
 
     protected $fillable = [
         'session_date',
+        'vehicle_id',
+        'location_id',
         'provider_id',
         'power_rating_id',
         'quantity_kwh',
@@ -27,7 +29,19 @@ class ChargingSession extends Model
         'quantity_kwh' => 'decimal:2',
         'unit_cost' => 'decimal:4',
         'total_cost' => 'decimal:2',
+        'charge_duration' => 'datetime:H:i',
+        'parking_duration' => 'datetime:H:i',
     ];
+
+    public function vehicle(): BelongsTo
+    {
+        return $this->belongsTo(Vehicle::class);
+    }
+
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(Location::class);
+    }
 
     public function provider(): BelongsTo
     {

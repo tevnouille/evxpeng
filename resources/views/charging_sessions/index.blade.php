@@ -15,11 +15,49 @@
             <div class="columns is-multiline">
                 <div class="column is-3">
                     <div class="field">
+                        <label class="label">Véhicule</label>
+                        <div class="control">
+                            <div class="select is-fullwidth">
+                                <select name="vehicle_id" id="vehicle_id" required data-searchable>
+                                    <option value="" disabled {{ old('vehicle_id', $editing?->vehicle_id ?? $vehicles->firstWhere('is_default', true)?->id) ? '' : 'selected' }}>-- choisir --</option>
+                                    @foreach ($vehicles as $vehicle)
+                                        <option value="{{ $vehicle->id }}" @selected(old('vehicle_id', $editing?->vehicle_id ?? $vehicles->firstWhere('is_default', true)?->id) == $vehicle->id)>{{ $vehicle->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <p class="help"><a href="{{ route('reference-data.index') }}">Ajouter / éditer / supprimer un véhicule</a></p>
+                    </div>
+                </div>
+
+                <div class="column is-3">
+                    <div class="field">
                         <label class="label">Date</label>
                         <div class="control">
                             <input class="input" type="date" name="session_date" required
-                                value="{{ old('session_date', optional($editing?->session_date)->format('Y-m-d')) }}">
+                                value="{{ old('session_date', $editing?->session_date?->format('Y-m-d') ?? now()->format('Y-m-d')) }}">
                         </div>
+                    </div>
+                </div>
+
+                <div class="column is-3">
+                    <div class="field">
+                        <label class="label">Localisation</label>
+                        <div class="control">
+                            <div class="select is-fullwidth">
+                                <select name="location_choice" id="location_choice" required data-searchable>
+                                    <option value="" disabled {{ old('location_choice', $editing?->location_id) ? '' : 'selected' }}>-- choisir --</option>
+                                    @foreach ($locations as $location)
+                                        <option value="{{ $location->id }}" @selected(old('location_choice', $editing?->location_id) == $location->id)>{{ $location->name }}</option>
+                                    @endforeach
+                                    <option value="other" @selected(old('location_choice') === 'other')>Autre…</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="control mt-2" id="location_other_wrapper" style="display: {{ old('location_choice') === 'other' ? 'block' : 'none' }};">
+                            <input class="input" type="text" name="location_other" placeholder="Nouvelle localisation" value="{{ old('location_other') }}">
+                        </div>
+                        <p class="help"><a href="{{ route('reference-data.index') }}">Ajouter / éditer / supprimer une localisation</a></p>
                     </div>
                 </div>
 
@@ -28,7 +66,7 @@
                         <label class="label">Fournisseur borne</label>
                         <div class="control">
                             <div class="select is-fullwidth">
-                                <select name="provider_id" required>
+                                <select name="provider_id" id="provider_id" required data-searchable>
                                     <option value="" disabled {{ old('provider_id', $editing?->provider_id) ? '' : 'selected' }}>-- choisir --</option>
                                     @foreach ($providers as $provider)
                                         <option value="{{ $provider->id }}" @selected(old('provider_id', $editing?->provider_id) == $provider->id)>{{ $provider->name }}</option>
@@ -45,7 +83,7 @@
                         <label class="label">Puissance borne</label>
                         <div class="control">
                             <div class="select is-fullwidth">
-                                <select name="power_rating_id" required>
+                                <select name="power_rating_id" id="power_rating_id" required data-searchable>
                                     <option value="" disabled {{ old('power_rating_id', $editing?->power_rating_id) ? '' : 'selected' }}>-- choisir --</option>
                                     @foreach ($powerRatings as $powerRating)
                                         <option value="{{ $powerRating->id }}" @selected(old('power_rating_id', $editing?->power_rating_id) == $powerRating->id)>{{ rtrim(rtrim($powerRating->kw, '0'), '.') }} kW</option>
@@ -72,7 +110,7 @@
                         <label class="label">Durée de recharge</label>
                         <div class="control">
                             <input class="input" type="time" name="charge_duration"
-                                value="{{ old('charge_duration', optional($editing?->charge_duration)->format('H:i')) }}">
+                                value="{{ old('charge_duration', $editing ? $editing->charge_duration?->format('H:i') : '00:00') }}">
                         </div>
                     </div>
                 </div>
@@ -82,7 +120,7 @@
                         <label class="label">Durée de stationnement</label>
                         <div class="control">
                             <input class="input" type="time" name="parking_duration"
-                                value="{{ old('parking_duration', optional($editing?->parking_duration)->format('H:i')) }}">
+                                value="{{ old('parking_duration', $editing?->parking_duration?->format('H:i')) }}">
                         </div>
                     </div>
                 </div>
@@ -131,53 +169,14 @@
         </form>
     </div>
 
-    <h2 class="title is-4">Historique</h2>
-
-    <div class="table-container">
-        <table class="table is-fullwidth is-striped is-hoverable">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Fournisseur</th>
-                    <th>Puissance</th>
-                    <th>kWh</th>
-                    <th>Durée recharge</th>
-                    <th>Durée stationnement</th>
-                    <th>€/kWh</th>
-                    <th>Total €</th>
-                    <th>Commentaire</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($sessions as $session)
-                    <tr>
-                        <td>{{ $session->session_date->format('d/m/Y') }}</td>
-                        <td>{{ $session->provider->name }}</td>
-                        <td>{{ rtrim(rtrim($session->powerRating->kw, '0'), '.') }} kW</td>
-                        <td>{{ $session->quantity_kwh }}</td>
-                        <td>{{ $session->charge_duration ? \Illuminate\Support\Carbon::parse($session->charge_duration)->format('H:i') : '—' }}</td>
-                        <td>{{ $session->parking_duration ? \Illuminate\Support\Carbon::parse($session->parking_duration)->format('H:i') : '—' }}</td>
-                        <td>{{ $session->unit_cost ?? '—' }}</td>
-                        <td>{{ $session->total_cost ?? '—' }}</td>
-                        <td>{{ \Illuminate\Support\Str::limit($session->comment, 30) }}</td>
-                        <td class="is-flex is-flex-wrap-nowrap">
-                            <a href="{{ route('charging-sessions.edit', $session) }}" class="button is-small is-info is-light mr-1">Éditer</a>
-                            <form method="POST" action="{{ route('charging-sessions.destroy', $session) }}" onsubmit="return confirm('Supprimer cette recharge ?');">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="button is-small is-danger is-light">Suppr.</button>
-                            </form>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="10" class="has-text-centered has-text-grey">Aucune recharge enregistrée pour l'instant.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
+    <div class="level">
+        <div class="level-left">
+            <h2 class="title is-4">10 dernières recharges</h2>
+        </div>
+        <div class="level-right">
+            <a href="{{ route('history.index') }}" class="button is-link is-light">Voir tout l'historique</a>
+        </div>
     </div>
 
-    {{ $sessions->links() }}
+    @include('charging_sessions._sessions_table', ['emptyMessage' => "Aucune recharge enregistrée pour l'instant."])
 @endsection

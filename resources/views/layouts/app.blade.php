@@ -22,6 +22,7 @@
         <div id="navMenu" class="navbar-menu">
             <div class="navbar-start">
                 <a class="navbar-item {{ request()->routeIs('charging-sessions.*') ? 'is-active' : '' }}" href="{{ route('charging-sessions.index') }}">Recharges</a>
+                <a class="navbar-item {{ request()->routeIs('history.*') ? 'is-active' : '' }}" href="{{ route('history.index') }}">Historique</a>
                 <a class="navbar-item {{ request()->routeIs('dashboard') ? 'is-active' : '' }}" href="{{ route('dashboard') }}">Dashboard</a>
                 <a class="navbar-item {{ request()->routeIs('reference-data.*') ? 'is-active' : '' }}" href="{{ route('reference-data.index') }}">Administration</a>
             </div>

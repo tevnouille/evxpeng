@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Location;
 use App\Models\PowerRating;
 use App\Models\Provider;
+use App\Models\Vehicle;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,9 +16,81 @@ class ReferenceDataController extends Controller
     public function index(): View
     {
         return view('reference_data.index', [
+            'vehicles' => Vehicle::withCount('chargingSessions')->orderBy('name')->get(),
+            'locations' => Location::withCount('chargingSessions')->orderBy('name')->get(),
             'providers' => Provider::withCount('chargingSessions')->orderBy('name')->get(),
             'powerRatings' => PowerRating::withCount('chargingSessions')->orderBy('kw')->get(),
         ]);
+    }
+
+    public function storeVehicle(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['name' => ['required', 'string', 'max:255', 'unique:vehicles,name']]);
+
+        $vehicle = Vehicle::create($data);
+
+        if ($request->boolean('is_default') || Vehicle::count() === 1) {
+            $vehicle->makeDefault();
+        }
+
+        return redirect()->route('reference-data.index')->with('success', 'Véhicule ajouté.');
+    }
+
+    public function updateVehicle(Request $request, Vehicle $vehicle): RedirectResponse
+    {
+        $data = $request->validate(['name' => ['required', 'string', 'max:255', 'unique:vehicles,name,' . $vehicle->id]]);
+
+        $vehicle->update($data);
+
+        if ($request->boolean('is_default')) {
+            $vehicle->makeDefault();
+        } else {
+            $vehicle->update(['is_default' => false]);
+        }
+
+        return redirect()->route('reference-data.index')->with('success', 'Véhicule mis à jour.');
+    }
+
+    public function destroyVehicle(Vehicle $vehicle): RedirectResponse
+    {
+        try {
+            $vehicle->delete();
+        } catch (QueryException) {
+            return redirect()->route('reference-data.index')
+                ->with('error', "Impossible de supprimer « {$vehicle->name} » : utilisé par des recharges existantes.");
+        }
+
+        return redirect()->route('reference-data.index')->with('success', 'Véhicule supprimé.');
+    }
+
+    public function storeLocation(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['name' => ['required', 'string', 'max:255', 'unique:locations,name']]);
+
+        Location::create($data);
+
+        return redirect()->route('reference-data.index')->with('success', 'Localisation ajoutée.');
+    }
+
+    public function updateLocation(Request $request, Location $location): RedirectResponse
+    {
+        $data = $request->validate(['name' => ['required', 'string', 'max:255', 'unique:locations,name,' . $location->id]]);
+
+        $location->update($data);
+
+        return redirect()->route('reference-data.index')->with('success', 'Localisation mise à jour.');
+    }
+
+    public function destroyLocation(Location $location): RedirectResponse
+    {
+        try {
+            $location->delete();
+        } catch (QueryException) {
+            return redirect()->route('reference-data.index')
+                ->with('error', "Impossible de supprimer « {$location->name} » : utilisée par des recharges existantes.");
+        }
+
+        return redirect()->route('reference-data.index')->with('success', 'Localisation supprimée.');
     }
 
     public function storeProvider(Request $request): RedirectResponse
