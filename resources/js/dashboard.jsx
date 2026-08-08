@@ -35,9 +35,10 @@ function StatTile({ label, value, suffix }) {
     );
 }
 
-function Dashboard({ apiUrl, fuelPricesUrl, vehicles }) {
+function Dashboard({ apiUrl, fuelPricesUrl, vehicles, years }) {
     const [granularity, setGranularity] = useState('month');
     const [vehicleId, setVehicleId] = useState('');
+    const [year, setYear] = useState('');
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -47,6 +48,7 @@ function Dashboard({ apiUrl, fuelPricesUrl, vehicles }) {
         setError(null);
         const params = new URLSearchParams({ granularity });
         if (vehicleId) params.set('vehicle_id', vehicleId);
+        if (year) params.set('year', year);
         fetch(`${apiUrl}?${params.toString()}`, { headers: { Accept: 'application/json' } })
             .then((res) => {
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -55,7 +57,7 @@ function Dashboard({ apiUrl, fuelPricesUrl, vehicles }) {
             .then(setData)
             .catch((err) => setError(err.message))
             .finally(() => setLoading(false));
-    }, [granularity, vehicleId, apiUrl]);
+    }, [granularity, vehicleId, year, apiUrl]);
 
     const totals = useMemo(() => {
         if (!data) return null;
@@ -94,6 +96,18 @@ function Dashboard({ apiUrl, fuelPricesUrl, vehicles }) {
                                 <option value="">Tous les véhicules</option>
                                 {vehicles.map((v) => (
                                     <option value={v.id} key={v.id}>{v.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                )}
+                {years.length > 0 && (
+                    <div className="control">
+                        <div className="select">
+                            <select value={year} onChange={(e) => setYear(e.target.value)}>
+                                <option value="">Toutes les années</option>
+                                {years.map((y) => (
+                                    <option value={y} key={y}>{y}</option>
                                 ))}
                             </select>
                         </div>
@@ -222,5 +236,6 @@ function Dashboard({ apiUrl, fuelPricesUrl, vehicles }) {
 const root = document.getElementById('ev-dashboard-root');
 if (root) {
     const vehicles = JSON.parse(root.dataset.vehicles || '[]');
-    createRoot(root).render(<Dashboard apiUrl={root.dataset.apiUrl} fuelPricesUrl={root.dataset.fuelPricesUrl} vehicles={vehicles} />);
+    const years = JSON.parse(root.dataset.years || '[]');
+    createRoot(root).render(<Dashboard apiUrl={root.dataset.apiUrl} fuelPricesUrl={root.dataset.fuelPricesUrl} vehicles={vehicles} years={years} />);
 }

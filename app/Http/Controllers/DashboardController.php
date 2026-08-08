@@ -13,8 +13,15 @@ class DashboardController extends Controller
 {
     public function index(): View
     {
+        $years = ChargingSession::selectRaw('DISTINCT YEAR(session_date) as annee')
+            ->orderByDesc('annee')
+            ->pluck('annee')
+            ->map(fn ($year) => (int) $year)
+            ->values();
+
         return view('dashboard.index', [
             'vehicles' => Vehicle::orderBy('name')->get(),
+            'years' => $years,
         ]);
     }
 
@@ -24,6 +31,7 @@ class DashboardController extends Controller
 
         $granularity = $request->query('granularity', 'month');
         $vehicleId = $request->query('vehicle_id');
+        $year = $request->query('year');
 
         $periodExpr = match ($granularity) {
             'day' => "DATE_FORMAT(session_date, '%Y-%m-%d')",
@@ -34,6 +42,7 @@ class DashboardController extends Controller
 
         $rows = ChargingSession::selectRaw("$periodExpr as period, MIN(session_date) as period_start, SUM(quantity_kwh) as kwh, SUM(total_cost) as cost, COUNT(*) as sessions_count")
             ->when($vehicleId, fn ($query) => $query->where('vehicle_id', $vehicleId))
+            ->when($year, fn ($query) => $query->whereYear('session_date', $year))
             ->groupBy('period')
             ->orderBy('period_start')
             ->get();
@@ -41,6 +50,7 @@ class DashboardController extends Controller
         $byProvider = ChargingSession::query()
             ->join('providers', 'providers.id', '=', 'charging_sessions.provider_id')
             ->when($vehicleId, fn ($query) => $query->where('vehicle_id', $vehicleId))
+            ->when($year, fn ($query) => $query->whereYear('charging_sessions.session_date', $year))
             ->selectRaw('providers.name as name, SUM(quantity_kwh) as kwh, SUM(total_cost) as cost')
             ->groupBy('providers.id', 'providers.name')
             ->orderByDesc('kwh')
@@ -54,6 +64,7 @@ class DashboardController extends Controller
         $sessionRows = ChargingSession::query()
             ->join('vehicles', 'vehicles.id', '=', 'charging_sessions.vehicle_id')
             ->when($vehicleId, fn ($query) => $query->where('charging_sessions.vehicle_id', $vehicleId))
+            ->when($year, fn ($query) => $query->whereYear('charging_sessions.session_date', $year))
             ->selectRaw(
                 "$periodExpr as period, charging_sessions.session_date, charging_sessions.quantity_kwh, " .
                 'vehicles.kwh_per_100km, vehicles.essence_l_per_100km, vehicles.diesel_l_per_100km'
