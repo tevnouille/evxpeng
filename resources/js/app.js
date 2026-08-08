@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalCost = document.getElementById('total_cost');
 
     if (quantity && unitCost && totalCost) {
-        let totalManuallyEdited = totalCost.value !== '';
+        let totalManuallyEdited = totalCost.value !== '' && parseFloat(totalCost.value) !== 0;
 
         totalCost.addEventListener('input', () => {
             totalManuallyEdited = true;

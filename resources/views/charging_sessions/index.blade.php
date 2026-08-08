@@ -144,7 +144,7 @@
                         <label class="label">Coût total facturé (€)</label>
                         <div class="control">
                             <input class="input" type="number" step="0.01" min="0" name="total_cost" id="total_cost"
-                                value="{{ old('total_cost', $editing?->total_cost) }}">
+                                value="{{ old('total_cost', $editing ? $editing->total_cost : 0) }}">
                         </div>
                         <p class="help">Calculé automatiquement (quantité × coût unitaire), modifiable.</p>
                     </div>
