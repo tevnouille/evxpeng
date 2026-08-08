@@ -35,7 +35,7 @@ function StatTile({ label, value, suffix }) {
     );
 }
 
-function Dashboard({ apiUrl, vehicles }) {
+function Dashboard({ apiUrl, fuelPricesUrl, vehicles }) {
     const [granularity, setGranularity] = useState('month');
     const [vehicleId, setVehicleId] = useState('');
     const [data, setData] = useState(null);
@@ -114,6 +114,27 @@ function Dashboard({ apiUrl, vehicles }) {
                         <StatTile label="Nombre de recharges" value={totals.sessions} />
                     </div>
 
+                    {data.fuel_equivalent && (
+                        <>
+                            <h2 className="title is-6 mb-2">Équivalent essence</h2>
+                            <div className="columns is-mobile is-multiline mb-1">
+                                <StatTile label="Essence équivalente" value={data.fuel_equivalent.liters} suffix=" L" />
+                                <StatTile label="Coût essence équivalent" value={data.fuel_equivalent.cost.toFixed(2)} suffix=" €" />
+                                <StatTile
+                                    label={data.fuel_equivalent.savings >= 0 ? 'Économie vs essence' : 'Surcoût vs essence'}
+                                    value={Math.abs(data.fuel_equivalent.savings).toFixed(2)}
+                                    suffix=" €"
+                                />
+                            </div>
+                            <p className="is-size-7 has-text-grey mb-5">
+                                Conversion : 15 kWh ≈ 6 L / 100 km. Prix essence (SP95) utilisé : {data.fuel_equivalent.essence_price} €/L
+                                {data.fuel_equivalent.estimated ? ' (estimé, prix du jour indisponible)' : ' (moyenne nationale du jour)'}.
+                                {' '}
+                                <a href={fuelPricesUrl}>Voir l'historique des prix carburants →</a>
+                            </p>
+                        </>
+                    )}
+
                     <div className="columns is-multiline">
                         <div className="column is-6">
                             <div className="box">
@@ -130,13 +151,16 @@ function Dashboard({ apiUrl, vehicles }) {
 
                         <div className="column is-6">
                             <div className="box">
-                                <h2 className="title is-5">Coût total par période (€)</h2>
+                                <h2 className="title is-5">Coût électrique vs équivalent essence (€)</h2>
                                 <Line
                                     data={{
                                         labels: data.labels,
-                                        datasets: [{ label: 'Coût (€)', data: data.cost, borderColor: '#3273dc', backgroundColor: '#3273dc', tension: 0.2 }],
+                                        datasets: [
+                                            { label: 'Coût électrique (€)', data: data.cost, borderColor: '#3273dc', backgroundColor: '#3273dc', tension: 0.2 },
+                                            { label: 'Équivalent essence (€)', data: data.fuel_equivalent_cost, borderColor: '#ff3860', backgroundColor: '#ff3860', tension: 0.2, borderDash: [6, 4] },
+                                        ],
                                     }}
-                                    options={{ responsive: true, plugins: { legend: { display: false } } }}
+                                    options={{ responsive: true, plugins: { legend: { display: true } } }}
                                 />
                             </div>
                         </div>
@@ -183,5 +207,5 @@ function Dashboard({ apiUrl, vehicles }) {
 const root = document.getElementById('ev-dashboard-root');
 if (root) {
     const vehicles = JSON.parse(root.dataset.vehicles || '[]');
-    createRoot(root).render(<Dashboard apiUrl={root.dataset.apiUrl} vehicles={vehicles} />);
+    createRoot(root).render(<Dashboard apiUrl={root.dataset.apiUrl} fuelPricesUrl={root.dataset.fuelPricesUrl} vehicles={vehicles} />);
 }

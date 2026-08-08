@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ChargingSessionController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FuelPriceController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\ReferenceDataController;
 use Illuminate\Support\Facades\Route;
@@ -16,6 +17,8 @@ Route::delete('/recharges/{chargingSession}', [ChargingSessionController::class,
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 Route::get('/dashboard/data', [DashboardController::class, 'data'])->name('dashboard.data');
+
+Route::get('/carburants', [FuelPriceController::class, 'index'])->name('fuel-prices.index');
 
 Route::get('/historique', [HistoryController::class, 'index'])->name('history.index');
 Route::get('/historique/{year}/{month}', [HistoryController::class, 'show'])->whereNumber('year')->whereNumber('month')->name('history.show');
