@@ -51,7 +51,12 @@ class ChargingSessionController extends Controller
     {
         $data = $this->validated($request);
 
-        ChargingSession::create($data);
+        $session = ChargingSession::create($data);
+
+        if ($request->input('action') === 'save_and_duplicate') {
+            return redirect()->route('charging-sessions.index', ['duplicate' => $session->id])
+                ->with('success', 'Recharge ajoutée. Localisation, fournisseur, puissance et coût unitaire repris ci-dessous.');
+        }
 
         return redirect()->route('charging-sessions.index')->with('success', 'Recharge ajoutée.');
     }

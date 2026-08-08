@@ -165,8 +165,13 @@
 
             <div class="field is-grouped">
                 <div class="control">
-                    <button type="submit" class="button is-primary">{{ $editing ? 'Enregistrer' : 'Ajouter' }}</button>
+                    <button type="submit" name="action" value="save" class="button is-primary">{{ $editing ? 'Enregistrer' : 'Ajouter' }}</button>
                 </div>
+                @if (! $editing)
+                    <div class="control">
+                        <button type="submit" name="action" value="save_and_duplicate" class="button is-link is-light">Ajouter et dupliquer</button>
+                    </div>
+                @endif
                 @if ($editing)
                     <div class="control">
                         <a href="{{ route('charging-sessions.index') }}" class="button is-light">Annuler</a>
