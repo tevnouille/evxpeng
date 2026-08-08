@@ -31,16 +31,22 @@ class HistoryController extends Controller
 
         $year = (int) $request->query('year', $currentYear);
 
-        $countsByMonth = ChargingSession::selectRaw('MONTH(session_date) as mois, COUNT(*) as total')
+        $statsByMonth = ChargingSession::selectRaw('MONTH(session_date) as mois, COUNT(*) as total, SUM(quantity_kwh) as kwh, SUM(total_cost) as cost')
             ->whereYear('session_date', $year)
             ->groupBy('mois')
-            ->pluck('total', 'mois');
+            ->get()
+            ->keyBy('mois')
+            ->map(fn ($row) => [
+                'count' => (int) $row->total,
+                'kwh' => (float) $row->kwh,
+                'cost' => (float) $row->cost,
+            ]);
 
         return view('history.index', [
             'years' => $years,
             'year' => $year,
             'months' => self::MOIS_FR,
-            'countsByMonth' => $countsByMonth,
+            'statsByMonth' => $statsByMonth,
         ]);
     }
 
