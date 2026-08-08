@@ -16,10 +16,17 @@ class ReferenceDataController extends Controller
     public function index(): View
     {
         return view('reference_data.index', [
+            'vehiclesCount' => Vehicle::count(),
+            'locationsCount' => Location::count(),
+            'providersCount' => Provider::count(),
+            'powerRatingsCount' => PowerRating::count(),
+        ]);
+    }
+
+    public function vehicles(): View
+    {
+        return view('reference_data.vehicles', [
             'vehicles' => Vehicle::withCount('chargingSessions')->orderBy('name')->get(),
-            'locations' => Location::withCount('chargingSessions')->orderBy('name')->get(),
-            'providers' => Provider::withCount('chargingSessions')->orderBy('name')->get(),
-            'powerRatings' => PowerRating::withCount('chargingSessions')->orderBy('kw')->get(),
         ]);
     }
 
@@ -33,7 +40,7 @@ class ReferenceDataController extends Controller
             $vehicle->makeDefault();
         }
 
-        return redirect()->route('reference-data.index')->with('success', 'Véhicule ajouté.');
+        return redirect()->route('reference-data.vehicles.index')->with('success', 'Véhicule ajouté.');
     }
 
     public function updateVehicle(Request $request, Vehicle $vehicle): RedirectResponse
@@ -48,7 +55,7 @@ class ReferenceDataController extends Controller
             $vehicle->update(['is_default' => false]);
         }
 
-        return redirect()->route('reference-data.index')->with('success', 'Véhicule mis à jour.');
+        return redirect()->route('reference-data.vehicles.index')->with('success', 'Véhicule mis à jour.');
     }
 
     public function destroyVehicle(Vehicle $vehicle): RedirectResponse
@@ -56,11 +63,18 @@ class ReferenceDataController extends Controller
         try {
             $vehicle->delete();
         } catch (QueryException) {
-            return redirect()->route('reference-data.index')
+            return redirect()->route('reference-data.vehicles.index')
                 ->with('error', "Impossible de supprimer « {$vehicle->name} » : utilisé par des recharges existantes.");
         }
 
-        return redirect()->route('reference-data.index')->with('success', 'Véhicule supprimé.');
+        return redirect()->route('reference-data.vehicles.index')->with('success', 'Véhicule supprimé.');
+    }
+
+    public function locations(): View
+    {
+        return view('reference_data.locations', [
+            'locations' => Location::withCount('chargingSessions')->orderBy('name')->get(),
+        ]);
     }
 
     public function storeLocation(Request $request): RedirectResponse
@@ -69,7 +83,7 @@ class ReferenceDataController extends Controller
 
         Location::create($data);
 
-        return redirect()->route('reference-data.index')->with('success', 'Localisation ajoutée.');
+        return redirect()->route('reference-data.locations.index')->with('success', 'Localisation ajoutée.');
     }
 
     public function updateLocation(Request $request, Location $location): RedirectResponse
@@ -78,7 +92,7 @@ class ReferenceDataController extends Controller
 
         $location->update($data);
 
-        return redirect()->route('reference-data.index')->with('success', 'Localisation mise à jour.');
+        return redirect()->route('reference-data.locations.index')->with('success', 'Localisation mise à jour.');
     }
 
     public function destroyLocation(Location $location): RedirectResponse
@@ -86,11 +100,18 @@ class ReferenceDataController extends Controller
         try {
             $location->delete();
         } catch (QueryException) {
-            return redirect()->route('reference-data.index')
+            return redirect()->route('reference-data.locations.index')
                 ->with('error', "Impossible de supprimer « {$location->name} » : utilisée par des recharges existantes.");
         }
 
-        return redirect()->route('reference-data.index')->with('success', 'Localisation supprimée.');
+        return redirect()->route('reference-data.locations.index')->with('success', 'Localisation supprimée.');
+    }
+
+    public function providers(): View
+    {
+        return view('reference_data.providers', [
+            'providers' => Provider::withCount('chargingSessions')->orderBy('name')->get(),
+        ]);
     }
 
     public function storeProvider(Request $request): RedirectResponse
@@ -99,7 +120,7 @@ class ReferenceDataController extends Controller
 
         Provider::create($data);
 
-        return redirect()->route('reference-data.index')->with('success', 'Fournisseur ajouté.');
+        return redirect()->route('reference-data.providers.index')->with('success', 'Fournisseur ajouté.');
     }
 
     public function updateProvider(Request $request, Provider $provider): RedirectResponse
@@ -108,7 +129,7 @@ class ReferenceDataController extends Controller
 
         $provider->update($data);
 
-        return redirect()->route('reference-data.index')->with('success', 'Fournisseur mis à jour.');
+        return redirect()->route('reference-data.providers.index')->with('success', 'Fournisseur mis à jour.');
     }
 
     public function destroyProvider(Provider $provider): RedirectResponse
@@ -116,11 +137,18 @@ class ReferenceDataController extends Controller
         try {
             $provider->delete();
         } catch (QueryException) {
-            return redirect()->route('reference-data.index')
+            return redirect()->route('reference-data.providers.index')
                 ->with('error', "Impossible de supprimer « {$provider->name} » : utilisé par des recharges existantes.");
         }
 
-        return redirect()->route('reference-data.index')->with('success', 'Fournisseur supprimé.');
+        return redirect()->route('reference-data.providers.index')->with('success', 'Fournisseur supprimé.');
+    }
+
+    public function powerRatings(): View
+    {
+        return view('reference_data.power_ratings', [
+            'powerRatings' => PowerRating::withCount('chargingSessions')->orderBy('kw')->get(),
+        ]);
     }
 
     public function storePowerRating(Request $request): RedirectResponse
@@ -129,7 +157,7 @@ class ReferenceDataController extends Controller
 
         PowerRating::create($data);
 
-        return redirect()->route('reference-data.index')->with('success', 'Puissance ajoutée.');
+        return redirect()->route('reference-data.power-ratings.index')->with('success', 'Puissance ajoutée.');
     }
 
     public function updatePowerRating(Request $request, PowerRating $powerRating): RedirectResponse
@@ -138,7 +166,7 @@ class ReferenceDataController extends Controller
 
         $powerRating->update($data);
 
-        return redirect()->route('reference-data.index')->with('success', 'Puissance mise à jour.');
+        return redirect()->route('reference-data.power-ratings.index')->with('success', 'Puissance mise à jour.');
     }
 
     public function destroyPowerRating(PowerRating $powerRating): RedirectResponse
@@ -146,10 +174,10 @@ class ReferenceDataController extends Controller
         try {
             $powerRating->delete();
         } catch (QueryException) {
-            return redirect()->route('reference-data.index')
+            return redirect()->route('reference-data.power-ratings.index')
                 ->with('error', "Impossible de supprimer « {$powerRating->kw} kW » : utilisée par des recharges existantes.");
         }
 
-        return redirect()->route('reference-data.index')->with('success', 'Puissance supprimée.');
+        return redirect()->route('reference-data.power-ratings.index')->with('success', 'Puissance supprimée.');
     }
 }

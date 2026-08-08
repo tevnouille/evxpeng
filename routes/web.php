@@ -21,15 +21,23 @@ Route::get('/historique', [HistoryController::class, 'index'])->name('history.in
 Route::get('/historique/{year}/{month}', [HistoryController::class, 'show'])->whereNumber('year')->whereNumber('month')->name('history.show');
 
 Route::get('/admin', [ReferenceDataController::class, 'index'])->name('reference-data.index');
-Route::post('/admin/vehicles', [ReferenceDataController::class, 'storeVehicle'])->name('reference-data.vehicles.store');
-Route::put('/admin/vehicles/{vehicle}', [ReferenceDataController::class, 'updateVehicle'])->name('reference-data.vehicles.update');
-Route::delete('/admin/vehicles/{vehicle}', [ReferenceDataController::class, 'destroyVehicle'])->name('reference-data.vehicles.destroy');
-Route::post('/admin/locations', [ReferenceDataController::class, 'storeLocation'])->name('reference-data.locations.store');
-Route::put('/admin/locations/{location}', [ReferenceDataController::class, 'updateLocation'])->name('reference-data.locations.update');
-Route::delete('/admin/locations/{location}', [ReferenceDataController::class, 'destroyLocation'])->name('reference-data.locations.destroy');
-Route::post('/admin/providers', [ReferenceDataController::class, 'storeProvider'])->name('reference-data.providers.store');
-Route::put('/admin/providers/{provider}', [ReferenceDataController::class, 'updateProvider'])->name('reference-data.providers.update');
-Route::delete('/admin/providers/{provider}', [ReferenceDataController::class, 'destroyProvider'])->name('reference-data.providers.destroy');
-Route::post('/admin/power-ratings', [ReferenceDataController::class, 'storePowerRating'])->name('reference-data.power-ratings.store');
-Route::put('/admin/power-ratings/{powerRating}', [ReferenceDataController::class, 'updatePowerRating'])->name('reference-data.power-ratings.update');
-Route::delete('/admin/power-ratings/{powerRating}', [ReferenceDataController::class, 'destroyPowerRating'])->name('reference-data.power-ratings.destroy');
+
+Route::get('/admin/vehicules', [ReferenceDataController::class, 'vehicles'])->name('reference-data.vehicles.index');
+Route::post('/admin/vehicules', [ReferenceDataController::class, 'storeVehicle'])->name('reference-data.vehicles.store');
+Route::put('/admin/vehicules/{vehicle}', [ReferenceDataController::class, 'updateVehicle'])->name('reference-data.vehicles.update');
+Route::delete('/admin/vehicules/{vehicle}', [ReferenceDataController::class, 'destroyVehicle'])->name('reference-data.vehicles.destroy');
+
+Route::get('/admin/localisations', [ReferenceDataController::class, 'locations'])->name('reference-data.locations.index');
+Route::post('/admin/localisations', [ReferenceDataController::class, 'storeLocation'])->name('reference-data.locations.store');
+Route::put('/admin/localisations/{location}', [ReferenceDataController::class, 'updateLocation'])->name('reference-data.locations.update');
+Route::delete('/admin/localisations/{location}', [ReferenceDataController::class, 'destroyLocation'])->name('reference-data.locations.destroy');
+
+Route::get('/admin/fournisseurs', [ReferenceDataController::class, 'providers'])->name('reference-data.providers.index');
+Route::post('/admin/fournisseurs', [ReferenceDataController::class, 'storeProvider'])->name('reference-data.providers.store');
+Route::put('/admin/fournisseurs/{provider}', [ReferenceDataController::class, 'updateProvider'])->name('reference-data.providers.update');
+Route::delete('/admin/fournisseurs/{provider}', [ReferenceDataController::class, 'destroyProvider'])->name('reference-data.providers.destroy');
+
+Route::get('/admin/puissances', [ReferenceDataController::class, 'powerRatings'])->name('reference-data.power-ratings.index');
+Route::post('/admin/puissances', [ReferenceDataController::class, 'storePowerRating'])->name('reference-data.power-ratings.store');
+Route::put('/admin/puissances/{powerRating}', [ReferenceDataController::class, 'updatePowerRating'])->name('reference-data.power-ratings.update');
+Route::delete('/admin/puissances/{powerRating}', [ReferenceDataController::class, 'destroyPowerRating'])->name('reference-data.power-ratings.destroy');
