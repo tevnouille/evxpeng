@@ -13,15 +13,22 @@ class DashboardController extends Controller
 {
     public function index(): View
     {
+        $currentYear = (int) now()->year;
+
         $years = ChargingSession::selectRaw('DISTINCT YEAR(session_date) as annee')
             ->orderByDesc('annee')
             ->pluck('annee')
             ->map(fn ($year) => (int) $year)
             ->values();
 
+        if (! $years->contains($currentYear)) {
+            $years = $years->push($currentYear)->sortDesc()->values();
+        }
+
         return view('dashboard.index', [
             'vehicles' => Vehicle::orderBy('name')->get(),
             'years' => $years,
+            'currentYear' => $currentYear,
         ]);
     }
 

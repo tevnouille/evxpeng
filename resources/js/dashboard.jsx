@@ -35,10 +35,10 @@ function StatTile({ label, value, suffix }) {
     );
 }
 
-function Dashboard({ apiUrl, fuelPricesUrl, vehicles, years }) {
+function Dashboard({ apiUrl, fuelPricesUrl, vehicles, years, currentYear }) {
     const [granularity, setGranularity] = useState('month');
     const [vehicleId, setVehicleId] = useState('');
-    const [year, setYear] = useState('');
+    const [year, setYear] = useState(currentYear ? String(currentYear) : '');
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -237,5 +237,6 @@ const root = document.getElementById('ev-dashboard-root');
 if (root) {
     const vehicles = JSON.parse(root.dataset.vehicles || '[]');
     const years = JSON.parse(root.dataset.years || '[]');
-    createRoot(root).render(<Dashboard apiUrl={root.dataset.apiUrl} fuelPricesUrl={root.dataset.fuelPricesUrl} vehicles={vehicles} years={years} />);
+    const currentYear = root.dataset.currentYear || '';
+    createRoot(root).render(<Dashboard apiUrl={root.dataset.apiUrl} fuelPricesUrl={root.dataset.fuelPricesUrl} vehicles={vehicles} years={years} currentYear={currentYear} />);
 }

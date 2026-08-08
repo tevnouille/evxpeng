@@ -8,7 +8,8 @@
         data-api-url="{{ route('dashboard.data') }}"
         data-fuel-prices-url="{{ route('fuel-prices.index') }}"
         data-vehicles='@json($vehicles->map(fn ($v) => ["id" => $v->id, "name" => $v->name]))'
-        data-years='@json($years)'></div>
+        data-years='@json($years)'
+        data-current-year="{{ $currentYear }}"></div>
 @endsection
 
 @push('scripts')
