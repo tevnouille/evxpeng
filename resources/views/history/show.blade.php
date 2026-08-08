@@ -8,7 +8,11 @@
             <h1 class="title">{{ $monthName }} {{ $year }}</h1>
         </div>
         <div class="level-right">
-            <a href="{{ route('history.index', ['year' => $year]) }}" class="button is-light">&larr; Retour aux mois</a>
+            <div class="buttons">
+                <a href="{{ route('history.show', $previous) }}" class="button is-light" title="{{ $previousMonthName }} {{ $previous['year'] }}">&larr; Mois précédent</a>
+                <a href="{{ route('history.index', ['year' => $year]) }}" class="button is-light">Retour aux mois</a>
+                <a href="{{ route('history.show', $next) }}" class="button is-light" title="{{ $nextMonthName }} {{ $next['year'] }}">Mois suivant &rarr;</a>
+            </div>
         </div>
     </div>
 

@@ -48,6 +48,9 @@ class HistoryController extends Controller
     {
         $fuelPriceService->ensureToday();
 
+        $previous = $month === 1 ? ['year' => $year - 1, 'month' => 12] : ['year' => $year, 'month' => $month - 1];
+        $next = $month === 12 ? ['year' => $year + 1, 'month' => 1] : ['year' => $year, 'month' => $month + 1];
+
         $sessions = ChargingSession::with(['vehicle', 'location', 'provider', 'powerRating'])
             ->whereYear('session_date', $year)
             ->whereMonth('session_date', $month)
@@ -72,6 +75,10 @@ class HistoryController extends Controller
             'year' => $year,
             'month' => $month,
             'monthName' => self::MOIS_FR[$month] ?? $month,
+            'previous' => $previous,
+            'next' => $next,
+            'previousMonthName' => self::MOIS_FR[$previous['month']] ?? $previous['month'],
+            'nextMonthName' => self::MOIS_FR[$next['month']] ?? $next['month'],
             'stats' => [
                 'kwh' => $totalKwh,
                 'cost' => $totalCost,
