@@ -9,7 +9,6 @@
                 <th>Puissance</th>
                 <th>kWh</th>
                 <th>Durée recharge</th>
-                <th>Durée stationnement</th>
                 <th>€/kWh</th>
                 <th>Total €</th>
                 <th>Commentaire</th>
@@ -26,7 +25,6 @@
                     <td>{{ rtrim(rtrim($session->powerRating->kw, '0'), '.') }} kW</td>
                     <td>{{ $session->quantity_kwh }}</td>
                     <td>{{ $session->charge_duration?->format('H:i') ?? '—' }}</td>
-                    <td>{{ $session->parking_duration?->format('H:i') ?? '—' }}</td>
                     <td>{{ $session->unit_cost ?? '—' }}</td>
                     <td>{{ $session->total_cost ?? '—' }}</td>
                     <td>{{ \Illuminate\Support\Str::limit($session->comment, 30) }}</td>
@@ -42,7 +40,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="12" class="has-text-centered has-text-grey">{{ $emptyMessage ?? "Aucune recharge enregistrée." }}</td>
+                    <td colspan="11" class="has-text-centered has-text-grey">{{ $emptyMessage ?? "Aucune recharge enregistrée." }}</td>
                 </tr>
             @endforelse
         </tbody>

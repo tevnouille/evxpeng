@@ -124,16 +124,6 @@
 
                 <div class="column is-3">
                     <div class="field">
-                        <label class="label">Durée de stationnement</label>
-                        <div class="control">
-                            <input class="input" type="time" name="parking_duration"
-                                value="{{ old('parking_duration', $editing?->parking_duration?->format('H:i')) }}">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="column is-3">
-                    <div class="field">
                         <label class="label">Coût unitaire (€/kWh)</label>
                         <div class="control">
                             <input class="input" type="number" step="0.0001" min="0" name="unit_cost" id="unit_cost"

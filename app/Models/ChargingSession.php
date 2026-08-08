@@ -18,7 +18,6 @@ class ChargingSession extends Model
         'power_rating_id',
         'quantity_kwh',
         'charge_duration',
-        'parking_duration',
         'unit_cost',
         'total_cost',
         'comment',
@@ -30,7 +29,6 @@ class ChargingSession extends Model
         'unit_cost' => 'decimal:4',
         'total_cost' => 'decimal:2',
         'charge_duration' => 'datetime:H:i',
-        'parking_duration' => 'datetime:H:i',
     ];
 
     public function vehicle(): BelongsTo

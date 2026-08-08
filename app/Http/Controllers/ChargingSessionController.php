@@ -98,7 +98,6 @@ class ChargingSessionController extends Controller
             'power_rating_id' => ['required', 'exists:power_ratings,id'],
             'quantity_kwh' => ['required', 'numeric', 'min:0'],
             'charge_duration' => ['nullable', 'date_format:H:i'],
-            'parking_duration' => ['nullable', 'date_format:H:i'],
             'unit_cost' => ['nullable', 'numeric', 'min:0'],
             'total_cost' => ['nullable', 'numeric', 'min:0'],
             'comment' => ['nullable', 'string'],
