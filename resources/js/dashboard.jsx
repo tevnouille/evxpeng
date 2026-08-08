@@ -134,7 +134,11 @@ function Dashboard({ apiUrl, fuelPricesUrl, vehicles }) {
                                 />
                             </div>
                             <p className="is-size-7 has-text-grey mb-5">
-                                Consommation par véhicule (Administration → Véhicules), par défaut 15 kWh / 6 L essence / 6 L diesel pour 100 km.
+                                Consommation propre à chaque véhicule (Administration → Véhicules) — aucune valeur par défaut :
+                                une recharge dont le véhicule n'a pas de consommation renseignée n'est pas comptée dans cet équivalent
+                                {data.fuel_equivalent.configured_sessions < data.fuel_equivalent.total_sessions && (
+                                    <> ({data.fuel_equivalent.configured_sessions}/{data.fuel_equivalent.total_sessions} recharge(s) concernée(s))</>
+                                )}.
                                 Prix appliqués par date de recharge réelle
                                 (moyenne pondérée obtenue : {data.fuel_equivalent.avg_essence_price ?? '—'} €/L essence, {data.fuel_equivalent.avg_diesel_price ?? '—'} €/L diesel) —
                                 {' '}{data.fuel_equivalent.known_price_sessions}/{data.fuel_equivalent.total_sessions} recharge(s) avec un prix du jour connu

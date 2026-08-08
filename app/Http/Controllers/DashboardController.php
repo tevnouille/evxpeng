@@ -48,16 +48,15 @@ class DashboardController extends Controller
 
         // Equivalent carburant calcule au niveau de chaque recharge individuelle :
         // prix du jour de LA recharge (pas une date de bucket approximative) et
-        // consommation propre au VEHICULE de cette recharge (jointure + COALESCE
-        // vers les valeurs par defaut si le vehicule ne les a pas renseignees).
+        // consommation propre au VEHICULE de cette recharge (jointure, pas de valeur
+        // par defaut : un vehicule sans consommation renseignee n'est simplement pas
+        // compte dans l'equivalent, voir FuelPriceService::equivalentByGroup).
         $sessionRows = ChargingSession::query()
             ->join('vehicles', 'vehicles.id', '=', 'charging_sessions.vehicle_id')
             ->when($vehicleId, fn ($query) => $query->where('charging_sessions.vehicle_id', $vehicleId))
             ->selectRaw(
                 "$periodExpr as period, charging_sessions.session_date, charging_sessions.quantity_kwh, " .
-                'COALESCE(vehicles.kwh_per_100km, ' . FuelPriceService::DEFAULT_KWH_PER_100KM . ') as kwh_per_100km, ' .
-                'COALESCE(vehicles.essence_l_per_100km, ' . FuelPriceService::DEFAULT_ESSENCE_L_PER_100KM . ') as essence_l_per_100km, ' .
-                'COALESCE(vehicles.diesel_l_per_100km, ' . FuelPriceService::DEFAULT_DIESEL_L_PER_100KM . ') as diesel_l_per_100km'
+                'vehicles.kwh_per_100km, vehicles.essence_l_per_100km, vehicles.diesel_l_per_100km'
             )
             ->get();
 
@@ -68,6 +67,7 @@ class DashboardController extends Controller
         $totalEssenceCost = array_sum(array_column($equivalentByPeriod, 'essence_cost'));
         $totalDieselCost = array_sum(array_column($equivalentByPeriod, 'diesel_cost'));
         $knownPriceSessions = array_sum(array_column($equivalentByPeriod, 'known'));
+        $configuredSessions = array_sum(array_column($equivalentByPeriod, 'configured'));
         $totalSessions = array_sum(array_column($equivalentByPeriod, 'count'));
         $totalElectricCost = (float) $rows->sum('cost');
 
@@ -90,6 +90,7 @@ class DashboardController extends Controller
                 'savings_essence' => round($totalEssenceCost - $totalElectricCost, 2),
                 'savings_diesel' => round($totalDieselCost - $totalElectricCost, 2),
                 'known_price_sessions' => $knownPriceSessions,
+                'configured_sessions' => $configuredSessions,
                 'total_sessions' => $totalSessions,
                 'estimated' => $totalSessions > 0 && $knownPriceSessions < $totalSessions,
             ],

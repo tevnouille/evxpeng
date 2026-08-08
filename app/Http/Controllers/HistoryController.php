@@ -95,6 +95,7 @@ class HistoryController extends Controller
                 'savings_essence' => round($fuelEquivalent['essence_cost'] - $totalCost, 2),
                 'savings_diesel' => round($fuelEquivalent['diesel_cost'] - $totalCost, 2),
                 'known_price_sessions' => $fuelEquivalent['known_price_sessions'],
+                'configured_sessions' => $fuelEquivalent['configured_sessions'],
                 'total_sessions' => $fuelEquivalent['total_sessions'],
                 'estimated' => $fuelEquivalent['estimated'],
             ],

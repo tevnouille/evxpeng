@@ -40,7 +40,8 @@
             </div>
 
             <p class="is-size-7 has-text-grey mb-3">
-                Les équivalents essence/diesel laissés vides utilisent une valeur par défaut (15 kWh, 6 L essence, 6 L diesel pour 100 km).
+                Ces valeurs alimentent l'équivalent essence/diesel du dashboard et de l'historique. Aucune valeur par défaut n'est appliquée :
+                un véhicule laissé sans consommation renseignée n'aura simplement pas d'équivalent calculé pour ses recharges.
             </p>
 
             <div class="table-container">
