@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
             labels,
             datasets: [{ label: 'kWh', data: kwhValues, backgroundColor: '#00d1b2' }],
         },
-        options: { responsive: true, plugins: { legend: { display: false } } },
+        options: { responsive: true, aspectRatio: 4, plugins: { legend: { display: false } } },
     });
 
     new Chart(costCanvas, {
@@ -29,6 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
             labels,
             datasets: [{ label: 'Coût (€)', data: costValues, backgroundColor: '#3273dc' }],
         },
-        options: { responsive: true, plugins: { legend: { display: false } } },
+        options: { responsive: true, aspectRatio: 4, plugins: { legend: { display: false } } },
     });
 });
