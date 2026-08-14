@@ -57,8 +57,11 @@
                                 </select>
                             </div>
                         </div>
+                        <div class="control mt-2">
+                            <button type="button" id="geolocate_button" class="button is-small is-light">&#128205; Utiliser ma position</button>
+                        </div>
                         <div class="control mt-2" id="location_other_wrapper" style="display: {{ old('location_choice') === 'other' ? 'block' : 'none' }};">
-                            <input class="input" type="text" name="location_other" placeholder="Nouvelle localisation" value="{{ old('location_other') }}">
+                            <input class="input" type="text" name="location_other" id="location_other" placeholder="Nouvelle localisation" value="{{ old('location_other') }}">
                         </div>
                         <p class="help"><a href="{{ route('reference-data.index') }}">Ajouter / éditer / supprimer une localisation</a></p>
                     </div>

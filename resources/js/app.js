@@ -22,6 +22,7 @@ function makeSearchable(select) {
 
     const input = document.createElement('input');
     input.type = 'text';
+    input.id = `${select.id}-search`;
     input.className = 'input';
     input.setAttribute('list', datalistId);
     input.setAttribute('autocomplete', 'off');
@@ -60,6 +61,71 @@ function setupOtherToggle(selectId, wrapperId) {
     toggle();
 }
 
+function setupGeolocationButton() {
+    const button = document.getElementById('geolocate_button');
+    const select = document.getElementById('location_choice');
+    const otherInput = document.getElementById('location_other');
+
+    if (!button || !select || !otherInput) {
+        return;
+    }
+
+    button.addEventListener('click', () => {
+        if (!navigator.geolocation) {
+            alert("La géolocalisation n'est pas disponible sur ce navigateur.");
+            return;
+        }
+
+        const originalText = button.textContent;
+        button.disabled = true;
+        button.textContent = 'Localisation…';
+
+        const restoreButton = () => {
+            button.disabled = false;
+            button.textContent = originalText;
+        };
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords;
+                const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=14&addressdetails=1`;
+
+                fetch(url, { headers: { Accept: 'application/json' } })
+                    .then((res) => res.json())
+                    .then((data) => {
+                        const address = data.address || {};
+                        const place = address.city || address.town || address.village
+                            || address.municipality || address.suburb
+                            || (data.display_name ? data.display_name.split(',')[0] : null);
+
+                        if (!place) {
+                            alert("Impossible de déterminer un nom de lieu à partir de cette position.");
+                            return;
+                        }
+
+                        select.value = 'other';
+                        select.dispatchEvent(new Event('change'));
+                        otherInput.value = place;
+
+                        const searchInput = document.getElementById('location_choice-search');
+                        if (searchInput) {
+                            searchInput.value = 'Autre…';
+                        }
+                    })
+                    .catch(() => {
+                        alert('Erreur lors de la récupération du nom du lieu.');
+                    })
+                    .finally(restoreButton);
+            },
+            (error) => {
+                alert("Impossible d'obtenir votre position : " + error.message);
+                restoreButton();
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('select[data-searchable]').forEach(makeSearchable);
 
@@ -91,4 +157,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setupOtherToggle('location_choice', 'location_other_wrapper');
     setupOtherToggle('provider_choice', 'provider_other_wrapper');
+    setupGeolocationButton();
 });
