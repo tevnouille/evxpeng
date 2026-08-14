@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ChargingSession;
 use App\Services\FuelPriceService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\View\View;
 
 class HistoryController extends Controller
@@ -67,6 +68,19 @@ class HistoryController extends Controller
         $totalKwh = (float) $sessions->sum('quantity_kwh');
         $totalCost = (float) $sessions->sum('total_cost');
 
+        $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
+        $sessionsByDay = $sessions->groupBy(fn ($s) => $s->session_date->day);
+        $dailyLabels = [];
+        $dailyKwh = [];
+        $dailyCost = [];
+
+        for ($day = 1; $day <= $daysInMonth; $day++) {
+            $daySessions = $sessionsByDay->get($day, collect());
+            $dailyLabels[] = $day;
+            $dailyKwh[] = round((float) $daySessions->sum('quantity_kwh'), 2);
+            $dailyCost[] = round((float) $daySessions->sum('total_cost'), 2);
+        }
+
         $equivalenceRows = $sessions->map(fn ($session) => (object) [
             'session_date' => $session->session_date,
             'quantity_kwh' => (float) $session->quantity_kwh,
@@ -85,6 +99,9 @@ class HistoryController extends Controller
             'next' => $next,
             'previousMonthName' => self::MOIS_FR[$previous['month']] ?? $previous['month'],
             'nextMonthName' => self::MOIS_FR[$next['month']] ?? $next['month'],
+            'dailyLabels' => $dailyLabels,
+            'dailyKwh' => $dailyKwh,
+            'dailyCost' => $dailyCost,
             'stats' => [
                 'kwh' => $totalKwh,
                 'cost' => $totalCost,

@@ -99,7 +99,21 @@
             .
             <a href="{{ route('fuel-prices.index') }}">Voir l'historique des prix carburants →</a>
         </p>
+
+        <div class="box">
+            <h2 class="title is-5">Quantité de recharge par jour (kWh)</h2>
+            <canvas id="history-kwh-chart" data-labels='@json($dailyLabels)' data-values='@json($dailyKwh)'></canvas>
+        </div>
+
+        <div class="box">
+            <h2 class="title is-5">Coût de recharge par jour (€)</h2>
+            <canvas id="history-cost-chart" data-labels='@json($dailyLabels)' data-values='@json($dailyCost)'></canvas>
+        </div>
     @endif
 
     @include('charging_sessions._sessions_table', ['emptyMessage' => 'Aucune recharge ce mois-ci.'])
 @endsection
+
+@push('scripts')
+    @vite('resources/js/history.js')
+@endpush
