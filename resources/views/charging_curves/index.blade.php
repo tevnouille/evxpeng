@@ -77,7 +77,7 @@
 
         <div class="box">
             <h2 class="title is-5">Détail de 0 à 100 %</h2>
-            <div style="max-height: 480px; overflow-y: auto;">
+            <div class="table-scroll">
                 <table class="table is-fullwidth is-striped is-narrow is-hoverable">
                     <thead>
                         <tr>
@@ -110,7 +110,14 @@
             <p class="has-text-grey is-size-7 mb-4">
                 Depuis un niveau de batterie donné, temps nécessaire pour atteindre 80, 90 ou 100 %.
             </p>
-            <div style="max-height: 480px; overflow-y: auto;">
+
+            <canvas id="curve-remaining-chart" class="mb-5"
+                data-labels='@json(collect($curve['points'])->pluck('soc'))'
+                data-to80='@json(collect($curve['points'])->pluck('to_80_minutes'))'
+                data-to90='@json(collect($curve['points'])->pluck('to_90_minutes'))'
+                data-to100='@json(collect($curve['points'])->pluck('to_100_minutes'))'></canvas>
+
+            <div class="table-scroll">
                 <table class="table is-fullwidth is-striped is-narrow is-hoverable">
                     <thead>
                         <tr>

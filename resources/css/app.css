@@ -18,3 +18,17 @@ body {
         padding: 1rem;
     }
 }
+
+/* Tableau long : hauteur limitee avec en-tete fige au scroll. */
+.table-scroll {
+    max-height: 480px;
+    overflow-y: auto;
+}
+
+.table-scroll thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    /* Fond opaque obligatoire : sans lui les lignes defilent en transparence sous l'en-tete. */
+    background-color: #fff;
+}

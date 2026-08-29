@@ -1,58 +1,110 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# EV Recharges
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Application personnelle de suivi des recharges de véhicule électrique.
+Elle enregistre chaque session de charge, calcule les coûts, les compare à
+l'équivalent essence/diesel au prix réel du jour, et présente l'historique et
+les courbes de charge du véhicule.
 
-## About Laravel
+En production : <https://ev.lolinux.org> (accès protégé par passkey, compte
+unique).
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Fonctionnalités
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Saisie des recharges
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- Formulaire de saisie : véhicule, date, localisation, fournisseur de borne,
+  puissance de borne, quantité (kWh), durée, coût unitaire et coût total.
+- Le coût total est calculé automatiquement (quantité × coût unitaire) tant
+  qu'il n'a pas été saisi manuellement.
+- **Ajouter et dupliquer** : reprend localisation, fournisseur, puissance et
+  coût unitaire de la recharge précédente, pour enchaîner les saisies répétitives.
+- **Géolocalisation** : un bouton récupère la position via le navigateur et
+  remplit la localisation par reverse-geocoding (Nominatim / OpenStreetMap).
+- Les listes déroulantes sont filtrables au clavier, et chacune propose
+  « Autre… » pour créer une nouvelle valeur à la volée.
 
-## Learning Laravel
+### Historique
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- Vue annuelle : une tuile par mois avec nombre de recharges, kWh et coût.
+- Vue mensuelle : détail des sessions, plus deux graphiques journaliers
+  (kWh et coût) du 1er au dernier jour du mois.
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### Dashboard
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+Graphiques d'évolution filtrables par année (l'année en cours par défaut),
+répartition par fournisseur, et totaux.
 
-## Agentic Development
+### Équivalence carburant
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+Pour chaque recharge, l'app calcule ce qu'aurait coûté le même trajet en
+essence ou en diesel, à partir :
+
+- du **prix réel du carburant à la date de la recharge**, relevé sur les données
+  ouvertes du gouvernement (`data.economie.gouv.fr`, avec historique récupérable
+  via `php artisan fuel-prices:backfill`) ;
+- des **consommations propres au véhicule** (kWh/100 km, L/100 km essence et
+  diesel), saisies dans l'administration.
+
+Une recharge dont le véhicule n'a pas ses consommations renseignées est exclue
+du calcul plutôt qu'estimée : les totaux affichent alors combien de sessions
+ont réellement été prises en compte.
+
+### Courbe de recharge
+
+Page de référence par modèle de véhicule :
+
+- puissance de charge en fonction du niveau de batterie (graphique) ;
+- tableau détaillé de 0 à 100 % : puissance, capacité brute, capacité nette,
+  temps cumulé, énergie chargée ;
+- temps de recharge restant depuis chaque niveau jusqu'à 80, 90 ou 100 %
+  (graphique et tableau).
+
+Les données proviennent d'[evkx.net](https://evkx.net) et sont stockées dans
+`resources/data/charging-curves/`, un fichier JSON par modèle. Le sélecteur de
+modèle apparaît automatiquement dès qu'il y a plus d'une courbe. Lorsque la
+source indique que la courbe est estimée et non mesurée, la page l'affiche
+explicitement.
+
+Modèle actuellement présent : Xpeng G6 AWD Performance MY2023/MY2024.
+
+## Stack
+
+- **Laravel 13** / PHP 8.4, **MariaDB 11**
+- **Bulma** pour la mise en page, **Chart.js** pour les graphiques
+- **React 19** uniquement sur le dashboard ; les autres pages utilisent du
+  JavaScript standard
+- **Vite** pour le build des assets
+- Déploiement Docker (`ev-app` PHP-FPM, `ev-nginx`, `ev-mariadb`), derrière une
+  passerelle passkey et HAProxy
+
+## Installation
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+cp .env.example .env
+docker-compose up -d
+docker exec ev-app php artisan key:generate
+docker exec ev-app php artisan migrate
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Construire les assets (le conteneur applicatif n'embarque pas npm) :
 
-## Contributing
+```bash
+docker run --rm -v "$(pwd)":/app -w /app node:20-alpine npm install
+docker run --rm -v "$(pwd)":/app -w /app node:20-alpine npm run build
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Renseigner ensuite le véhicule et ses consommations dans `/admin/vehicules`,
+sans quoi l'équivalence carburant restera vide.
 
-## Code of Conduct
+## Commandes utiles
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+| Commande | Rôle |
+| --- | --- |
+| `php artisan fuel-prices:backfill` | Importe l'historique annuel des prix des carburants |
+| `php artisan view:clear` | Vide le cache des vues après modification d'un Blade |
 
-## Security Vulnerabilities
+## Notes pour les agents
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Voir [CLAUDE.md](CLAUDE.md) : déploiement par bind-mount, build des assets,
+contournements docker-compose, test des pages derrière le passkey et pièges
+rencontrés.

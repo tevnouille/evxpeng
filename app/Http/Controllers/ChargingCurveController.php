@@ -46,9 +46,12 @@ class ChargingCurveController extends Controller
 
             foreach ($targets as $target) {
                 // Une cible deja atteinte (ou absente de la courbe) n'a pas de temps restant.
-                $points[$index]['to_'.$target] = $point['soc'] >= $target || ! isset($secondsBySoc[$target])
-                    ? null
-                    : $this->formatDuration($secondsBySoc[$target] - $secondsBySoc[$point['soc']]);
+                $reached = $point['soc'] >= $target || ! isset($secondsBySoc[$target]);
+                $remaining = $reached ? null : $secondsBySoc[$target] - $secondsBySoc[$point['soc']];
+
+                $points[$index]['to_'.$target] = $reached ? null : $this->formatDuration($remaining);
+                // Version numerique (minutes) pour le graphique.
+                $points[$index]['to_'.$target.'_minutes'] = $reached ? null : round($remaining / 60, 2);
             }
         }
 
