@@ -111,6 +111,24 @@
 
         <div class="box">
             <h2 class="title is-5">Par fournisseur</h2>
+
+            <div class="columns mb-2">
+                <div class="column is-6">
+                    <p class="heading has-text-centered">Répartition des kWh</p>
+                    <canvas id="provider-kwh-pie"
+                        data-labels='@json($statsByProvider->keys())'
+                        data-values='@json($statsByProvider->pluck('kwh'))'
+                        data-unit="kWh"></canvas>
+                </div>
+                <div class="column is-6">
+                    <p class="heading has-text-centered">Répartition du coût</p>
+                    <canvas id="provider-cost-pie"
+                        data-labels='@json($statsByProvider->keys())'
+                        data-values='@json($statsByProvider->pluck('cost'))'
+                        data-unit="€"></canvas>
+                </div>
+            </div>
+
             <div class="table-container">
                 <table class="table is-fullwidth is-striped is-hoverable">
                     <thead>

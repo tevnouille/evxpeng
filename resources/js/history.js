@@ -1,9 +1,11 @@
 import {
     Chart,
+    ArcElement,
     BarController,
     BarElement,
     LineController,
     LineElement,
+    PieController,
     PointElement,
     CategoryScale,
     LinearScale,
@@ -12,10 +14,12 @@ import {
 } from 'chart.js';
 
 Chart.register(
+    ArcElement,
     BarController,
     BarElement,
     LineController,
     LineElement,
+    PieController,
     PointElement,
     CategoryScale,
     LinearScale,
@@ -25,6 +29,13 @@ Chart.register(
 
 const KWH_COLOR = '#00d1b2';
 const COST_COLOR = '#3273dc';
+
+// Palette des camemberts : couleurs distinctes, reutilisees cycliquement
+// si un mois compte plus de fournisseurs que de teintes.
+const PALETTE = [
+    '#00d1b2', '#3273dc', '#ffdd57', '#ff3860', '#7957d5',
+    '#48c774', '#ff851b', '#209cee', '#b86bff', '#f14668',
+];
 
 function readJson(canvas, attribute) {
     return JSON.parse(canvas.dataset[attribute] || '[]');
@@ -100,10 +111,57 @@ function renderCombinedChart(canvas) {
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    const canvas = document.getElementById('history-combined-chart');
+/** Repartition par fournisseur (kWh ou cout). */
+function renderPieChart(canvas) {
+    const labels = readJson(canvas, 'labels');
+    const values = readJson(canvas, 'values');
+    const unit = canvas.dataset.unit || '';
+    const total = values.reduce((sum, value) => sum + value, 0);
 
-    if (canvas) {
-        renderCombinedChart(canvas);
+    new Chart(canvas, {
+        type: 'pie',
+        data: {
+            labels,
+            datasets: [
+                {
+                    data: values,
+                    backgroundColor: labels.map((_, index) => PALETTE[index % PALETTE.length]),
+                    borderColor: '#fff',
+                    borderWidth: 1,
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            aspectRatio: 1.4,
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+                tooltip: {
+                    callbacks: {
+                        label: (item) => {
+                            const share = total > 0 ? (item.parsed / total) * 100 : 0;
+
+                            return `${item.label} : ${item.parsed.toFixed(2)} ${unit} (${share.toFixed(1)} %)`;
+                        },
+                    },
+                },
+            },
+        },
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const combined = document.getElementById('history-combined-chart');
+
+    if (combined) {
+        renderCombinedChart(combined);
     }
+
+    ['provider-kwh-pie', 'provider-cost-pie'].forEach((id) => {
+        const canvas = document.getElementById(id);
+
+        if (canvas) {
+            renderPieChart(canvas);
+        }
+    });
 });
