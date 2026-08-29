@@ -5,8 +5,6 @@ namespace App\Services;
 use App\Models\ChargeAlert;
 use App\Models\Vehicle;
 use App\Models\VehicleTelemetry;
-use Illuminate\Database\QueryException;
-use Illuminate\Support\Carbon;
 
 /**
  * Previent par SMS quand le niveau de charge franchit certains paliers.
@@ -36,73 +34,69 @@ class ChargeThresholdNotifier
         }
 
         $soc = (float) $current->soc;
+        $session = $this->currentSession($vehicle);
 
-        $previous = $vehicle->telemetries()
-            ->where('recorded_at', '<', $current->recorded_at)
-            ->orderByDesc('recorded_at')
-            ->first();
+        // Reference : le niveau au branchement. Un palier deja franchi avant la
+        // charge n'a pas a etre notifie — brancher a 96 % ne doit pas declencher
+        // 79, 89 et 95.
+        $socAtStart = $session['soc_start'] ?? $soc;
+        $sessionStart = $session['started_at'] ?? $current->recorded_at;
 
-        // Premier releve connu de la voiture : aucun franchissement observable,
-        // on se contente d'etablir la reference.
-        if ($previous === null || $previous->soc === null) {
-            return [];
-        }
-
-        $crossed = array_values(array_filter(
-            $thresholds,
-            fn ($threshold) => $threshold > (float) $previous->soc && $threshold <= $soc
+        $due = array_values(array_filter(
+            array_map('intval', $thresholds),
+            fn (int $threshold) => $threshold > $socAtStart && $threshold <= $soc
         ));
 
-        if ($crossed === []) {
+        if ($due === []) {
             return [];
         }
 
-        $sessionStart = $this->sessionStart($vehicle, $current);
-
-        $fresh = array_values(array_filter(
-            array_map('intval', $crossed),
-            fn (int $threshold) => $this->reserve($vehicle, $sessionStart, $threshold, $soc)
-        ));
-
-        if ($fresh === []) {
-            return [];
-        }
-
-        sort($fresh);
-
-        // Un trou de telemetrie peut faire franchir plusieurs paliers d'un coup
-        // (80 % puis 96 % au releve suivant). On n'envoie alors qu'un seul SMS,
-        // celui du palier le plus haut, en mentionnant les autres.
-        $delivered = $this->sms->send($this->message($vehicle, $current, $fresh, $soc));
-
-        ChargeAlert::where('vehicle_id', $vehicle->id)
+        // On se fie a la livraison, pas a la simple existence de la ligne : un
+        // envoi echoue (reseau coupe, 500 chez Free) doit etre retente au releve
+        // suivant plutot que d'etre perdu.
+        $delivered = ChargeAlert::where('vehicle_id', $vehicle->id)
             ->where('session_started_at', $sessionStart)
-            ->whereIn('threshold', $fresh)
-            ->update(['delivered' => $delivered]);
+            ->where('delivered', true)
+            ->pluck('threshold')
+            ->all();
 
-        return $delivered ? $fresh : [];
+        $pending = array_values(array_diff($due, array_map('intval', $delivered)));
+
+        if ($pending === []) {
+            return [];
+        }
+
+        sort($pending);
+
+        // Plusieurs paliers d'un coup (trou de telemetrie, ou reprise apres un
+        // echec) ne donnent qu'un SMS : celui du palier le plus haut.
+        $sent = $this->sms->send($this->message($vehicle, $current, $pending, $soc));
+
+        foreach ($pending as $threshold) {
+            ChargeAlert::updateOrCreate(
+                [
+                    'vehicle_id' => $vehicle->id,
+                    'session_started_at' => $sessionStart,
+                    'threshold' => $threshold,
+                ],
+                ['soc' => $soc, 'delivered' => $sent]
+            );
+        }
+
+        return $sent ? $pending : [];
     }
 
     /**
-     * Reserve le palier avant tout envoi : la contrainte d'unicite fait office de
-     * verrou, deux executions concurrentes ne peuvent donc pas notifier deux fois
-     * le meme palier de la meme charge.
+     * @return array<string, mixed>|null
      */
-    private function reserve(Vehicle $vehicle, Carbon $sessionStart, int $threshold, float $soc): bool
+    private function currentSession(Vehicle $vehicle): ?array
     {
-        try {
-            ChargeAlert::create([
-                'vehicle_id' => $vehicle->id,
-                'session_started_at' => $sessionStart,
-                'threshold' => $threshold,
-                'soc' => $soc,
-            ]);
-        } catch (QueryException $e) {
-            // Palier deja notifie pour cette charge.
-            return false;
-        }
+        $rows = $vehicle->telemetries()
+            ->where('recorded_at', '>=', now()->subDay())
+            ->orderBy('recorded_at')
+            ->get();
 
-        return true;
+        return collect($this->detector->detect($rows, null))->firstWhere('in_progress', true);
     }
 
     /**
@@ -152,15 +146,4 @@ class ChargeThresholdNotifier
         return (int) round((100 - $soc) / 100 * (float) $curve['battery_net_kwh'] / $power * 60);
     }
 
-    private function sessionStart(Vehicle $vehicle, VehicleTelemetry $current): Carbon
-    {
-        $rows = $vehicle->telemetries()
-            ->where('recorded_at', '>=', now()->subDay())
-            ->orderBy('recorded_at')
-            ->get();
-
-        $session = collect($this->detector->detect($rows, null))->firstWhere('in_progress', true);
-
-        return $session['started_at'] ?? $current->recorded_at;
-    }
 }

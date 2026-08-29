@@ -76,11 +76,13 @@ class PollAbrpTelemetry extends Command
 
             if ($row->wasRecentlyCreated) {
                 $stored++;
+            }
 
-                // Seul un releve inedit peut constituer un franchissement.
-                foreach ($notifier->notify($vehicle, $row) as $threshold) {
-                    $this->info("SMS envoye : {$threshold} % atteint.");
-                }
+            // Appele meme sur un releve deja connu : le notifieur compare les
+            // paliers dus a ceux reellement delivres, ce qui permet de retenter
+            // un SMS dont l'envoi avait echoue.
+            foreach ($notifier->notify($vehicle, $row) as $threshold) {
+                $this->info("SMS envoye : {$threshold} % atteint.");
             }
 
             $this->line(sprintf(
