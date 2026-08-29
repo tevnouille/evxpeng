@@ -76,6 +76,15 @@ function currentPositionDataset(canvas, labels) {
 let powerChart = null;
 let powerChartLabels = [];
 
+function setRemainingMarker(soc) {
+    if (!remainingChart || Number.isNaN(soc)) {
+        return;
+    }
+
+    remainingChart.$currentIndex = remainingChart.data.labels.indexOf(soc);
+    remainingChart.update('none');
+}
+
 function renderPowerChart(canvas) {
     const labels = readData(canvas, 'labels');
     const values = readData(canvas, 'values');
@@ -135,6 +144,41 @@ function renderPowerChart(canvas) {
     });
 }
 
+// Trait vertical marquant le niveau actuel. Un point par courbe serait illisible
+// ici : ce qui compte est de lire les trois temps restants a son niveau.
+const currentSocLine = {
+    id: 'currentSocLine',
+    afterDatasetsDraw(chart) {
+        const index = chart.$currentIndex;
+
+        if (index === undefined || index === null || index < 0) {
+            return;
+        }
+
+        const x = chart.scales.x.getPixelForValue(index);
+        const { top, bottom } = chart.chartArea;
+        const { ctx } = chart;
+
+        ctx.save();
+        ctx.strokeStyle = '#f14668';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x, bottom);
+        ctx.stroke();
+
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#f14668';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = x > chart.chartArea.right - 60 ? 'right' : 'left';
+        ctx.fillText(`${chart.data.labels[index]} %`, x + (ctx.textAlign === 'right' ? -6 : 6), top + 12);
+        ctx.restore();
+    },
+};
+
+let remainingChart = null;
+
 function renderRemainingChart(canvas) {
     const labels = readData(canvas, 'labels');
 
@@ -144,8 +188,9 @@ function renderRemainingChart(canvas) {
         { target: 100, attribute: 'to100', color: '#f14668' },
     ];
 
-    new Chart(canvas, {
+    remainingChart = new Chart(canvas, {
         type: 'line',
+        plugins: [currentSocLine],
         data: {
             labels,
             datasets: series.map(({ target, attribute, color }) => ({
@@ -193,9 +238,10 @@ document.addEventListener('DOMContentLoaded', () => {
         renderPowerChart(powerChart);
     }
 
-    const remainingChart = document.getElementById('curve-remaining-chart');
-    if (remainingChart) {
-        renderRemainingChart(remainingChart);
+    const remainingCanvas = document.getElementById('curve-remaining-chart');
+    if (remainingCanvas) {
+        renderRemainingChart(remainingCanvas);
+        setRemainingMarker(Number(remainingCanvas.dataset.currentSoc));
     }
 });
 
@@ -359,7 +405,9 @@ function applyState(state) {
 
     const soc = state.soc === null ? null : Math.round(state.soc);
 
-    setText('tlm-soc', soc === null ? '—' : `${soc} %`);
+    setText('tlm-soc', state.soc === null
+        ? '—'
+        : `${String(Math.round(state.soc * 10) / 10).replace('.', ',')} %`);
 
     const progress = document.getElementById('tlm-progress');
     if (progress) {
@@ -406,6 +454,7 @@ function applyState(state) {
 
     if (state.soc_rounded !== null) {
         highlightCurrentRows(state.soc_rounded);
+        setRemainingMarker(state.soc_rounded);
     }
 
     setText('tlm-recorded', `${state.recorded_at_human} (${state.recorded_at})`);

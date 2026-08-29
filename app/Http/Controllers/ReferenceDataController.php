@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Location;
 use App\Models\PowerRating;
 use App\Models\Provider;
+use App\Models\SmsMessage;
 use App\Models\Vehicle;
 use App\Services\ChargingCurveRepository;
+use App\Services\FreeMobileSms;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,6 +24,19 @@ class ReferenceDataController extends Controller
             'locationsCount' => Location::count(),
             'providersCount' => Provider::count(),
             'powerRatingsCount' => PowerRating::count(),
+            'smsCount' => SmsMessage::count(),
+            'smsFailedCount' => SmsMessage::where('delivered', false)->count(),
+        ]);
+    }
+
+    public function smsMessages(FreeMobileSms $sms): View
+    {
+        return view('reference_data.sms', [
+            'messages' => SmsMessage::latest('created_at')->paginate(50),
+            'deliveredCount' => SmsMessage::where('delivered', true)->count(),
+            'failedCount' => SmsMessage::where('delivered', false)->count(),
+            'configured' => $sms->configured(),
+            'thresholds' => config('services.charge_alerts.thresholds', []),
         ]);
     }
 

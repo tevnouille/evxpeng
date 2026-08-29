@@ -63,6 +63,8 @@ class ChargingCurveController extends Controller
         $currentSoc = null;
         $currentPoint = null;
 
+        $currentSocExact = $telemetry?->soc !== null ? (float) $telemetry->soc : null;
+
         if ($curve && $telemetry && $telemetry->soc !== null) {
             $currentSoc = (int) round((float) $telemetry->soc);
             $currentPoint = collect($curve['points'])->firstWhere('soc', $currentSoc);
@@ -74,6 +76,7 @@ class ChargingCurveController extends Controller
             'curve' => $curve,
             'telemetry' => $telemetry,
             'currentSoc' => $currentSoc,
+            'currentSocExact' => $currentSocExact,
             'currentPoint' => $currentPoint,
             'chargerPowers' => self::CHARGER_POWERS,
             'cap' => $cap,

@@ -130,7 +130,7 @@
                 <div class="columns is-multiline">
                     <div class="column is-3">
                         <p class="heading">Batterie</p>
-                        <p class="title is-2" id="tlm-soc">{{ $currentSoc !== null ? $currentSoc . ' %' : '—' }}</p>
+                        <p class="title is-2" id="tlm-soc">{{ $currentSocExact !== null ? str_replace('.', ',', rtrim(rtrim(number_format($currentSocExact, 1, '.', ''), '0'), '.')) . ' %' : '—' }}</p>
                         <progress class="progress is-primary is-small" id="tlm-progress" value="{{ $currentSoc ?? 0 }}" max="100"></progress>
                     </div>
 
@@ -262,6 +262,7 @@
             </p>
 
             <canvas id="curve-remaining-chart" class="mb-5"
+                data-current-soc="{{ $currentSoc ?? '' }}"
                 data-labels='@json(collect($curve['points'])->pluck('soc'))'
                 data-to80='@json(collect($curve['points'])->pluck('to_80_minutes'))'
                 data-to90='@json(collect($curve['points'])->pluck('to_90_minutes'))'

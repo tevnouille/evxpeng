@@ -17,7 +17,7 @@
         <div class="column is-3">
             <a href="{{ route('reference-data.locations.index') }}" class="box has-text-centered">
                 <p class="title is-4">&#128205;</p>
-                <p class="title is-5">Localisations</p>
+                <p class="title is-5">Localisation des bornes</p>
                 <p class="has-text-grey">{{ $locationsCount }} enregistrée(s)</p>
             </a>
         </div>
@@ -33,6 +33,18 @@
                 <p class="title is-4">&#128268;</p>
                 <p class="title is-5">Puissances (kW)</p>
                 <p class="has-text-grey">{{ $powerRatingsCount }} enregistrée(s)</p>
+            </a>
+        </div>
+        <div class="column is-3">
+            <a href="{{ route('reference-data.sms.index') }}" class="box has-text-centered">
+                <p class="title is-4">&#128241;</p>
+                <p class="title is-5">Envois SMS</p>
+                <p class="has-text-grey">
+                    {{ $smsCount }} envoi(s)
+                    @if ($smsFailedCount > 0)
+                        &middot; <span class="has-text-danger">{{ $smsFailedCount }} en échec</span>
+                    @endif
+                </p>
             </a>
         </div>
     </div>

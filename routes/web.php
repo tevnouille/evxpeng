@@ -35,6 +35,8 @@ Route::get('/historique/{year}/{month}', [HistoryController::class, 'show'])->wh
 
 Route::get('/admin', [ReferenceDataController::class, 'index'])->name('reference-data.index');
 
+Route::get('/admin/sms', [ReferenceDataController::class, 'smsMessages'])->name('reference-data.sms.index');
+
 Route::get('/admin/vehicules', [ReferenceDataController::class, 'vehicles'])->name('reference-data.vehicles.index');
 Route::post('/admin/vehicules', [ReferenceDataController::class, 'storeVehicle'])->name('reference-data.vehicles.store');
 Route::put('/admin/vehicules/{vehicle}', [ReferenceDataController::class, 'updateVehicle'])->name('reference-data.vehicles.update');
