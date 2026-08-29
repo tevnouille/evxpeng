@@ -147,6 +147,10 @@ class ChargingCurveController extends Controller
             'odometer' => $telemetry->odometer,
             'soh' => $telemetry->soh !== null ? (float) $telemetry->soh : null,
             'available_kwh' => $point['kwh'] ?? null,
+            // Position du marqueur sur le graphique de puissance : abscisse (le
+            // SoC arrondi au point de courbe) et ordonnee.
+            'soc_rounded' => $soc === null ? null : (int) round($soc),
+            'curve_kw' => $point['kw_effective'] ?? null,
             'to_80' => $point['to_80'] ?? null,
             'to_90' => $point['to_90'] ?? null,
             'to_100' => $point['to_100'] ?? null,

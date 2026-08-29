@@ -73,6 +73,9 @@ function currentPositionDataset(canvas, labels) {
     };
 }
 
+let powerChart = null;
+let powerChartLabels = [];
+
 function renderPowerChart(canvas) {
     const labels = readData(canvas, 'labels');
     const values = readData(canvas, 'values');
@@ -97,7 +100,8 @@ function renderPowerChart(canvas) {
         datasets.push(current);
     }
 
-    new Chart(canvas, {
+    powerChartLabels = labels;
+    powerChart = new Chart(canvas, {
         type: 'line',
         data: {
             labels,
@@ -278,6 +282,46 @@ function renderRefreshLine() {
         : `Actualisée le ${stamp} — prochaine dans ${seconds} s.`;
 }
 
+// Deplace le marqueur de position sur le graphique de puissance sans recharger
+// la page : c'est tout l'interet de le suivre pendant une charge.
+function moveCurrentMarker(state) {
+    if (!powerChart || state.soc_rounded === null || state.curve_kw === null) {
+        return;
+    }
+
+    const index = powerChartLabels.indexOf(state.soc_rounded);
+
+    if (index < 0) {
+        return;
+    }
+
+    const color = state.is_charging ? '#f14668' : '#7a7a7a';
+    const data = new Array(powerChartLabels.length).fill(null);
+    data[index] = state.curve_kw;
+
+    let dataset = powerChart.data.datasets[1];
+
+    // Le marqueur n'existe pas si la page a ete rendue sans telemetrie.
+    if (!dataset) {
+        dataset = {
+            data,
+            pointRadius: 7,
+            pointHoverRadius: 9,
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2,
+            showLine: false,
+        };
+        powerChart.data.datasets.push(dataset);
+    }
+
+    dataset.label = state.is_charging ? 'Niveau actuel (en charge)' : 'Niveau actuel';
+    dataset.data = data;
+    dataset.borderColor = color;
+    dataset.backgroundColor = color;
+
+    powerChart.update('none');
+}
+
 function applyState(state) {
     if (!state.available) {
         return;
@@ -328,6 +372,7 @@ function applyState(state) {
         : `${Math.floor(state.session_minutes / 60)} h ${String(state.session_minutes % 60).padStart(2, '0')}`);
 
     renderLiveRemaining(state);
+    moveCurrentMarker(state);
 
     setText('tlm-recorded', `${state.recorded_at_human} (${state.recorded_at})`);
 
