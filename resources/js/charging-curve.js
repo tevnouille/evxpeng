@@ -194,3 +194,162 @@ document.addEventListener('DOMContentLoaded', () => {
         renderRemainingChart(remainingChart);
     }
 });
+
+// --- Rafraichissement du bloc "Niveau actuel" -----------------------------
+//
+// La page interroge notre propre endpoint, pas ABRP : c'est la commande
+// planifiee qui va chercher la donnee. En charge, la planification passe a la
+// minute, donc un sondage toutes les 30 s suffit a ne rien manquer. A l'arret,
+// la donnee bouge une fois par heure : inutile de sonder.
+
+const LIVE_INTERVAL_CHARGING = 30000;
+const LIVE_INTERVAL_IDLE = 300000;
+
+function frenchNumber(value, digits = 1) {
+    return value === null || value === undefined
+        ? '—'
+        : value.toFixed(digits).replace('.', ',').replace(/,0$/, '');
+}
+
+function setText(id, text) {
+    const node = document.getElementById(id);
+
+    if (node) {
+        node.textContent = text;
+    }
+}
+
+function humanMinutes(minutes) {
+    if (minutes < 60) {
+        return `${minutes} min`;
+    }
+
+    return `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')}`;
+}
+
+// Estimations calculees sur la puissance mesuree : ce sont elles qui sont
+// comparables a l'affichage de la voiture.
+function renderLiveRemaining(state) {
+    const container = document.getElementById('tlm-live-remaining');
+
+    if (!container) {
+        return;
+    }
+
+    const targets = [[80, state.live_to_80], [90, state.live_to_90], [100, state.live_to_100]];
+    const usable = targets.filter(([, minutes]) => minutes !== null && minutes !== undefined);
+
+    if (usable.length === 0) {
+        container.innerHTML = '<span class="tag">indisponible</span>';
+
+        return;
+    }
+
+    container.innerHTML = usable
+        .map(([target, minutes]) => `<span class="tag is-success">${target} % &nbsp;<strong>${humanMinutes(minutes)}</strong></span>`)
+        .join('');
+}
+
+function applyState(state) {
+    if (!state.available) {
+        return;
+    }
+
+    const soc = state.soc === null ? null : Math.round(state.soc);
+
+    setText('tlm-soc', soc === null ? '—' : `${soc} %`);
+
+    const progress = document.getElementById('tlm-progress');
+    if (progress) {
+        progress.value = soc ?? 0;
+    }
+
+    const tag = document.getElementById('tlm-state');
+    if (tag) {
+        tag.textContent = state.is_charging ? 'en charge' : 'stationné';
+        tag.classList.toggle('is-success', state.is_charging);
+        tag.classList.toggle('is-light', !state.is_charging);
+    }
+
+    if (state.available_kwh !== null) {
+        setText('tlm-available', `${frenchNumber(state.available_kwh)} kWh`);
+    }
+
+    setText('tlm-to80', state.to_80 ?? 'atteint');
+    setText('tlm-to90', state.to_90 ?? 'atteint');
+    setText('tlm-to100', state.to_100 ?? 'atteint');
+
+    const charging = document.getElementById('tlm-charging');
+    if (charging) {
+        charging.classList.toggle('is-hidden', !state.is_charging);
+    }
+
+    setText('tlm-power', frenchNumber(state.power_kw));
+    setText('tlm-power-sense', state.power_incoming === null
+        ? ' '
+        : (state.power_incoming ? 'entrante' : 'consommée'));
+    setText('tlm-batt-temp', frenchNumber(state.batt_temp));
+    setText('tlm-session-kwh', frenchNumber(state.session_kwh, 2));
+
+    setText('tlm-session-detail', state.session_soc_start === null || state.session_soc_start === undefined
+        ? ' '
+        : `depuis ${Math.round(state.session_soc_start)} % — ${state.session_started_at}`);
+
+    setText('tlm-session-duration', state.session_minutes === null || state.session_minutes === undefined
+        ? '—'
+        : `${Math.floor(state.session_minutes / 60)} h ${String(state.session_minutes % 60).padStart(2, '0')}`);
+
+    renderLiveRemaining(state);
+
+    setText('tlm-recorded', `${state.recorded_at_human} (${state.recorded_at})`);
+
+    const now = new Date();
+    setText('tlm-refreshed', `Page actualisée à ${now.toLocaleTimeString('fr-FR')}.`);
+}
+
+function startLiveUpdates() {
+    const box = document.getElementById('tlm-live');
+
+    if (!box) {
+        return;
+    }
+
+    let timer = null;
+
+    const schedule = (charging) => {
+        if (timer) {
+            clearInterval(timer);
+        }
+
+        timer = setInterval(refresh, charging ? LIVE_INTERVAL_CHARGING : LIVE_INTERVAL_IDLE);
+    };
+
+    let charging = box.dataset.charging === '1';
+
+    async function refresh() {
+        try {
+            const response = await fetch(box.dataset.url, { headers: { Accept: 'application/json' } });
+
+            if (!response.ok) {
+                return;
+            }
+
+            const state = await response.json();
+            applyState(state);
+
+            // Le rythme suit l'etat : inutile de sonder toutes les 30 s une
+            // voiture debranchee, ni d'attendre 5 min quand elle charge.
+            if (state.available && state.is_charging !== charging) {
+                charging = state.is_charging;
+                schedule(charging);
+            }
+        } catch (error) {
+            // Reseau indisponible : on retentera au prochain tick.
+        }
+    }
+
+    schedule(charging);
+    refresh();
+}
+
+startLiveUpdates();

@@ -102,7 +102,7 @@ class TelemetrySessionDetector
             // Nombre de releves reellement observes en charge : sert a signaler
             // une session mal echantillonnee (un seul point = bornes incertaines).
             'samples' => count($points),
-            'duration_minutes' => $start->recorded_at->diffInMinutes($last->recorded_at),
+            'duration_minutes' => (int) round($start->recorded_at->diffInMinutes($last->recorded_at)),
             'lat' => $last->lat,
             'lon' => $last->lon,
         ];

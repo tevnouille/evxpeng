@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Vehicle;
 use App\Services\ChargingCurveRepository;
+use App\Services\TelemetrySessionDetector;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -35,7 +37,17 @@ class ChargingCurveController extends Controller
         $vehicle = $vehicles->firstWhere('id', (int) $requested) ?? $vehicles->first();
 
         $curve = $vehicle ? $this->curves->find($vehicle->charging_curve) : null;
-        $cap = $this->requestedCap($request);
+
+        // Sans choix explicite, on deduit la borne de la puissance reellement
+        // mesuree pendant la charge. `has` et non `filled` : choisir "sans
+        // limite" envoie borne= vide, et c'est un choix qu'il faut respecter.
+        $capAuto = null;
+
+        if (! $request->has('borne')) {
+            $capAuto = $this->capFromMeasuredPower($vehicle?->latestTelemetry);
+        }
+
+        $cap = $capAuto ?? $this->requestedCap($request);
 
         if ($curve) {
             $curve = $this->withDerivedColumns($curve, $cap);
@@ -61,7 +73,122 @@ class ChargingCurveController extends Controller
             'currentPoint' => $currentPoint,
             'chargerPowers' => self::CHARGER_POWERS,
             'cap' => $cap,
+            'capAuto' => $capAuto,
         ]);
+    }
+
+    /**
+     * Etat courant du vehicule, pour le rafraichissement du bloc "Niveau actuel"
+     * sans rechargement de page.
+     *
+     * On relit la base, pas ABRP : c'est la commande planifiee qui interroge
+     * l'API. Interroger ABRP a chaque appel de cette route ferait dependre le
+     * nombre de requetes du nombre d'onglets ouverts.
+     */
+    public function state(Request $request, Vehicle $vehicle, TelemetrySessionDetector $detector): JsonResponse
+    {
+        $telemetry = $vehicle->latestTelemetry;
+
+        if (! $telemetry) {
+            return response()->json(['available' => false]);
+        }
+
+        $curve = $vehicle->charging_curve ? $this->curves->find($vehicle->charging_curve) : null;
+
+        if ($curve) {
+            $curve = $this->withDerivedColumns($curve, $this->requestedCap($request));
+        }
+
+        $soc = $telemetry->soc !== null ? (float) $telemetry->soc : null;
+        $point = ($curve && $soc !== null)
+            ? collect($curve['points'])->firstWhere('soc', (int) round($soc))
+            : null;
+
+        $session = null;
+
+        if ($telemetry->is_charging) {
+            $rows = $vehicle->telemetries()
+                ->where('recorded_at', '>=', now()->subDay())
+                ->orderBy('recorded_at')
+                ->get();
+
+            $session = collect($detector->detect($rows, $curve['battery_net_kwh'] ?? null))
+                ->firstWhere('in_progress', true);
+        }
+
+        $power = $telemetry->power_kw !== null ? (float) $telemetry->power_kw : null;
+
+        // Estimation fondee sur la puissance reellement mesuree, et non sur la
+        // courbe : quand la voiture charge en alternatif, la courbe (etablie en
+        // continu) surestime largement. C'est cette valeur qui est comparable a
+        // l'estimation affichee par la voiture.
+        $liveMinutes = function (int $target) use ($soc, $curve, $power): ?int {
+            if ($soc === null || $power === null || $power >= 0 || $curve === null || $soc >= $target) {
+                return null;
+            }
+
+            $energy = ($target - $soc) / 100 * (float) $curve['battery_net_kwh'];
+
+            return (int) round($energy / abs($power) * 60);
+        };
+
+        return response()->json([
+            'available' => true,
+            'live_to_80' => $liveMinutes(80),
+            'live_to_90' => $liveMinutes(90),
+            'live_to_100' => $liveMinutes(100),
+            'soc' => $soc,
+            'is_charging' => (bool) $telemetry->is_charging,
+            // Convention ABRP : negatif = energie entrante. On expose la valeur
+            // absolue et le sens separement, l'affichage n'a pas a le deviner.
+            'power_kw' => $power !== null ? round(abs($power), 1) : null,
+            'power_incoming' => $power !== null ? $power < 0 : null,
+            'batt_temp' => $telemetry->batt_temp !== null ? (float) $telemetry->batt_temp : null,
+            'odometer' => $telemetry->odometer,
+            'soh' => $telemetry->soh !== null ? (float) $telemetry->soh : null,
+            'available_kwh' => $point['kwh'] ?? null,
+            'to_80' => $point['to_80'] ?? null,
+            'to_90' => $point['to_90'] ?? null,
+            'to_100' => $point['to_100'] ?? null,
+            'session_kwh' => $session['kwh'] ?? null,
+            'session_soc_start' => $session['soc_start'] ?? null,
+            'session_started_at' => isset($session['started_at'])
+                ? $session['started_at']->timezone(config('app.timezone'))->format('d/m/Y H:i')
+                : null,
+            'session_minutes' => $session['duration_minutes'] ?? null,
+            'recorded_at' => $telemetry->recorded_at->timezone(config('app.timezone'))->format('d/m/Y H:i:s'),
+            'recorded_at_human' => $telemetry->recorded_at->diffForHumans(),
+        ]);
+    }
+
+    /**
+     * Deduit la puissance de borne a partir de la puissance mesuree en charge.
+     *
+     * ABRP ne dit pas de quelle borne il s'agit : on ne connait que ce que la
+     * voiture absorbe. On retient donc la plus petite puissance proposee qui
+     * couvre la mesure — 8,5 kW mesures donnent 11 kW. Une borne 22 kW bridee
+     * par le chargeur embarque sera vue comme une 11 kW, ce qui est justement la
+     * puissance utile ici.
+     */
+    private function capFromMeasuredPower(?\App\Models\VehicleTelemetry $telemetry): ?float
+    {
+        if (! $telemetry || ! $telemetry->is_charging || $telemetry->power_kw === null) {
+            return null;
+        }
+
+        $measured = abs((float) $telemetry->power_kw);
+
+        if ($measured <= 0) {
+            return null;
+        }
+
+        foreach (self::CHARGER_POWERS as $power) {
+            if ($power >= $measured) {
+                return $power;
+            }
+        }
+
+        return (float) max(self::CHARGER_POWERS);
     }
 
     /**

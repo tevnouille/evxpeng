@@ -46,6 +46,13 @@
                             </select>
                         </div>
                     </div>
+                    @if ($capAuto !== null)
+                        <p class="help is-success">
+                            Déduite de la puissance mesurée
+                            ({{ str_replace('.', ',', (string) round(abs((float) $telemetry->power_kw), 1)) }} kW).
+                            Vous pouvez la changer.
+                        </p>
+                    @endif
                 </div>
             </div>
         </div>
@@ -110,10 +117,12 @@
         </div>
 
         @if ($telemetry)
-            <div class="box">
+            <div class="box" id="tlm-live"
+                data-url="{{ route('charging-curves.state', ['vehicle' => $vehicle, 'borne' => $cap]) }}"
+                data-charging="{{ $telemetry->is_charging ? '1' : '0' }}">
                 <h2 class="title is-5">
                     Niveau actuel
-                    <span class="tag is-medium {{ $telemetry->is_charging ? 'is-success' : 'is-light' }} ml-2">
+                    <span id="tlm-state" class="tag is-medium {{ $telemetry->is_charging ? 'is-success' : 'is-light' }} ml-2">
                         {{ $telemetry->is_charging ? 'en charge' : 'stationné' }}
                     </span>
                 </h2>
@@ -121,14 +130,14 @@
                 <div class="columns is-multiline">
                     <div class="column is-3">
                         <p class="heading">Batterie</p>
-                        <p class="title is-2">{{ $currentSoc !== null ? $currentSoc . ' %' : '—' }}</p>
-                        <progress class="progress is-primary is-small" value="{{ $currentSoc ?? 0 }}" max="100"></progress>
+                        <p class="title is-2" id="tlm-soc">{{ $currentSoc !== null ? $currentSoc . ' %' : '—' }}</p>
+                        <progress class="progress is-primary is-small" id="tlm-progress" value="{{ $currentSoc ?? 0 }}" max="100"></progress>
                     </div>
 
                     @if ($currentPoint)
                         <div class="column is-3">
                             <p class="heading">Énergie disponible</p>
-                            <p class="title is-4">{{ str_replace('.', ',', (string) $currentPoint['kwh']) }} kWh</p>
+                            <p class="title is-4" id="tlm-available">{{ str_replace('.', ',', (string) $currentPoint['kwh']) }} kWh</p>
                             <p class="has-text-grey is-size-7">
                                 sur {{ str_replace('.', ',', (string) $curve['battery_net_kwh']) }} kWh utiles
                             </p>
@@ -136,9 +145,9 @@
                         <div class="column is-6">
                             <p class="heading">Temps de recharge restant</p>
                             <div class="tags are-medium mt-2">
-                                <span class="tag">80 % &nbsp;<strong>{{ $currentPoint['to_80'] ?? 'atteint' }}</strong></span>
-                                <span class="tag">90 % &nbsp;<strong>{{ $currentPoint['to_90'] ?? 'atteint' }}</strong></span>
-                                <span class="tag">100 % &nbsp;<strong>{{ $currentPoint['to_100'] ?? 'atteint' }}</strong></span>
+                                <span class="tag">80 % &nbsp;<strong id="tlm-to80">{{ $currentPoint['to_80'] ?? 'atteint' }}</strong></span>
+                                <span class="tag">90 % &nbsp;<strong id="tlm-to90">{{ $currentPoint['to_90'] ?? 'atteint' }}</strong></span>
+                                <span class="tag">100 % &nbsp;<strong id="tlm-to100">{{ $currentPoint['to_100'] ?? 'atteint' }}</strong></span>
                             </div>
                             <p class="has-text-grey is-size-7">
                                 Durées théoriques sur borne rapide, d'après la courbe ci-dessous.
@@ -147,10 +156,45 @@
                     @endif
                 </div>
 
+                <div id="tlm-charging" class="notification is-success is-light @if (! $telemetry->is_charging) is-hidden @endif">
+                    <div class="columns is-multiline is-mobile">
+                        <div class="column is-3">
+                            <p class="heading">Puissance</p>
+                            <p class="title is-4"><span id="tlm-power">—</span> kW</p>
+                            <p class="has-text-grey is-size-7" id="tlm-power-sense">&nbsp;</p>
+                        </div>
+                        <div class="column is-3">
+                            <p class="heading">Chargé sur cette session</p>
+                            <p class="title is-4"><span id="tlm-session-kwh">—</span> kWh</p>
+                            <p class="has-text-grey is-size-7" id="tlm-session-detail">&nbsp;</p>
+                        </div>
+                        <div class="column is-3">
+                            <p class="heading">Température batterie</p>
+                            <p class="title is-4"><span id="tlm-batt-temp">—</span> °C</p>
+                        </div>
+                        <div class="column is-3">
+                            <p class="heading">Durée</p>
+                            <p class="title is-4" id="tlm-session-duration">—</p>
+                        </div>
+                    </div>
+
+                    <div class="columns is-multiline is-mobile mb-0">
+                        <div class="column is-12">
+                            <p class="heading">Temps restant à la puissance mesurée</p>
+                            <div class="tags are-medium mt-2" id="tlm-live-remaining"></div>
+                            <p class="has-text-grey is-size-7">
+                                Calculé depuis la puissance réellement délivrée, contrairement aux durées théoriques
+                                ci-dessus qui viennent de la courbe du véhicule.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 <p class="has-text-grey is-size-7">
-                    Relevé {{ $telemetry->recorded_at->diffForHumans() }}
-                    ({{ $telemetry->recorded_at->timezone(config('app.timezone'))->format('d/m/Y H:i') }})
+                    Relevé <span id="tlm-recorded">{{ $telemetry->recorded_at->diffForHumans() }}
+                    ({{ $telemetry->recorded_at->timezone(config('app.timezone'))->format('d/m/Y H:i:s') }})</span>
                     via A Better Routeplanner.
+                    <span id="tlm-refreshed"></span>
                     @if ($telemetry->lat && $telemetry->lon)
                         &middot;
                         <a href="https://www.openstreetmap.org/?mlat={{ $telemetry->lat }}&mlon={{ $telemetry->lon }}#map=15/{{ $telemetry->lat }}/{{ $telemetry->lon }}"

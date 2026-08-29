@@ -25,6 +25,7 @@ Route::get('/carburants', [FuelPriceController::class, 'index'])->name('fuel-pri
 Route::get('/ma-voiture', [MyVehicleController::class, 'index'])->name('my-vehicle.index');
 
 Route::get('/courbe-de-recharge', [ChargingCurveController::class, 'index'])->name('charging-curves.index');
+Route::get('/courbe-de-recharge/etat/{vehicle}', [ChargingCurveController::class, 'state'])->name('charging-curves.state');
 
 Route::get('/historique', [HistoryController::class, 'index'])->name('history.index');
 Route::get('/historique/{year}/{month}', [HistoryController::class, 'show'])->whereNumber('year')->whereNumber('month')->name('history.show');

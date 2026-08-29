@@ -2,6 +2,7 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use App\Models\VehicleTelemetry;
 use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
@@ -15,3 +16,12 @@ Artisan::command('inspire', function () {
 Schedule::command('telemetry:poll')
     ->everyFiveMinutes()
     ->withoutOverlapping();
+
+// En charge, la voiture remonte des points bien plus souvent : on suit alors au
+// plus pres, sans pour autant interroger l'API toutes les minutes a l'annee.
+Schedule::command('telemetry:poll')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->when(fn () => VehicleTelemetry::where('is_charging', true)
+        ->where('recorded_at', '>=', now()->subMinutes(20))
+        ->exists());
