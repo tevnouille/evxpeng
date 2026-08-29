@@ -42,6 +42,19 @@
                     <p class="title is-4">{{ $stats['sessions_count'] }}</p>
                 </div>
             </div>
+            <div class="column">
+                <div class="box has-text-centered">
+                    <p class="heading">Km estimés</p>
+                    <p class="title is-4">
+                        {{ $fuelEquivalent['configured_sessions'] > 0 ? number_format($fuelEquivalent['km'], 0, ',', ' ') . ' km' : '—' }}
+                    </p>
+                    @if ($fuelEquivalent['configured_sessions'] > 0)
+                        <p class="has-text-grey is-size-7">d'après la consommation du véhicule</p>
+                    @else
+                        <p class="has-text-grey is-size-7">consommation non renseignée</p>
+                    @endif
+                </div>
+            </div>
         </div>
 
         <h2 class="title is-6 mb-2">Équivalent carburant</h2>

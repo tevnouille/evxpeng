@@ -57,6 +57,17 @@
                 Plage de charge optimale : <strong>{{ $curve['optimal_range'] }}</strong> &middot;
                 Taux C maximal : <strong>{{ $curve['max_c_rate'] }}</strong>
             </p>
+
+            @if (! empty($curve['consumption_wltp_kwh_100km']))
+                <p class="has-text-grey is-size-7 mt-2">
+                    Autonomie WLTP : <strong>{{ $curve['range_wltp_km'] }} km</strong> &middot;
+                    Consommation WLTP : <strong>{{ str_replace('.', ',', (string) $curve['consumption_wltp_kwh_100km']) }} kWh/100 km</strong>,
+                    soit <strong>{{ str_replace('.', ',', (string) $curve['consumption_wltp_losses_kwh_100km']) }} kWh/100 km</strong> pertes de charge comprises.
+                    C'est cette seconde valeur qui est comparable aux kWh facturés à la borne, et donc à la consommation
+                    à renseigner dans <a href="{{ route('reference-data.vehicles.index') }}">la fiche du véhicule</a>
+                    pour l'estimation des kilomètres.
+                </p>
+            @endif
         </div>
 
         @if ($curve['estimated'])

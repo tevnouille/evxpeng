@@ -128,6 +128,7 @@ class HistoryController extends Controller
                 'sessions_count' => $sessions->count(),
             ],
             'fuelEquivalent' => [
+                'km' => $fuelEquivalent['km'],
                 'essence_liters' => $fuelEquivalent['essence_liters'],
                 'diesel_liters' => $fuelEquivalent['diesel_liters'],
                 'essence_cost' => $fuelEquivalent['essence_cost'],

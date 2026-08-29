@@ -71,7 +71,7 @@ class FuelPriceService
      * (mais reste compté dans `count`, pour rester cohérent avec le nombre réel de recharges).
      *
      * @param iterable<object{session_date: mixed, quantity_kwh: mixed, kwh_per_100km: mixed, essence_l_per_100km: mixed, diesel_l_per_100km: mixed}> $rows
-     * @return array<string, array{essence_liters: float, diesel_liters: float, essence_cost: float, diesel_cost: float, known: int, configured: int, count: int}>
+     * @return array<string, array{km: float, essence_liters: float, diesel_liters: float, essence_cost: float, diesel_cost: float, known: int, configured: int, count: int}>
      */
     public function equivalentByGroup(iterable $rows, callable $groupKeyFn): array
     {
@@ -85,7 +85,7 @@ class FuelPriceService
             $essencePrice = $priceRow ? (float) $priceRow->essence_price : self::DEFAULT_ESSENCE_PRICE;
             $dieselPrice = $priceRow ? (float) $priceRow->diesel_price : self::DEFAULT_DIESEL_PRICE;
 
-            $groups[$key] ??= ['essence_liters' => 0.0, 'diesel_liters' => 0.0, 'essence_cost' => 0.0, 'diesel_cost' => 0.0, 'known' => 0, 'configured' => 0, 'count' => 0];
+            $groups[$key] ??= ['km' => 0.0, 'essence_liters' => 0.0, 'diesel_liters' => 0.0, 'essence_cost' => 0.0, 'diesel_cost' => 0.0, 'known' => 0, 'configured' => 0, 'count' => 0];
             $groups[$key]['count']++;
             $groups[$key]['known'] += $priceRow ? 1 : 0;
 
@@ -97,6 +97,7 @@ class FuelPriceService
 
             $groups[$key]['configured']++;
             $equivalentKm = ((float) $row->quantity_kwh / $kwhPer100km) * 100;
+            $groups[$key]['km'] += $equivalentKm;
 
             if ($row->essence_l_per_100km !== null) {
                 $essenceLiters = $equivalentKm / 100 * (float) $row->essence_l_per_100km;
@@ -116,14 +117,15 @@ class FuelPriceService
 
     /**
      * @param iterable<object{session_date: mixed, quantity_kwh: mixed, kwh_per_100km: mixed, essence_l_per_100km: mixed, diesel_l_per_100km: mixed}> $rows
-     * @return array{essence_liters: float, diesel_liters: float, essence_cost: float, diesel_cost: float, known_price_sessions: int, configured_sessions: int, total_sessions: int, estimated: bool}
+     * @return array{km: float, essence_liters: float, diesel_liters: float, essence_cost: float, diesel_cost: float, known_price_sessions: int, configured_sessions: int, total_sessions: int, estimated: bool}
      */
     public function equivalentTotals(iterable $rows): array
     {
         $groups = $this->equivalentByGroup($rows, fn () => 'all');
-        $g = $groups['all'] ?? ['essence_liters' => 0.0, 'diesel_liters' => 0.0, 'essence_cost' => 0.0, 'diesel_cost' => 0.0, 'known' => 0, 'configured' => 0, 'count' => 0];
+        $g = $groups['all'] ?? ['km' => 0.0, 'essence_liters' => 0.0, 'diesel_liters' => 0.0, 'essence_cost' => 0.0, 'diesel_cost' => 0.0, 'known' => 0, 'configured' => 0, 'count' => 0];
 
         return [
+            'km' => round($g['km'], 1),
             'essence_liters' => round($g['essence_liters'], 2),
             'diesel_liters' => round($g['diesel_liters'], 2),
             'essence_cost' => round($g['essence_cost'], 2),
