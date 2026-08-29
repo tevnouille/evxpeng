@@ -43,4 +43,16 @@ return [
         'base_url' => env('ABRP_BASE_URL', 'https://api.iternio.com/1'),
     ],
 
+    'free_mobile' => [
+        // API SMS Free Mobile : a activer depuis l'espace abonne. Seul le GET est
+        // accepte, et la reponse se limite a un code HTTP.
+        'user' => env('FREE_MOBILE_USER'),
+        'password' => env('FREE_MOBILE_PASS'),
+    ],
+
+    'charge_alerts' => [
+        // Paliers de niveau de charge donnant lieu a un SMS, au franchissement.
+        'thresholds' => [79, 89, 95, 96, 97, 98, 99, 100],
+    ],
+
 ];

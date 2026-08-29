@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Vehicle;
 use App\Models\VehicleTelemetry;
 use App\Services\AbrpClient;
+use App\Services\ChargeThresholdNotifier;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 
@@ -14,7 +15,7 @@ class PollAbrpTelemetry extends Command
 
     protected $description = "Recupere aupres d'ABRP la derniere telemetrie de chaque vehicule dont le token est renseigne";
 
-    public function handle(AbrpClient $abrp): int
+    public function handle(AbrpClient $abrp, ChargeThresholdNotifier $notifier): int
     {
         if (! $abrp->configured()) {
             $this->error('ABRP_API_KEY est absent du .env : rien a faire.');
@@ -75,6 +76,11 @@ class PollAbrpTelemetry extends Command
 
             if ($row->wasRecentlyCreated) {
                 $stored++;
+
+                // Seul un releve inedit peut constituer un franchissement.
+                foreach ($notifier->notify($vehicle, $row) as $threshold) {
+                    $this->info("SMS envoye : {$threshold} % atteint.");
+                }
             }
 
             $this->line(sprintf(
