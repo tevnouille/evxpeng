@@ -80,6 +80,7 @@
                         <tr>
                             <th>SoC</th>
                             <th class="has-text-right">Puissance</th>
+                            <th class="has-text-right">Batterie</th>
                             <th class="has-text-right">Temps cumulé</th>
                             <th class="has-text-right">Énergie chargée</th>
                         </tr>
@@ -89,8 +90,38 @@
                             <tr>
                                 <td>{{ $point['soc'] }} %</td>
                                 <td class="has-text-right">{{ str_replace('.', ',', (string) $point['kw']) }} kW</td>
+                                <td class="has-text-right">{{ str_replace('.', ',', (string) $point['battery_kwh']) }} kWh</td>
                                 <td class="has-text-right">{{ $point['time'] }}</td>
                                 <td class="has-text-right">{{ str_replace('.', ',', (string) $point['kwh']) }} kWh</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="box">
+            <h2 class="title is-5">Temps de recharge restant</h2>
+            <p class="has-text-grey is-size-7 mb-4">
+                Depuis un niveau de batterie donné, temps nécessaire pour atteindre 80, 90 ou 100 %.
+            </p>
+            <div style="max-height: 480px; overflow-y: auto;">
+                <table class="table is-fullwidth is-striped is-narrow is-hoverable">
+                    <thead>
+                        <tr>
+                            <th>Niveau actuel</th>
+                            <th class="has-text-right">Jusqu'à 80 %</th>
+                            <th class="has-text-right">Jusqu'à 90 %</th>
+                            <th class="has-text-right">Jusqu'à 100 %</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($curve['points'] as $point)
+                            <tr>
+                                <td>{{ $point['soc'] }} %</td>
+                                <td class="has-text-right">{{ $point['to_80'] ?? '—' }}</td>
+                                <td class="has-text-right">{{ $point['to_90'] ?? '—' }}</td>
+                                <td class="has-text-right">{{ $point['to_100'] ?? '—' }}</td>
                             </tr>
                         @endforeach
                     </tbody>
