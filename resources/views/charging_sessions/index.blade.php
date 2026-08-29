@@ -179,7 +179,10 @@
             <h2 class="title is-4">10 dernières recharges</h2>
         </div>
         <div class="level-right">
-            <a href="{{ route('history.index') }}" class="button is-link is-light">Voir tout l'historique</a>
+            <div class="buttons">
+                <a href="{{ route('history.show', ['year' => now()->year, 'month' => now()->month]) }}" class="button is-link is-light">Historique du mois en cours</a>
+                <a href="{{ route('history.index') }}" class="button is-link is-light">Voir tout l'historique</a>
+            </div>
         </div>
     </div>
 
