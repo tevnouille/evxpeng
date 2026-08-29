@@ -8,11 +8,79 @@
         <p class="notification is-info is-light">Localisation, fournisseur, puissance et coût unitaire repris de la recharge du {{ $duplicateFrom->session_date->format('d/m/Y') }}.</p>
     @endif
 
-    <div class="box">
+    @if (! $editing && count($pendingCharges) > 0)
+        <div class="box">
+            <h2 class="title is-5">
+                Recharges détectées non enregistrées
+                <span class="tag is-warning is-medium ml-2">{{ count($pendingCharges) }}</span>
+            </h2>
+            <p class="has-text-grey is-size-7 mb-4">
+                Repérées par la télémétrie du véhicule. L'énergie indiquée est celle <strong>entrée dans la
+                batterie</strong> : elle est inférieure à celle facturée à la borne, qui inclut les pertes de charge.
+                « Ajouter » pré-remplit le formulaire ci-dessous avec la date, la durée et cette estimation —
+                à vous de corriger la quantité facturée et de compléter le fournisseur et le coût.
+            </p>
+
+            <div class="table-container">
+                <table class="table is-fullwidth is-striped is-hoverable">
+                    <thead>
+                        <tr>
+                            <th>Début</th>
+                            <th>Véhicule</th>
+                            <th>Durée</th>
+                            <th class="has-text-right">Niveau</th>
+                            <th class="has-text-right">Énergie estimée</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($pendingCharges as $charge)
+                            <tr>
+                                <td>{{ $charge['started_at']->timezone(config('app.timezone'))->format('d/m/Y H:i') }}</td>
+                                <td>{{ $charge['vehicle']->name }}</td>
+                                <td>
+                                    {{ intdiv($charge['duration_minutes'], 60) }} h {{ str_pad((string) ($charge['duration_minutes'] % 60), 2, '0', STR_PAD_LEFT) }}
+                                    @if ($charge['samples'] < 2)
+                                        <span class="tag is-warning is-light ml-1" title="Un seul relevé pendant la charge : les bornes sont approximatives">1 relevé</span>
+                                    @endif
+                                </td>
+                                <td class="has-text-right">
+                                    {{ $charge['soc_start'] !== null ? (int) $charge['soc_start'] . ' %' : '?' }}
+                                    &rarr;
+                                    {{ $charge['soc_end'] !== null ? (int) $charge['soc_end'] . ' %' : '?' }}
+                                </td>
+                                <td class="has-text-right">
+                                    {{ $charge['kwh'] !== null ? str_replace('.', ',', (string) $charge['kwh']) . ' kWh' : '—' }}
+                                </td>
+                                <td class="has-text-right">
+                                    <a class="button is-small is-primary"
+                                       href="{{ route('charging-sessions.index', [
+                                           'prefill_vehicle' => $charge['vehicle']->id,
+                                           'prefill_date' => $charge['started_at']->timezone(config('app.timezone'))->format('Y-m-d'),
+                                           'prefill_kwh' => $charge['kwh'],
+                                           'prefill_duration' => sprintf('%02d:%02d', intdiv($charge['duration_minutes'], 60), $charge['duration_minutes'] % 60),
+                                           'prefill_telemetry_start' => $charge['started_at']->format('Y-m-d H:i:s'),
+                                       ]) }}#formulaire">
+                                        Ajouter
+                                    </a>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
+
+    <div class="box" id="formulaire">
         <form method="POST" action="{{ $editing ? route('charging-sessions.update', $editing) : route('charging-sessions.store') }}">
             @csrf
             @if ($editing)
                 @method('PUT')
+            @endif
+
+            @if (! empty($prefill['telemetry_started_at']))
+                <input type="hidden" name="telemetry_started_at" value="{{ $prefill['telemetry_started_at'] }}">
             @endif
 
             <div class="columns is-multiline">

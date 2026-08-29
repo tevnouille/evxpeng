@@ -38,37 +38,84 @@ function socAxis() {
     };
 }
 
+// Marqueur du niveau de charge reel sur la courbe. Rouge en charge (on suit sa
+// progression), gris sinon (simple reperage). Le dataset ne porte qu'un point :
+// tous les autres index sont nuls.
+function currentPositionDataset(canvas, labels) {
+    const soc = canvas.dataset.currentSoc;
+    const kw = canvas.dataset.currentKw;
+
+    if (soc === '' || kw === '') {
+        return null;
+    }
+
+    const index = labels.indexOf(Number(soc));
+
+    if (index < 0) {
+        return null;
+    }
+
+    const charging = canvas.dataset.charging === '1';
+    const color = charging ? '#f14668' : '#7a7a7a';
+    const data = new Array(labels.length).fill(null);
+    data[index] = Number(kw);
+
+    return {
+        label: charging ? 'Niveau actuel (en charge)' : 'Niveau actuel',
+        data,
+        borderColor: color,
+        backgroundColor: color,
+        pointRadius: 7,
+        pointHoverRadius: 9,
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        showLine: false,
+    };
+}
+
 function renderPowerChart(canvas) {
     const labels = readData(canvas, 'labels');
     const values = readData(canvas, 'values');
+
+    const datasets = [
+        {
+            label: 'Puissance de charge',
+            data: values,
+            borderColor: '#3e8ed0',
+            backgroundColor: 'rgba(62, 142, 208, 0.15)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.3,
+            pointRadius: 0,
+            pointHitRadius: 12,
+        },
+    ];
+
+    const current = currentPositionDataset(canvas, labels);
+
+    if (current) {
+        datasets.push(current);
+    }
 
     new Chart(canvas, {
         type: 'line',
         data: {
             labels,
-            datasets: [
-                {
-                    data: values,
-                    borderColor: '#3e8ed0',
-                    backgroundColor: 'rgba(62, 142, 208, 0.15)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.3,
-                    pointRadius: 0,
-                    pointHitRadius: 12,
-                },
-            ],
+            datasets,
         },
         options: {
             responsive: true,
             aspectRatio: 3,
             interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: { display: false },
+                legend: {
+                    display: true,
+                    labels: { filter: (item) => item.text !== 'Puissance de charge' },
+                },
                 tooltip: {
                     callbacks: {
                         title: (items) => `${items[0].label} %`,
-                        label: (item) => `${item.parsed.y} kW`,
+                        label: (item) => `${item.dataset.label} : ${item.parsed.y} kW`,
                     },
                 },
             },

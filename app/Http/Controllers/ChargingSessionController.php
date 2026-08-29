@@ -7,6 +7,7 @@ use App\Models\Location;
 use App\Models\PowerRating;
 use App\Models\Provider;
 use App\Models\Vehicle;
+use App\Services\PendingTelemetryCharges;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
@@ -15,7 +16,7 @@ use Illuminate\View\View;
 
 class ChargingSessionController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request, PendingTelemetryCharges $pending): View
     {
         $duplicateFrom = null;
 
@@ -31,6 +32,7 @@ class ChargingSessionController extends Controller
             'quantity_kwh' => $request->query('prefill_kwh'),
             'charge_duration' => $request->query('prefill_duration'),
             'vehicle_id' => $request->query('prefill_vehicle'),
+            'telemetry_started_at' => $request->query('prefill_telemetry_start'),
         ];
 
         return view('charging_sessions.index', [
@@ -42,6 +44,7 @@ class ChargingSessionController extends Controller
             'editing' => null,
             'duplicateFrom' => $duplicateFrom,
             'prefill' => $prefill,
+            'pendingCharges' => $pending->all(),
         ]);
     }
 
@@ -56,6 +59,7 @@ class ChargingSessionController extends Controller
             'editing' => $chargingSession,
             'duplicateFrom' => null,
             'prefill' => [],
+            'pendingCharges' => [],
         ]);
     }
 
@@ -110,6 +114,7 @@ class ChargingSessionController extends Controller
             'power_rating_id' => ['required', 'exists:power_ratings,id'],
             'quantity_kwh' => ['required', 'numeric', 'min:0'],
             'charge_duration' => ['nullable', 'date_format:H:i'],
+            'telemetry_started_at' => ['nullable', 'date'],
             'unit_cost' => ['nullable', 'numeric', 'min:0'],
             'total_cost' => ['nullable', 'numeric', 'min:0'],
             'comment' => ['nullable', 'string'],

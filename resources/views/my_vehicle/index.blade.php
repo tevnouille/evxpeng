@@ -231,6 +231,7 @@
                                                    'prefill_date' => $session['started_at']->timezone(config('app.timezone'))->format('Y-m-d'),
                                                    'prefill_kwh' => $session['kwh'],
                                                    'prefill_duration' => sprintf('%02d:%02d', intdiv($session['duration_minutes'], 60), $session['duration_minutes'] % 60),
+                                                   'prefill_telemetry_start' => $session['started_at']->format('Y-m-d H:i:s'),
                                                ]) }}">
                                                 Pré-remplir
                                             </a>

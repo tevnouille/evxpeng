@@ -173,7 +173,10 @@
             <h2 class="title is-5">Puissance de charge selon le niveau de batterie</h2>
             <canvas id="curve-power-chart"
                 data-labels='@json(collect($curve['points'])->pluck('soc'))'
-                data-values='@json(collect($curve['points'])->pluck('kw_effective'))'></canvas>
+                data-values='@json(collect($curve['points'])->pluck('kw_effective'))'
+                data-current-soc="{{ $currentSoc ?? '' }}"
+                data-current-kw="{{ $currentPoint['kw_effective'] ?? '' }}"
+                data-charging="{{ $telemetry && $telemetry->is_charging ? '1' : '0' }}"></canvas>
         </div>
 
         <div class="box">

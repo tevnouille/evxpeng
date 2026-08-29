@@ -13,6 +13,7 @@ class ChargingSession extends Model
     protected $fillable = [
         'session_date',
         'vehicle_id',
+        'telemetry_started_at',
         'location_id',
         'provider_id',
         'power_rating_id',
@@ -25,6 +26,7 @@ class ChargingSession extends Model
 
     protected $casts = [
         'session_date' => 'date',
+        'telemetry_started_at' => 'datetime',
         'quantity_kwh' => 'decimal:2',
         'unit_cost' => 'decimal:4',
         'total_cost' => 'decimal:2',
