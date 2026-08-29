@@ -18,6 +18,7 @@ class ChargingCurveController extends Controller
         // Seuls les vehicules auxquels une courbe a ete associee dans
         // /admin/vehicules sont proposes.
         $vehicles = Vehicle::whereNotNull('charging_curve')
+            ->with('latestTelemetry')
             ->orderByDesc('is_default')
             ->orderBy('name')
             ->get()
@@ -36,10 +37,24 @@ class ChargingCurveController extends Controller
             $curve = $this->withDerivedColumns($curve);
         }
 
+        // Niveau de charge remonte par ABRP, arrondi au point de courbe le plus
+        // proche : la courbe est echantillonnee au pourcent entier.
+        $telemetry = $vehicle?->latestTelemetry;
+        $currentSoc = null;
+        $currentPoint = null;
+
+        if ($curve && $telemetry && $telemetry->soc !== null) {
+            $currentSoc = (int) round((float) $telemetry->soc);
+            $currentPoint = collect($curve['points'])->firstWhere('soc', $currentSoc);
+        }
+
         return view('charging_curves.index', [
             'vehicles' => $vehicles,
             'vehicle' => $vehicle,
             'curve' => $curve,
+            'telemetry' => $telemetry,
+            'currentSoc' => $currentSoc,
+            'currentPoint' => $currentPoint,
         ]);
     }
 

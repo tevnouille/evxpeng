@@ -78,6 +78,57 @@
             @endif
         </div>
 
+        @if ($telemetry)
+            <div class="box">
+                <h2 class="title is-5">
+                    Niveau actuel
+                    <span class="tag is-medium {{ $telemetry->is_charging ? 'is-success' : 'is-light' }} ml-2">
+                        {{ $telemetry->is_charging ? 'en charge' : 'stationné' }}
+                    </span>
+                </h2>
+
+                <div class="columns is-multiline">
+                    <div class="column is-3">
+                        <p class="heading">Batterie</p>
+                        <p class="title is-2">{{ $currentSoc !== null ? $currentSoc . ' %' : '—' }}</p>
+                        <progress class="progress is-primary is-small" value="{{ $currentSoc ?? 0 }}" max="100"></progress>
+                    </div>
+
+                    @if ($currentPoint)
+                        <div class="column is-3">
+                            <p class="heading">Énergie disponible</p>
+                            <p class="title is-4">{{ str_replace('.', ',', (string) $currentPoint['kwh']) }} kWh</p>
+                            <p class="has-text-grey is-size-7">
+                                sur {{ str_replace('.', ',', (string) $curve['battery_net_kwh']) }} kWh utiles
+                            </p>
+                        </div>
+                        <div class="column is-6">
+                            <p class="heading">Temps de recharge restant</p>
+                            <div class="tags are-medium mt-2">
+                                <span class="tag">80 % &nbsp;<strong>{{ $currentPoint['to_80'] ?? 'atteint' }}</strong></span>
+                                <span class="tag">90 % &nbsp;<strong>{{ $currentPoint['to_90'] ?? 'atteint' }}</strong></span>
+                                <span class="tag">100 % &nbsp;<strong>{{ $currentPoint['to_100'] ?? 'atteint' }}</strong></span>
+                            </div>
+                            <p class="has-text-grey is-size-7">
+                                Durées théoriques sur borne rapide, d'après la courbe ci-dessous.
+                            </p>
+                        </div>
+                    @endif
+                </div>
+
+                <p class="has-text-grey is-size-7">
+                    Relevé {{ $telemetry->recorded_at->diffForHumans() }}
+                    ({{ $telemetry->recorded_at->timezone(config('app.timezone'))->format('d/m/Y H:i') }})
+                    via A Better Routeplanner.
+                    @if ($telemetry->lat && $telemetry->lon)
+                        &middot;
+                        <a href="https://www.openstreetmap.org/?mlat={{ $telemetry->lat }}&mlon={{ $telemetry->lon }}#map=15/{{ $telemetry->lat }}/{{ $telemetry->lon }}"
+                           target="_blank" rel="noopener">voir la position</a>
+                    @endif
+                </p>
+            </div>
+        @endif
+
         @if ($curve['estimated'])
             <div class="notification is-warning is-light">
                 <strong>Données estimées.</strong> evkx.net indique que cette courbe est estimée à partir des données
@@ -109,7 +160,7 @@
                     </thead>
                     <tbody>
                         @foreach ($curve['points'] as $point)
-                            <tr>
+                            <tr @class(['is-selected' => $currentSoc === $point['soc']])>
                                 <td>{{ $point['soc'] }} %</td>
                                 <td class="has-text-right">{{ str_replace('.', ',', (string) $point['kw']) }} kW</td>
                                 <td class="has-text-right">{{ str_replace('.', ',', (string) $point['battery_gross_kwh']) }} kWh</td>
@@ -146,7 +197,7 @@
                     </thead>
                     <tbody>
                         @foreach ($curve['points'] as $point)
-                            <tr>
+                            <tr @class(['is-selected' => $currentSoc === $point['soc']])>
                                 <td>{{ $point['soc'] }} %</td>
                                 <td class="has-text-right">{{ $point['to_80'] ?? '—' }}</td>
                                 <td class="has-text-right">{{ $point['to_90'] ?? '—' }}</td>

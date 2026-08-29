@@ -67,6 +67,26 @@ explicitement.
 
 Modèle actuellement présent : Xpeng G6 AWD Performance MY2023/MY2024.
 
+### Télémétrie du véhicule (ABRP)
+
+Le niveau de charge réel de la voiture est récupéré automatiquement via l'API
+d'A Better Routeplanner, qui s'alimente elle-même auprès du cloud du constructeur
+(Enode). Aucun boîtier OBD n'est nécessaire.
+
+- La page **Courbe de recharge** affiche le niveau actuel, l'énergie disponible,
+  le temps restant jusqu'à 80 / 90 / 100 % et surligne la ligne correspondante
+  dans les deux tableaux.
+- Chaque mesure est historisée dans `vehicle_telemetries` (SoC, en charge ou non,
+  position, horodatage constructeur).
+- La récupération tourne toutes les 15 minutes via le scheduler.
+
+À savoir : la donnée est rafraîchie **environ une fois par heure véhicule à l'arrêt**,
+plus souvent en charge, et le backend d'ABRP applique 60 s de traitement par lots.
+Ce n'est donc pas du temps réel.
+
+Configuration : `ABRP_API_KEY` dans le `.env` (clé « Telemetry-Only », gratuite) et
+un token par véhicule dans `/admin/vehicules`.
+
 ## Stack
 
 - **Laravel 13** / PHP 8.4, **MariaDB 11**
@@ -90,6 +110,7 @@ Seuls Docker et Docker Compose sont nécessaires sur la machine hôte.
 | Commande | Rôle |
 | --- | --- |
 | `php artisan fuel-prices:backfill` | Importe l'historique annuel des prix des carburants |
+| `php artisan telemetry:poll` | Récupère le niveau de charge des véhicules auprès d'ABRP |
 | `php artisan view:clear` | Vide le cache des vues après modification d'un Blade |
 
 ## Notes pour les agents

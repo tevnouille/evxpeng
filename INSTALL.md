@@ -132,6 +132,42 @@ annuelle officielle, du 1er janvier à hier. Sans elle, les dates sans relevé
 retombent sur un prix de repli (1,95 €), et les totaux concernés sont signalés
 comme estimés dans l'interface.
 
+## 9. Activer la télémétrie du véhicule (optionnel)
+
+Permet de récupérer automatiquement le niveau de charge de la voiture.
+
+1. Sur [abetterrouteplanner.com](https://abetterrouteplanner.com/home/app/api-keys/telemetry),
+   générer une clé API « Telemetry-Only » (gratuite) et la placer dans le `.env` :
+
+   ```
+   ABRP_API_KEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+   ```
+
+   Recréer ensuite le conteneur applicatif pour que la variable soit prise en compte :
+
+   ```bash
+   docker-compose rm -sf app && docker-compose up -d --no-deps app
+   ```
+
+2. Dans l'application ABRP : Settings &rarr; Car model &rarr; le véhicule &rarr;
+   **Live data**. Y activer **Enode** (nécessite un abonnement ABRP Premium ; c'est
+   lui qui alimente réellement la donnée), puis relever le token affiché dans
+   l'option **Generic**.
+
+3. Coller ce token dans `/admin/vehicules`, colonne « Token ABRP ».
+
+4. Vérifier :
+
+   ```bash
+   docker exec ev-app php artisan telemetry:poll
+   ```
+
+5. Installer le scheduler sur l'hôte pour que la récupération soit périodique :
+
+   ```
+   * * * * * sudo /usr/bin/docker exec ev-app php artisan schedule:run >/dev/null 2>&1
+   ```
+
 ## Mise à jour
 
 ```bash

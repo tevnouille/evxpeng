@@ -5,12 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Vehicle extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'charging_curve', 'is_default', 'kwh_per_100km', 'essence_l_per_100km', 'diesel_l_per_100km'];
+    protected $fillable = ['name', 'charging_curve', 'abrp_token', 'is_default', 'kwh_per_100km', 'essence_l_per_100km', 'diesel_l_per_100km'];
 
     protected $casts = [
         'is_default' => 'boolean',
@@ -22,6 +23,20 @@ class Vehicle extends Model
     public function chargingSessions(): HasMany
     {
         return $this->hasMany(ChargingSession::class);
+    }
+
+    public function telemetries(): HasMany
+    {
+        return $this->hasMany(VehicleTelemetry::class);
+    }
+
+    /**
+     * Derniere mesure remontee par ABRP, la plus recente selon l'horodatage du
+     * constructeur (et non selon la date d'insertion chez nous).
+     */
+    public function latestTelemetry(): HasOne
+    {
+        return $this->hasOne(VehicleTelemetry::class)->latestOfMany('recorded_at');
     }
 
     public function makeDefault(): void

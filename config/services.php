@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'abrp' => [
+        // Cle API "Telemetry-Only" (gratuite) generee sur abetterrouteplanner.com.
+        // Le token utilisateur, lui, identifie un vehicule precis : il est stocke
+        // sur la fiche du vehicule, pas ici.
+        'key' => env('ABRP_API_KEY'),
+        'base_url' => env('ABRP_BASE_URL', 'https://api.iternio.com/1'),
+    ],
+
 ];

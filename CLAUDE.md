@@ -123,6 +123,42 @@ champ `estimated` du JSON déclenche un encart d'avertissement sur la page.
 Les capacités brute/nette proviennent de la fiche `specifications/` du même
 site, pas de la page de courbe qui n'affiche que la brute.
 
+## Télémétrie ABRP : deux secrets à ne pas confondre
+
+La récupération du niveau de charge passe par l'API Iternio (A Better Routeplanner),
+et elle demande **deux valeurs distinctes** que la documentation d'ABRP nomme mal :
+
+| Valeur | Où on la trouve | Où elle est stockée |
+|---|---|---|
+| **API key** (« Telemetry-Only », gratuite) | abetterrouteplanner.com &rarr; Manage your telemetry API keys | `ABRP_API_KEY` dans le `.env` |
+| **User token** (un par véhicule) | ABRP &rarr; Settings &rarr; Car model &rarr; le véhicule &rarr; **Live data** &rarr; **Generic** | colonne `vehicles.abrp_token` |
+
+Les messages d'erreur permettent de savoir laquelle est en cause : `401 Unauthorized Key`
+désigne la clé, `401 Unauthorized Token` désigne le token. Un `200` sur
+`/tlm/get_carmodels_list` (qui ne demande pas de token) confirme que la clé seule est bonne.
+
+Autres pièges relevés :
+
+- L'API répond **HTTP 200 même en erreur applicative** : c'est le champ `status` du JSON
+  qui fait foi, jamais le code HTTP seul.
+- `get_latest_telemetry` **n'existe pas** (404) ; l'endpoint est `get_telemetry`.
+- La doc lisible n'est pas la page web mais le JSON de la collection Postman :
+  `https://documenter.gw.postman.com/api/collections/7396339/SWTK5a8w`
+- `env_file` dans docker-compose injecte les variables **à la création du conteneur** :
+  après ajout d'une clé dans `.env`, un `config:clear` ne suffit pas, il faut recréer
+  `ev-app` (`docker-compose rm -sf app && docker-compose up -d --no-deps app`).
+
+## Scheduler
+
+Depuis l'ajout de la télémétrie, l'application a un vrai scheduler Laravel
+(`routes/console.php`), déclenché par une entrée cron sur l'hôte :
+
+```
+* * * * * sudo /usr/bin/docker exec ev-app php artisan schedule:run >/dev/null 2>&1
+```
+
+C'est l'endroit où brancher les prochaines tâches périodiques.
+
 ## Alertes
 
 Pas de SMTP fonctionnel sur hostingtools (`MAIL_MAILER=log`). Pour notifier
