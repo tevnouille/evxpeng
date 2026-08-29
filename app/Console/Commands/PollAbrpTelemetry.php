@@ -59,6 +59,7 @@ class PollAbrpTelemetry extends Command
                     'lat' => $telemetry['lat'] ?? null,
                     'lon' => $telemetry['lon'] ?? null,
                     'telemetry_type' => $result['telemetry_type'] ?? null,
+                    'raw' => $result,
                 ]
             );
 

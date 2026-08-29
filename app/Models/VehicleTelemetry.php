@@ -18,6 +18,7 @@ class VehicleTelemetry extends Model
         'lat',
         'lon',
         'telemetry_type',
+        'raw',
     ];
 
     protected $casts = [
@@ -27,6 +28,7 @@ class VehicleTelemetry extends Model
         'is_connected' => 'boolean',
         'lat' => 'float',
         'lon' => 'float',
+        'raw' => 'array',
     ];
 
     public function vehicle(): BelongsTo
