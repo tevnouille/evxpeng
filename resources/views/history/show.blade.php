@@ -102,7 +102,8 @@
 
         <div class="box">
             <h2 class="title is-5">Recharges par jour</h2>
-            <canvas id="history-daily-chart"
+            <canvas id="history-combined-chart"
+                data-label-prefix="Jour "
                 data-labels='@json($dailyLabels)'
                 data-kwh='@json($dailyKwh)'
                 data-cost='@json($dailyCost)'></canvas>

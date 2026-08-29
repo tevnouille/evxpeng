@@ -31,11 +31,13 @@ function readJson(canvas, attribute) {
 }
 
 /**
- * Vue mensuelle : kWh et cout sur un seul graphique. Les deux grandeurs n'ont
- * pas la meme echelle, d'ou deux axes Y et un rendu different (barres / ligne)
- * pour qu'on distingue immediatement laquelle est laquelle.
+ * Graphique commun aux deux vues de l'historique : par mois sur la vue annuelle,
+ * par jour sur la vue mensuelle. kWh et cout n'ont pas la meme echelle, d'ou
+ * deux axes Y et deux types de trace pour les distinguer d'un coup d'oeil.
  */
 function renderCombinedChart(canvas) {
+    const prefix = canvas.dataset.labelPrefix || '';
+
     new Chart(canvas, {
         data: {
             labels: readJson(canvas, 'labels'),
@@ -71,7 +73,7 @@ function renderCombinedChart(canvas) {
                 legend: { display: true, position: 'bottom' },
                 tooltip: {
                     callbacks: {
-                        title: (items) => `Jour ${items[0].label}`,
+                        title: (items) => `${prefix}${items[0].label}`,
                         label: (item) => (item.dataset.yAxisID === 'y1'
                             ? `Coût : ${item.parsed.y.toFixed(2)} €`
                             : `${item.parsed.y} kWh`),
@@ -98,37 +100,10 @@ function renderCombinedChart(canvas) {
     });
 }
 
-/** Vue annuelle : un graphique par grandeur. */
-function renderSeparateCharts(kwhCanvas, costCanvas) {
-    const labels = readJson(kwhCanvas, 'labels');
-    const baseOptions = { responsive: true, aspectRatio: 4, plugins: { legend: { display: false } } };
-
-    new Chart(kwhCanvas, {
-        type: 'bar',
-        data: { labels, datasets: [{ label: 'kWh', data: readJson(kwhCanvas, 'values'), backgroundColor: KWH_COLOR }] },
-        options: baseOptions,
-    });
-
-    new Chart(costCanvas, {
-        type: 'bar',
-        data: { labels, datasets: [{ label: 'Coût (€)', data: readJson(costCanvas, 'values'), backgroundColor: COST_COLOR }] },
-        options: baseOptions,
-    });
-}
-
 document.addEventListener('DOMContentLoaded', () => {
-    const combined = document.getElementById('history-daily-chart');
+    const canvas = document.getElementById('history-combined-chart');
 
-    if (combined) {
-        renderCombinedChart(combined);
-
-        return;
-    }
-
-    const kwhCanvas = document.getElementById('history-kwh-chart');
-    const costCanvas = document.getElementById('history-cost-chart');
-
-    if (kwhCanvas && costCanvas) {
-        renderSeparateCharts(kwhCanvas, costCanvas);
+    if (canvas) {
+        renderCombinedChart(canvas);
     }
 });
