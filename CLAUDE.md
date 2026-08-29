@@ -148,6 +148,20 @@ Autres pièges relevés :
   après ajout d'une clé dans `.env`, un `config:clear` ne suffit pas, il faut recréer
   `ev-app` (`docker-compose rm -sf app && docker-compose up -d --no-deps app`).
 
+## Télémétrie : aucune rétention, jamais
+
+Les relevés de `vehicle_telemetries` sont conservés **indéfiniment**, y compris la
+colonne `raw` qui archive la réponse complète d'ABRP. C'est une demande explicite de
+l'utilisateur : ne rien purger.
+
+**Ne pas ajouter de purge, de `prune`, ni de tâche de nettoyage** sur cette table.
+
+Les `subDays()` que l'on trouve dans `MyVehicleController`, `PendingTelemetryCharges`
+et `ChargingCurveController::state()` sont des **fenêtres de lecture** pour l'affichage
+et la détection — elles ne suppriment rien. Le volume reste négligeable : une ligne par
+relevé, quelques centaines d'octets, et la voiture ne remonte un point qu'à la minute
+au maximum, uniquement en charge.
+
 ## Scheduler
 
 Depuis l'ajout de la télémétrie, l'application a un vrai scheduler Laravel
