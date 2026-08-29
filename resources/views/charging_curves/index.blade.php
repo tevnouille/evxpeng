@@ -34,7 +34,9 @@
                 <div class="column is-3">
                     <p class="heading">Batterie</p>
                     <p class="title is-4">{{ str_replace('.', ',', (string) $curve['battery_kwh']) }} kWh</p>
-                    <p class="has-text-grey is-size-7">{{ $curve['battery_type'] }}</p>
+                    @if (! empty($curve['battery_note']))
+                        <p class="has-text-grey is-size-7">{{ $curve['battery_note'] }}</p>
+                    @endif
                 </div>
                 <div class="column is-3">
                     <p class="heading">10 → 80 %</p>
