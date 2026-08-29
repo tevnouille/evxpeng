@@ -80,6 +80,39 @@
                         @endif
                     </div>
 
+                    @if ($telemetry->odometer !== null)
+                        <div class="column is-3">
+                            <p class="heading">Odomètre</p>
+                            <p class="title is-3">{{ number_format($telemetry->odometer, 0, ',', ' ') }} km</p>
+                        </div>
+                    @endif
+
+                    @if ($telemetry->soh !== null)
+                        <div class="column is-3">
+                            <p class="heading">Santé batterie</p>
+                            <p class="title is-3">{{ str_replace('.', ',', rtrim(rtrim((string) $telemetry->soh, '0'), '.')) }} %</p>
+                            <p class="has-text-grey is-size-7">100 % = aucune dégradation</p>
+                        </div>
+                    @endif
+
+                    @if ($telemetry->batt_temp !== null)
+                        <div class="column is-3">
+                            <p class="heading">Température batterie</p>
+                            <p class="title is-3">{{ str_replace('.', ',', rtrim(rtrim((string) $telemetry->batt_temp, '0'), '.')) }} °C</p>
+                        </div>
+                    @endif
+
+                    @if ($telemetry->power_kw !== null)
+                        <div class="column is-3">
+                            <p class="heading">Puissance instantanée</p>
+                            <p class="title is-3">{{ str_replace('.', ',', (string) round(abs((float) $telemetry->power_kw), 1)) }} kW</p>
+                            {{-- Convention ABRP : negatif = energie entrante (charge ou regeneration). --}}
+                            <p class="has-text-grey is-size-7">
+                                {{ (float) $telemetry->power_kw < 0 ? 'entrante (charge ou régénération)' : 'consommée' }}
+                            </p>
+                        </div>
+                    @endif
+
                     <div class="column is-3">
                         <p class="heading">Dernier relevé</p>
                         <p class="title is-5">{{ $telemetry->recorded_at->diffForHumans() }}</p>

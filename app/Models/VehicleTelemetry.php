@@ -18,6 +18,14 @@ class VehicleTelemetry extends Model
         'lat',
         'lon',
         'telemetry_type',
+        'odometer',
+        'soh',
+        'power_kw',
+        'batt_temp',
+        'ext_temp',
+        'speed',
+        'is_dcfc',
+        'is_parked',
         'raw',
     ];
 
@@ -29,6 +37,13 @@ class VehicleTelemetry extends Model
         'lat' => 'float',
         'lon' => 'float',
         'raw' => 'array',
+        'soh' => 'decimal:1',
+        'power_kw' => 'decimal:3',
+        'batt_temp' => 'decimal:1',
+        'ext_temp' => 'decimal:1',
+        'speed' => 'decimal:1',
+        'is_dcfc' => 'boolean',
+        'is_parked' => 'boolean',
     ];
 
     public function vehicle(): BelongsTo

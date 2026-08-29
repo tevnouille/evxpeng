@@ -59,6 +59,16 @@ class PollAbrpTelemetry extends Command
                     'lat' => $telemetry['lat'] ?? null,
                     'lon' => $telemetry['lon'] ?? null,
                     'telemetry_type' => $result['telemetry_type'] ?? null,
+                    // Champs presents uniquement quand la source les pousse : le
+                    // cloud constructeur seul ne fournit ni odometre ni SoH.
+                    'odometer' => $telemetry['odometer'] ?? null,
+                    'soh' => $telemetry['soh'] ?? null,
+                    'power_kw' => $telemetry['power'] ?? null,
+                    'batt_temp' => $telemetry['batt_temp'] ?? null,
+                    'ext_temp' => $telemetry['ext_temp'] ?? null,
+                    'speed' => $telemetry['speed'] ?? null,
+                    'is_dcfc' => isset($telemetry['is_dcfc']) ? (bool) $telemetry['is_dcfc'] : null,
+                    'is_parked' => isset($telemetry['is_parked']) ? (bool) $telemetry['is_parked'] : null,
                     'raw' => $result,
                 ]
             );
