@@ -7,6 +7,7 @@ use App\Http\Controllers\FuelPriceController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\MyVehicleController;
 use App\Http\Controllers\ReferenceDataController;
+use App\Http\Controllers\TripMapController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/recharges');
@@ -23,6 +24,8 @@ Route::get('/dashboard/data', [DashboardController::class, 'data'])->name('dashb
 Route::get('/carburants', [FuelPriceController::class, 'index'])->name('fuel-prices.index');
 
 Route::get('/ma-voiture', [MyVehicleController::class, 'index'])->name('my-vehicle.index');
+
+Route::get('/deplacements', [TripMapController::class, 'index'])->name('trips.index');
 
 Route::get('/courbe-de-recharge', [ChargingCurveController::class, 'index'])->name('charging-curves.index');
 Route::get('/courbe-de-recharge/etat/{vehicle}', [ChargingCurveController::class, 'state'])->name('charging-curves.state');

@@ -200,10 +200,14 @@ document.addEventListener('DOMContentLoaded', () => {
 // La page interroge notre propre endpoint, pas ABRP : c'est la commande
 // planifiee qui va chercher la donnee. En charge, la planification passe a la
 // minute, donc un sondage toutes les 30 s suffit a ne rien manquer. A l'arret,
-// la donnee bouge une fois par heure : inutile de sonder.
+// la donnee bouge une fois par heure : inutile de sonder souvent.
 
 const LIVE_INTERVAL_CHARGING = 30000;
 const LIVE_INTERVAL_IDLE = 300000;
+
+let liveLastRefresh = null;
+let liveNextRefresh = null;
+let liveCharging = false;
 
 function frenchNumber(value, digits = 1) {
     return value === null || value === undefined
@@ -250,6 +254,30 @@ function renderLiveRemaining(state) {
         .join('');
 }
 
+// Ligne d'etat du rafraichissement, reecrite chaque seconde pour que le compte a
+// rebours avance meme entre deux appels reseau.
+function renderRefreshLine() {
+    const node = document.getElementById('tlm-refreshed');
+
+    if (!node || liveLastRefresh === null) {
+        return;
+    }
+
+    const stamp = `${liveLastRefresh.toLocaleDateString('fr-FR')} à ${liveLastRefresh.toLocaleTimeString('fr-FR')}`;
+
+    if (!liveCharging || liveNextRefresh === null) {
+        node.textContent = `Actualisée le ${stamp}.`;
+
+        return;
+    }
+
+    const seconds = Math.max(0, Math.round((liveNextRefresh - Date.now()) / 1000));
+
+    node.textContent = seconds === 0
+        ? `Actualisée le ${stamp} — actualisation en cours…`
+        : `Actualisée le ${stamp} — prochaine dans ${seconds} s.`;
+}
+
 function applyState(state) {
     if (!state.available) {
         return;
@@ -286,13 +314,13 @@ function applyState(state) {
 
     setText('tlm-power', frenchNumber(state.power_kw));
     setText('tlm-power-sense', state.power_incoming === null
-        ? ' '
+        ? ' '
         : (state.power_incoming ? 'entrante' : 'consommée'));
     setText('tlm-batt-temp', frenchNumber(state.batt_temp));
     setText('tlm-session-kwh', frenchNumber(state.session_kwh, 2));
 
     setText('tlm-session-detail', state.session_soc_start === null || state.session_soc_start === undefined
-        ? ' '
+        ? ' '
         : `depuis ${Math.round(state.session_soc_start)} % — ${state.session_started_at}`);
 
     setText('tlm-session-duration', state.session_minutes === null || state.session_minutes === undefined
@@ -303,8 +331,9 @@ function applyState(state) {
 
     setText('tlm-recorded', `${state.recorded_at_human} (${state.recorded_at})`);
 
-    const now = new Date();
-    setText('tlm-refreshed', `Page actualisée à ${now.toLocaleTimeString('fr-FR')}.`);
+    liveLastRefresh = new Date();
+    liveCharging = state.is_charging;
+    renderRefreshLine();
 }
 
 function startLiveUpdates() {
@@ -316,17 +345,22 @@ function startLiveUpdates() {
 
     let timer = null;
 
-    const schedule = (charging) => {
+    liveCharging = box.dataset.charging === '1';
+
+    const interval = () => (liveCharging ? LIVE_INTERVAL_CHARGING : LIVE_INTERVAL_IDLE);
+
+    const schedule = () => {
         if (timer) {
             clearInterval(timer);
         }
 
-        timer = setInterval(refresh, charging ? LIVE_INTERVAL_CHARGING : LIVE_INTERVAL_IDLE);
+        timer = setInterval(refresh, interval());
+        liveNextRefresh = Date.now() + interval();
     };
 
-    let charging = box.dataset.charging === '1';
-
     async function refresh() {
+        liveNextRefresh = Date.now() + interval();
+
         try {
             const response = await fetch(box.dataset.url, { headers: { Accept: 'application/json' } });
 
@@ -335,21 +369,25 @@ function startLiveUpdates() {
             }
 
             const state = await response.json();
+            const wasCharging = liveCharging;
+
             applyState(state);
 
             // Le rythme suit l'etat : inutile de sonder toutes les 30 s une
             // voiture debranchee, ni d'attendre 5 min quand elle charge.
-            if (state.available && state.is_charging !== charging) {
-                charging = state.is_charging;
-                schedule(charging);
+            if (state.available && state.is_charging !== wasCharging) {
+                schedule();
             }
         } catch (error) {
             // Reseau indisponible : on retentera au prochain tick.
         }
     }
 
-    schedule(charging);
+    schedule();
     refresh();
+
+    // Le compte a rebours avance seul, independamment des appels reseau.
+    setInterval(renderRefreshLine, 1000);
 }
 
 startLiveUpdates();
