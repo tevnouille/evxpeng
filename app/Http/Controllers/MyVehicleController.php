@@ -50,7 +50,19 @@ class MyVehicleController extends Controller
         $consumption = $vehicle?->kwh_per_100km ? (float) $vehicle->kwh_per_100km : null;
         $rangeKm = ($availableKwh !== null && $consumption) ? (int) round($availableKwh / $consumption * 100) : null;
 
+        // Champs presents dans la reponse ABRP mais sans colonne dediee : on les
+        // lit dans la charge brute, ce qui evite une migration a chaque champ que
+        // le constructeur ou le dongle se met a remonter.
+        $raw = $telemetry?->raw ?? [];
+        $rawTelemetry = $raw['telemetry'] ?? [];
+
         return view('my_vehicle.index', [
+            'heading' => $rawTelemetry['heading'] ?? null,
+            'headingLabel' => $this->cardinal($rawTelemetry['heading'] ?? null),
+            'typecode' => $raw['typecode'] ?? null,
+            'isConnected' => $raw['is_connected'] ?? null,
+            'rawTelemetry' => $rawTelemetry,
+            'rawEnvelope' => array_diff_key($raw, ['telemetry' => null]),
             'vehicles' => $vehicles,
             'vehicle' => $vehicle,
             'telemetry' => $telemetry,
@@ -66,5 +78,19 @@ class MyVehicleController extends Controller
             'chartCharging' => $history->pluck('is_charging')->map(fn ($v) => (bool) $v)->values(),
             'pointCount' => $history->count(),
         ]);
+    }
+
+    /**
+     * Cap en degres vers un point cardinal sur 16 secteurs.
+     */
+    private function cardinal(?float $heading): ?string
+    {
+        if ($heading === null) {
+            return null;
+        }
+
+        $points = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSO', 'SO', 'OSO', 'O', 'ONO', 'NO', 'NNO'];
+
+        return $points[(int) round(((float) $heading % 360) / 22.5) % 16];
     }
 }

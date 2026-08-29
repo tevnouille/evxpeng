@@ -113,6 +113,45 @@
                         </div>
                     @endif
 
+                    @if ($telemetry->speed !== null)
+                        <div class="column is-3">
+                            <p class="heading">Vitesse</p>
+                            <p class="title is-3">{{ (int) round((float) $telemetry->speed) }} km/h</p>
+                            @if ((float) $telemetry->speed < 1)
+                                <p class="has-text-grey is-size-7">à l'arrêt</p>
+                            @endif
+                        </div>
+                    @endif
+
+                    @if ($heading !== null)
+                        <div class="column is-3">
+                            <p class="heading">Cap</p>
+                            <p class="title is-3">{{ $headingLabel }}</p>
+                            <p class="has-text-grey is-size-7">{{ (int) round((float) $heading) }}°</p>
+                        </div>
+                    @endif
+
+                    @if ($telemetry->ext_temp !== null)
+                        <div class="column is-3">
+                            <p class="heading">Température extérieure</p>
+                            <p class="title is-3">{{ str_replace('.', ',', rtrim(rtrim((string) $telemetry->ext_temp, '0'), '.')) }} °C</p>
+                        </div>
+                    @endif
+
+                    <div class="column is-3">
+                        <p class="heading">Liaison</p>
+                        <p class="title is-4">
+                            @if ($isConnected)
+                                <span class="tag is-success is-medium">connectée</span>
+                            @else
+                                <span class="tag is-warning is-medium">déconnectée</span>
+                            @endif
+                        </p>
+                        <p class="has-text-grey is-size-7">
+                            source <code>{{ $telemetry->telemetry_type ?? 'inconnue' }}</code>
+                        </p>
+                    </div>
+
                     <div class="column is-3">
                         <p class="heading">Dernier relevé</p>
                         <p class="title is-5">{{ $telemetry->recorded_at->diffForHumans() }}</p>
@@ -145,6 +184,47 @@
                 @endif
             </div>
         @endif
+
+        <div class="box">
+            <h2 class="title is-5">Relevé brut</h2>
+            <p class="has-text-grey is-size-7 mb-4">
+                Réponse complète d'ABRP pour le dernier relevé, sans filtre.
+                Ce que renvoie l'API dépend de la source : le cloud du constructeur seul ne fournit que
+                le niveau de charge et la position, le dongle OBD y ajoute le compteur, la santé de la
+                batterie, la puissance et les températures. Tout champ que la voiture se mettrait à
+                remonter apparaîtra ici automatiquement.
+                @if ($typecode)
+                    Modèle déclaré à ABRP : <code>{{ $typecode }}</code>.
+                @endif
+            </p>
+
+            <details>
+                <summary class="is-clickable has-text-link">Afficher les {{ count($rawTelemetry) + count($rawEnvelope) }} champs</summary>
+
+                <div class="table-container mt-3">
+                    <table class="table is-fullwidth is-narrow is-striped">
+                        <tbody>
+                            @foreach ($rawTelemetry as $key => $value)
+                                <tr>
+                                    <td><code>{{ $key }}</code></td>
+                                    <td class="has-text-right">
+                                        {{ $value === null ? '—' : (is_bool($value) ? ($value ? 'oui' : 'non') : $value) }}
+                                    </td>
+                                </tr>
+                            @endforeach
+                            @foreach ($rawEnvelope as $key => $value)
+                                <tr class="has-text-grey">
+                                    <td><code>{{ $key }}</code></td>
+                                    <td class="has-text-right">
+                                        {{ $value === null ? '—' : (is_bool($value) ? ($value ? 'oui' : 'non') : $value) }}
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+        </div>
 
         <div class="box">
             <div class="level is-mobile mb-4">
