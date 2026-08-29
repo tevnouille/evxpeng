@@ -79,22 +79,11 @@ Modèle actuellement présent : Xpeng G6 AWD Performance MY2023/MY2024.
 
 ## Installation
 
-```bash
-cp .env.example .env
-docker-compose up -d
-docker exec ev-app php artisan key:generate
-docker exec ev-app php artisan migrate
-```
+Voir [INSTALL.md](INSTALL.md) pour la procédure complète : configuration,
+démarrage des conteneurs, build des assets, données de référence à saisir et
+import de l'historique des prix des carburants.
 
-Construire les assets (le conteneur applicatif n'embarque pas npm) :
-
-```bash
-docker run --rm -v "$(pwd)":/app -w /app node:20-alpine npm install
-docker run --rm -v "$(pwd)":/app -w /app node:20-alpine npm run build
-```
-
-Renseigner ensuite le véhicule et ses consommations dans `/admin/vehicules`,
-sans quoi l'équivalence carburant restera vide.
+Seuls Docker et Docker Compose sont nécessaires sur la machine hôte.
 
 ## Commandes utiles
 

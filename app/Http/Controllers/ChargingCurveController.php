@@ -41,8 +41,9 @@ class ChargingCurveController extends Controller
         }
 
         foreach ($points as $index => $point) {
+            // Capacite nette non calculee ici : elle serait identique a la colonne
+            // "Energie chargee" de la courbe (evkx compte l'energie sur la capacite utile).
             $points[$index]['battery_gross_kwh'] = round($point['soc'] * $curve['battery_kwh'] / 100, 1);
-            $points[$index]['battery_net_kwh'] = round($point['soc'] * $curve['battery_net_kwh'] / 100, 1);
 
             foreach ($targets as $target) {
                 // Une cible deja atteinte (ou absente de la courbe) n'a pas de temps restant.

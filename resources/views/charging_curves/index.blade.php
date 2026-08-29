@@ -84,7 +84,6 @@
                             <th>SoC</th>
                             <th class="has-text-right">Puissance</th>
                             <th class="has-text-right">Capacité brute</th>
-                            <th class="has-text-right">Capacité nette</th>
                             <th class="has-text-right">Temps cumulé</th>
                             <th class="has-text-right">Énergie chargée</th>
                         </tr>
@@ -95,7 +94,6 @@
                                 <td>{{ $point['soc'] }} %</td>
                                 <td class="has-text-right">{{ str_replace('.', ',', (string) $point['kw']) }} kW</td>
                                 <td class="has-text-right">{{ str_replace('.', ',', (string) $point['battery_gross_kwh']) }} kWh</td>
-                                <td class="has-text-right">{{ str_replace('.', ',', (string) $point['battery_net_kwh']) }} kWh</td>
                                 <td class="has-text-right">{{ $point['time'] }}</td>
                                 <td class="has-text-right">{{ str_replace('.', ',', (string) $point['kwh']) }} kWh</td>
                             </tr>
