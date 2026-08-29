@@ -101,13 +101,11 @@
         </p>
 
         <div class="box">
-            <h2 class="title is-5">Quantité de recharge par jour (kWh)</h2>
-            <canvas id="history-kwh-chart" data-labels='@json($dailyLabels)' data-values='@json($dailyKwh)'></canvas>
-        </div>
-
-        <div class="box">
-            <h2 class="title is-5">Coût de recharge par jour (€)</h2>
-            <canvas id="history-cost-chart" data-labels='@json($dailyLabels)' data-values='@json($dailyCost)'></canvas>
+            <h2 class="title is-5">Recharges par jour</h2>
+            <canvas id="history-daily-chart"
+                data-labels='@json($dailyLabels)'
+                data-kwh='@json($dailyKwh)'
+                data-cost='@json($dailyCost)'></canvas>
         </div>
     @endif
 
