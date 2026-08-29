@@ -42,15 +42,19 @@ class ChargingCurveController extends Controller
         // mesuree pendant la charge. `has` et non `filled` : choisir "sans
         // limite" envoie borne= vide, et c'est un choix qu'il faut respecter.
         $capAuto = null;
+        // Puissance ayant servi a la deduction, pour pouvoir l'expliquer a
+        // l'utilisateur : c'est le maximum de la charge, pas la mesure du moment.
+        $capAutoPower = null;
 
-        if (! $request->has('borne')) {
-            $capAuto = $this->capFromMeasuredPower($vehicle?->latestTelemetry);
+        if (! $request->has('borne') && $vehicle?->latestTelemetry?->is_charging) {
+            $capAutoPower = $this->maxPowerThisSession($vehicle, $vehicle->latestTelemetry);
+            $capAuto = $this->capFromMeasuredPower($vehicle);
         }
 
         $cap = $capAuto ?? $this->requestedCap($request);
 
         if ($curve) {
-            $curve = $this->withDerivedColumns($curve, $cap);
+            $curve = $this->withDerivedColumns($curve, $cap, $vehicle?->kwh_per_100km);
         }
 
         // Niveau de charge remonte par ABRP, arrondi au point de courbe le plus
@@ -74,6 +78,7 @@ class ChargingCurveController extends Controller
             'chargerPowers' => self::CHARGER_POWERS,
             'cap' => $cap,
             'capAuto' => $capAuto,
+            'capAutoPower' => $capAutoPower,
         ]);
     }
 
@@ -96,7 +101,7 @@ class ChargingCurveController extends Controller
         $curve = $vehicle->charging_curve ? $this->curves->find($vehicle->charging_curve) : null;
 
         if ($curve) {
-            $curve = $this->withDerivedColumns($curve, $this->requestedCap($request));
+            $curve = $this->withDerivedColumns($curve, $this->requestedCap($request), $vehicle->kwh_per_100km);
         }
 
         $soc = $telemetry->soc !== null ? (float) $telemetry->soc : null;
@@ -173,16 +178,23 @@ class ChargingCurveController extends Controller
      * couvre la mesure — 8,5 kW mesures donnent 11 kW. Une borne 22 kW bridee
      * par le chargeur embarque sera vue comme une 11 kW, ce qui est justement la
      * puissance utile ici.
+     *
+     * On se fonde sur le *maximum* observe depuis le debut de la charge, et non
+     * sur la mesure instantanee : en fin de charge la voiture reduit d'elle-meme
+     * sa demande, et suivre cette baisse ferait retrograder la borne de 11 a
+     * 7,4 kW a 98 % — ce qui deformerait toute la courbe affichee.
      */
-    private function capFromMeasuredPower(?\App\Models\VehicleTelemetry $telemetry): ?float
+    private function capFromMeasuredPower(?Vehicle $vehicle): ?float
     {
-        if (! $telemetry || ! $telemetry->is_charging || $telemetry->power_kw === null) {
+        $telemetry = $vehicle?->latestTelemetry;
+
+        if (! $telemetry || ! $telemetry->is_charging) {
             return null;
         }
 
-        $measured = abs((float) $telemetry->power_kw);
+        $measured = $this->maxPowerThisSession($vehicle, $telemetry);
 
-        if ($measured <= 0) {
+        if ($measured === null || $measured <= 0) {
             return null;
         }
 
@@ -212,6 +224,32 @@ class ChargingCurveController extends Controller
     }
 
     /**
+     * Puissance maximale absorbee depuis le debut de la charge en cours.
+     */
+    private function maxPowerThisSession(Vehicle $vehicle, \App\Models\VehicleTelemetry $telemetry): ?float
+    {
+        // Remonter tant que la voiture etait en charge, sans depasser 24 h.
+        $rows = $vehicle->telemetries()
+            ->where('recorded_at', '>=', now()->subDay())
+            ->orderByDesc('recorded_at')
+            ->get();
+
+        $max = null;
+
+        foreach ($rows as $row) {
+            if (! $row->is_charging) {
+                break;
+            }
+
+            if ($row->power_kw !== null) {
+                $max = max($max ?? 0.0, abs((float) $row->power_kw));
+            }
+        }
+
+        return $max;
+    }
+
+    /**
      * Ajoute a chaque point la puissance reellement delivree par la borne, les
      * temps recalcules en consequence, l'energie presente dans la batterie et le
      * temps restant pour atteindre 80 / 90 / 100 %.
@@ -221,8 +259,12 @@ class ChargingCurveController extends Controller
      * du rapport entre sa puissance d'origine et la puissance bridee. Sans borne
      * selectionnee, le facteur vaut 1 et on retrouve exactement les durees source.
      */
-    private function withDerivedColumns(array $curve, ?float $cap = null): array
+    private function withDerivedColumns(array $curve, ?float $cap = null, $consumption = null): array
     {
+        // Autonomie theorique a chaque palier, d'apres la consommation saisie sur
+        // la fiche du vehicule. Aucune valeur par defaut : sans consommation
+        // renseignee, la colonne reste vide.
+        $consumption = $consumption === null ? null : (float) $consumption;
         $points = $curve['points'];
         $targets = [80, 90, 100];
 
@@ -249,6 +291,10 @@ class ChargingCurveController extends Controller
             // Capacite nette non calculee ici : elle serait identique a la colonne
             // "Energie chargee" de la courbe (evkx compte l'energie sur la capacite utile).
             $points[$index]['battery_gross_kwh'] = round($point['soc'] * $curve['battery_kwh'] / 100, 1);
+
+            $points[$index]['range_km'] = ($consumption !== null && $consumption > 0)
+                ? (int) round((float) $point['kwh'] / $consumption * 100)
+                : null;
 
             $previous = $point;
         }

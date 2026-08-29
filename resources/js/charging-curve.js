@@ -199,6 +199,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+
+// --- Tableaux : se placer sur la ligne du niveau actuel -------------------
+
+// Deplace la surbrillance sans faire defiler : pendant une charge la valeur
+// bouge toutes les minutes, et deplacer la vue sous les yeux du lecteur serait
+// plus genant qu'utile.
+function highlightCurrentRows(soc) {
+    document.querySelectorAll('[data-autoscroll] tr[data-soc]').forEach((row) => {
+        row.classList.toggle('is-selected', Number(row.dataset.soc) === soc);
+    });
+}
+
+// Au chargement seulement : on centre la ligne courante dans chaque tableau,
+// sinon il faut faire defiler jusqu'a son niveau de charge a chaque visite.
+function scrollToCurrentRow() {
+    document.querySelectorAll('[data-autoscroll]').forEach((container) => {
+        const row = container.querySelector('tr.is-selected');
+
+        if (!row) {
+            return;
+        }
+
+        // scrollIntoView ferait aussi defiler la page entiere ; on n'agit que
+        // sur le conteneur.
+        container.scrollTop = Math.max(0, row.offsetTop - (container.clientHeight / 2) + (row.offsetHeight / 2));
+    });
+}
+
+scrollToCurrentRow();
+
 // --- Rafraichissement du bloc "Niveau actuel" -----------------------------
 //
 // La page interroge notre propre endpoint, pas ABRP : c'est la commande
@@ -373,6 +403,10 @@ function applyState(state) {
 
     renderLiveRemaining(state);
     moveCurrentMarker(state);
+
+    if (state.soc_rounded !== null) {
+        highlightCurrentRows(state.soc_rounded);
+    }
 
     setText('tlm-recorded', `${state.recorded_at_human} (${state.recorded_at})`);
 

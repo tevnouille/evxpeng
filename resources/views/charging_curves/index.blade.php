@@ -48,8 +48,8 @@
                     </div>
                     @if ($capAuto !== null)
                         <p class="help is-success">
-                            Déduite de la puissance mesurée
-                            ({{ str_replace('.', ',', (string) round(abs((float) $telemetry->power_kw), 1)) }} kW).
+                            Déduite du maximum absorbé depuis le début de la charge
+                            ({{ str_replace('.', ',', (string) round((float) $capAutoPower, 1)) }} kW).
                             Vous pouvez la changer.
                         </p>
                     @endif
@@ -225,7 +225,7 @@
 
         <div class="box">
             <h2 class="title is-5">Détail de 0 à 100 %</h2>
-            <div class="table-scroll">
+            <div class="table-scroll" data-autoscroll>
                 <table class="table is-fullwidth is-striped is-narrow is-hoverable">
                     <thead>
                         <tr>
@@ -234,16 +234,20 @@
                             <th class="has-text-right">Capacité brute</th>
                             <th class="has-text-right">Temps cumulé</th>
                             <th class="has-text-right">Énergie chargée</th>
+                            <th class="has-text-right">Autonomie</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach ($curve['points'] as $point)
-                            <tr @class(['is-selected' => $currentSoc === $point['soc']])>
+                            <tr data-soc="{{ $point['soc'] }}" @class(['is-selected' => $currentSoc === $point['soc']])>
                                 <td>{{ $point['soc'] }} %</td>
                                 <td class="has-text-right">{{ str_replace('.', ',', (string) $point['kw_effective']) }} kW</td>
                                 <td class="has-text-right">{{ str_replace('.', ',', (string) $point['battery_gross_kwh']) }} kWh</td>
                                 <td class="has-text-right">{{ $point['time'] }}</td>
                                 <td class="has-text-right">{{ str_replace('.', ',', (string) $point['kwh']) }} kWh</td>
+                                <td class="has-text-right">
+                                    {{ $point['range_km'] !== null ? number_format($point['range_km'], 0, ',', ' ') . ' km' : '—' }}
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -263,7 +267,7 @@
                 data-to90='@json(collect($curve['points'])->pluck('to_90_minutes'))'
                 data-to100='@json(collect($curve['points'])->pluck('to_100_minutes'))'></canvas>
 
-            <div class="table-scroll">
+            <div class="table-scroll" data-autoscroll>
                 <table class="table is-fullwidth is-striped is-narrow is-hoverable">
                     <thead>
                         <tr>
@@ -275,7 +279,7 @@
                     </thead>
                     <tbody>
                         @foreach ($curve['points'] as $point)
-                            <tr @class(['is-selected' => $currentSoc === $point['soc']])>
+                            <tr data-soc="{{ $point['soc'] }}" @class(['is-selected' => $currentSoc === $point['soc']])>
                                 <td>{{ $point['soc'] }} %</td>
                                 <td class="has-text-right">{{ $point['to_80'] ?? '—' }}</td>
                                 <td class="has-text-right">{{ $point['to_90'] ?? '—' }}</td>
