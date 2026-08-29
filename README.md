@@ -67,6 +67,32 @@ explicitement.
 
 Modèle actuellement présent : Xpeng G6 AWD Performance MY2023/MY2024.
 
+### Ma voiture
+
+Page dédiée à l'état du véhicule : niveau de charge, énergie disponible, autonomie estimée
+(à partir de la consommation saisie sur la fiche), position, courbe du niveau de charge sur
+7 à 90 jours, et **recharges détectées**.
+
+ABRP n'expose aucune notion de session : elles sont reconstituées à partir des transitions du
+booléen « en charge » entre deux relevés. L'énergie affichée est celle *entrée dans la batterie*
+(écart de niveau × capacité utile), donc inférieure à celle *facturée à la borne*. D'où un bouton
+« Pré-remplir » qui amène vers le formulaire de saisie avec la date, la durée et l'énergie estimée,
+plutôt qu'un enregistrement automatique.
+
+La carte OpenStreetMap n'est chargée qu'au clic, pour ne pas transmettre la position du véhicule
+à chaque affichage de la page.
+
+### Puissance de borne sur la courbe de recharge
+
+Un sélecteur (7,4 / 11 / 50 / 150 / 300 kW) permet de voir la courbe telle qu'elle serait sur une
+borne bridée. À énergie constante, une puissance divisée par deux double la durée du segment :
+chaque intervalle est donc étiré du rapport entre sa puissance d'origine et la puissance bridée.
+Sans limite sélectionnée le facteur vaut 1, et la page retrouve exactement les durées d'evkx
+(vérifié : 21 m 1 s sur 10 → 80 %, 49 m 54 s sur 0 → 100 %).
+
+Les indicateurs de tête, les deux tableaux, les graphiques et le temps restant depuis le niveau
+réel suivent tous la borne choisie.
+
 ### Télémétrie du véhicule (ABRP)
 
 Le niveau de charge réel de la voiture est récupéré automatiquement via l'API

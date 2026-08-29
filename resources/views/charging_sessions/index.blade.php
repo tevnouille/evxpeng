@@ -38,7 +38,7 @@
                         <label class="label">Date</label>
                         <div class="control">
                             <input class="input" type="date" name="session_date" required
-                                value="{{ old('session_date', $editing?->session_date?->format('Y-m-d') ?? now()->format('Y-m-d')) }}">
+                                value="{{ old('session_date', $editing?->session_date?->format('Y-m-d') ?? ($prefill['session_date'] ?? now()->format('Y-m-d'))) }}">
                         </div>
                     </div>
                 </div>
@@ -110,7 +110,7 @@
                         <label class="label">Quantité (kWh)</label>
                         <div class="control">
                             <input class="input" type="number" step="0.01" min="0" name="quantity_kwh" id="quantity_kwh" required
-                                value="{{ old('quantity_kwh', $editing?->quantity_kwh) }}">
+                                value="{{ old('quantity_kwh', $editing?->quantity_kwh ?? ($prefill['quantity_kwh'] ?? null)) }}">
                         </div>
                     </div>
                 </div>
@@ -120,7 +120,7 @@
                         <label class="label">Durée de recharge</label>
                         <div class="control">
                             <input class="input" type="time" name="charge_duration"
-                                value="{{ old('charge_duration', $editing ? $editing->charge_duration?->format('H:i') : '00:00') }}">
+                                value="{{ old('charge_duration', $editing ? $editing->charge_duration?->format('H:i') : ($prefill['charge_duration'] ?? '00:00')) }}">
                         </div>
                     </div>
                 </div>

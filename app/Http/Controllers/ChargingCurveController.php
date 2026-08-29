@@ -9,6 +9,9 @@ use Illuminate\View\View;
 
 class ChargingCurveController extends Controller
 {
+    /** Puissances de borne proposees, en kW. */
+    public const CHARGER_POWERS = [7.4, 11.0, 50.0, 150.0, 300.0];
+
     public function __construct(private readonly ChargingCurveRepository $curves)
     {
     }
@@ -32,9 +35,10 @@ class ChargingCurveController extends Controller
         $vehicle = $vehicles->firstWhere('id', (int) $requested) ?? $vehicles->first();
 
         $curve = $vehicle ? $this->curves->find($vehicle->charging_curve) : null;
+        $cap = $this->requestedCap($request);
 
         if ($curve) {
-            $curve = $this->withDerivedColumns($curve);
+            $curve = $this->withDerivedColumns($curve, $cap);
         }
 
         // Niveau de charge remonte par ABRP, arrondi au point de courbe le plus
@@ -55,28 +59,73 @@ class ChargingCurveController extends Controller
             'telemetry' => $telemetry,
             'currentSoc' => $currentSoc,
             'currentPoint' => $currentPoint,
+            'chargerPowers' => self::CHARGER_POWERS,
+            'cap' => $cap,
         ]);
     }
 
     /**
-     * Ajoute a chaque point : l'energie presente dans la batterie a ce niveau
-     * de charge, et le temps restant pour atteindre 80 / 90 / 100 %.
+     * Puissance maximale de la borne choisie, ou null pour la courbe brute.
      */
-    private function withDerivedColumns(array $curve): array
+    private function requestedCap(Request $request): ?float
+    {
+        $value = $request->query('borne');
+
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $value = (float) str_replace(',', '.', (string) $value);
+
+        return in_array($value, self::CHARGER_POWERS, true) ? $value : null;
+    }
+
+    /**
+     * Ajoute a chaque point la puissance reellement delivree par la borne, les
+     * temps recalcules en consequence, l'energie presente dans la batterie et le
+     * temps restant pour atteindre 80 / 90 / 100 %.
+     *
+     * Le bridage n'ecrase pas les mesures d'evkx : a energie egale, une puissance
+     * divisee par deux double la duree du segment. On etire donc chaque intervalle
+     * du rapport entre sa puissance d'origine et la puissance bridee. Sans borne
+     * selectionnee, le facteur vaut 1 et on retrouve exactement les durees source.
+     */
+    private function withDerivedColumns(array $curve, ?float $cap = null): array
     {
         $points = $curve['points'];
         $targets = [80, 90, 100];
 
-        $secondsBySoc = [];
-        foreach ($points as $point) {
-            $secondsBySoc[$point['soc']] = $this->toSeconds($point['time']);
-        }
+        $cumulative = 0.0;
+        $previous = null;
 
         foreach ($points as $index => $point) {
+            $kw = (float) $point['kw'];
+            $points[$index]['kw_effective'] = round($cap !== null ? min($cap, $kw) : $kw, 1);
+
+            if ($previous !== null) {
+                $elapsed = $this->toSeconds($point['time']) - $this->toSeconds($previous['time']);
+                // La puissance representative du segment est la moyenne de ses
+                // bornes : c'est elle qu'encode implicitement la duree relevee.
+                $average = ((float) $previous['kw'] + $kw) / 2;
+                $limited = $cap !== null ? min($cap, $average) : $average;
+
+                $cumulative += $limited > 0 ? $elapsed * ($average / $limited) : 0;
+            }
+
+            $points[$index]['seconds'] = (int) round($cumulative);
+            $points[$index]['time'] = $this->formatDuration((int) round($cumulative));
+
             // Capacite nette non calculee ici : elle serait identique a la colonne
             // "Energie chargee" de la courbe (evkx compte l'energie sur la capacite utile).
             $points[$index]['battery_gross_kwh'] = round($point['soc'] * $curve['battery_kwh'] / 100, 1);
 
+            $previous = $point;
+        }
+
+        $secondsBySoc = array_column($points, 'seconds', 'soc');
+        $kwhBySoc = array_column($points, 'kwh', 'soc');
+
+        foreach ($points as $index => $point) {
             foreach ($targets as $target) {
                 // Une cible deja atteinte (ou absente de la courbe) n'a pas de temps restant.
                 $reached = $point['soc'] >= $target || ! isset($secondsBySoc[$target]);
@@ -89,8 +138,55 @@ class ChargingCurveController extends Controller
         }
 
         $curve['points'] = $points;
+        $curve['charger_kw'] = $cap;
+
+        // Les indicateurs de tete doivent suivre le bridage, sans quoi la page
+        // afficherait 300 kW et 21 minutes au-dessus d'un tableau qui dit l'inverse.
+        if ($cap !== null) {
+            $curve['max_power_kw'] = round(min($cap, (float) $curve['max_power_kw']), 1);
+        }
+
+        $curve['time_10_80'] = $this->spanLabel($secondsBySoc, 10, 80);
+        $curve['avg_10_80_kw'] = $this->averagePower($secondsBySoc, $kwhBySoc, 10, 80);
+        $curve['time_0_100'] = $this->spanLabel($secondsBySoc, 0, 100);
+        $curve['avg_0_100_kw'] = $this->averagePower($secondsBySoc, $kwhBySoc, 0, 100);
 
         return $curve;
+    }
+
+    /**
+     * @param  array<int, int>  $secondsBySoc
+     */
+    private function spanLabel(array $secondsBySoc, int $from, int $to): string
+    {
+        if (! isset($secondsBySoc[$from], $secondsBySoc[$to])) {
+            return '—';
+        }
+
+        $seconds = $secondsBySoc[$to] - $secondsBySoc[$from];
+        $hours = intdiv($seconds, 3600);
+        $label = sprintf('%d m %d s', intdiv($seconds % 3600, 60), $seconds % 60);
+
+        return $hours > 0 ? sprintf('%d h %s', $hours, $label) : $label;
+    }
+
+    /**
+     * @param  array<int, int>  $secondsBySoc
+     * @param  array<int, float>  $kwhBySoc
+     */
+    private function averagePower(array $secondsBySoc, array $kwhBySoc, int $from, int $to): ?float
+    {
+        if (! isset($secondsBySoc[$from], $secondsBySoc[$to], $kwhBySoc[$from], $kwhBySoc[$to])) {
+            return null;
+        }
+
+        $seconds = $secondsBySoc[$to] - $secondsBySoc[$from];
+
+        if ($seconds <= 0) {
+            return null;
+        }
+
+        return round(((float) $kwhBySoc[$to] - (float) $kwhBySoc[$from]) / ($seconds / 3600), 1);
     }
 
     private function toSeconds(string $time): int

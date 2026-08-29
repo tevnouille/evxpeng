@@ -23,6 +23,16 @@ class ChargingSessionController extends Controller
             $duplicateFrom = ChargingSession::find($request->query('duplicate'));
         }
 
+        // Pre-remplissage depuis une recharge detectee par la telemetrie (page
+        // Ma voiture). Volontairement limite a ce que la telemetrie sait : ni
+        // fournisseur ni cout, qui restent a la saisie de l'utilisateur.
+        $prefill = [
+            'session_date' => $request->query('prefill_date'),
+            'quantity_kwh' => $request->query('prefill_kwh'),
+            'charge_duration' => $request->query('prefill_duration'),
+            'vehicle_id' => $request->query('prefill_vehicle'),
+        ];
+
         return view('charging_sessions.index', [
             'sessions' => $this->recentSessions(),
             'vehicles' => Vehicle::orderBy('name')->get(),
@@ -31,6 +41,7 @@ class ChargingSessionController extends Controller
             'powerRatings' => PowerRating::orderBy('kw')->get(),
             'editing' => null,
             'duplicateFrom' => $duplicateFrom,
+            'prefill' => $prefill,
         ]);
     }
 
@@ -44,6 +55,7 @@ class ChargingSessionController extends Controller
             'powerRatings' => PowerRating::orderBy('kw')->get(),
             'editing' => $chargingSession,
             'duplicateFrom' => null,
+            'prefill' => [],
         ]);
     }
 

@@ -11,22 +11,44 @@
             Associez-en une depuis <a href="{{ route('reference-data.vehicles.index') }}">Administration &rarr; Véhicules</a>.
         </div>
     @else
-        @if ($vehicles->count() > 1)
-            <div class="field">
-                <label class="label">Véhicule</label>
-                <div class="control">
-                    <div class="select">
-                        <select onchange="window.location.href = '{{ route('charging-curves.index') }}?vehicule=' + this.value">
-                            @foreach ($vehicles as $v)
-                                <option value="{{ $v->id }}" @selected($v->id === $vehicle->id)>
-                                    {{ $v->name }}{{ $v->is_default ? ' (par défaut)' : '' }}
-                                </option>
-                            @endforeach
-                        </select>
+        <div class="columns">
+            @if ($vehicles->count() > 1)
+                <div class="column is-narrow">
+                    <div class="field">
+                        <label class="label">Véhicule</label>
+                        <div class="control">
+                            <div class="select">
+                                <select onchange="window.location.search = new URLSearchParams({vehicule: this.value, borne: '{{ $cap }}'}).toString()">
+                                    @foreach ($vehicles as $v)
+                                        <option value="{{ $v->id }}" @selected($v->id === $vehicle->id)>
+                                            {{ $v->name }}{{ $v->is_default ? ' (par défaut)' : '' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            <div class="column is-narrow">
+                <div class="field">
+                    <label class="label">Puissance de la borne</label>
+                    <div class="control">
+                        <div class="select">
+                            <select onchange="window.location.search = new URLSearchParams({vehicule: '{{ $vehicle->id }}', borne: this.value}).toString()">
+                                <option value="" @selected($cap === null)>Sans limite (courbe véhicule)</option>
+                                @foreach ($chargerPowers as $power)
+                                    <option value="{{ $power }}" @selected($cap === $power)>
+                                        {{ str_replace('.', ',', rtrim(rtrim(number_format($power, 1, '.', ''), '0'), '.')) }} kW
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
-        @endif
+        </div>
 
         <div class="box">
             <h2 class="title is-5">
@@ -36,7 +58,7 @@
 
             <div class="columns is-multiline">
                 <div class="column is-3">
-                    <p class="heading">Puissance max (DC)</p>
+                    <p class="heading">{{ $cap !== null ? 'Puissance max (borne)' : 'Puissance max (DC)' }}</p>
                     <p class="title is-4">{{ $curve['max_power_kw'] }} kW</p>
                 </div>
                 <div class="column is-3">
@@ -61,10 +83,19 @@
                 </div>
             </div>
 
-            <p class="has-text-grey is-size-7">
-                Plage de charge optimale : <strong>{{ $curve['optimal_range'] }}</strong> &middot;
-                Taux C maximal : <strong>{{ $curve['max_c_rate'] }}</strong>
-            </p>
+            @if ($cap === null)
+                <p class="has-text-grey is-size-7">
+                    Plage de charge optimale : <strong>{{ $curve['optimal_range'] }}</strong> &middot;
+                    Taux C maximal : <strong>{{ $curve['max_c_rate'] }}</strong>
+                </p>
+            @else
+                <p class="has-text-grey is-size-7">
+                    Durées et puissances recalculées pour une borne limitée à
+                    <strong>{{ str_replace('.', ',', rtrim(rtrim(number_format($cap, 1, '.', ''), '0'), '.')) }} kW</strong> :
+                    à énergie égale, une puissance bridée allonge d'autant la durée du segment concerné.
+                    Les segments où la voiture demandait déjà moins que la borne sont inchangés.
+                </p>
+            @endif
 
             @if (! empty($curve['consumption_wltp_kwh_100km']))
                 <p class="has-text-grey is-size-7 mt-2">
@@ -142,7 +173,7 @@
             <h2 class="title is-5">Puissance de charge selon le niveau de batterie</h2>
             <canvas id="curve-power-chart"
                 data-labels='@json(collect($curve['points'])->pluck('soc'))'
-                data-values='@json(collect($curve['points'])->pluck('kw'))'></canvas>
+                data-values='@json(collect($curve['points'])->pluck('kw_effective'))'></canvas>
         </div>
 
         <div class="box">
@@ -162,7 +193,7 @@
                         @foreach ($curve['points'] as $point)
                             <tr @class(['is-selected' => $currentSoc === $point['soc']])>
                                 <td>{{ $point['soc'] }} %</td>
-                                <td class="has-text-right">{{ str_replace('.', ',', (string) $point['kw']) }} kW</td>
+                                <td class="has-text-right">{{ str_replace('.', ',', (string) $point['kw_effective']) }} kW</td>
                                 <td class="has-text-right">{{ str_replace('.', ',', (string) $point['battery_gross_kwh']) }} kWh</td>
                                 <td class="has-text-right">{{ $point['time'] }}</td>
                                 <td class="has-text-right">{{ str_replace('.', ',', (string) $point['kwh']) }} kWh</td>
