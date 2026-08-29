@@ -108,6 +108,52 @@
                 data-kwh='@json($dailyKwh)'
                 data-cost='@json($dailyCost)'></canvas>
         </div>
+
+        <div class="box">
+            <h2 class="title is-5">Par fournisseur</h2>
+            <div class="table-container">
+                <table class="table is-fullwidth is-striped is-hoverable">
+                    <thead>
+                        <tr>
+                            <th>Fournisseur</th>
+                            <th class="has-text-right">Recharges</th>
+                            <th class="has-text-right">kWh</th>
+                            <th class="has-text-right">Coût</th>
+                            <th class="has-text-right">Coût / kWh</th>
+                            <th class="has-text-right">Part du coût</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($statsByProvider as $providerName => $row)
+                            <tr>
+                                <td>{{ $providerName }}</td>
+                                <td class="has-text-right">{{ $row['count'] }}</td>
+                                <td class="has-text-right">{{ number_format($row['kwh'], 2, ',', ' ') }}</td>
+                                <td class="has-text-right">{{ number_format($row['cost'], 2, ',', ' ') }} €</td>
+                                <td class="has-text-right">
+                                    {{ $row['avg_cost_per_kwh'] !== null ? number_format($row['avg_cost_per_kwh'], 4, ',', ' ') . ' €' : '—' }}
+                                </td>
+                                <td class="has-text-right">
+                                    {{ $row['cost_share'] !== null ? number_format($row['cost_share'], 1, ',', ' ') . ' %' : '—' }}
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th>Total</th>
+                            <th class="has-text-right">{{ $stats['sessions_count'] }}</th>
+                            <th class="has-text-right">{{ number_format($stats['kwh'], 2, ',', ' ') }}</th>
+                            <th class="has-text-right">{{ number_format($stats['cost'], 2, ',', ' ') }} €</th>
+                            <th class="has-text-right">
+                                {{ $stats['avg_cost_per_kwh'] !== null ? number_format($stats['avg_cost_per_kwh'], 4, ',', ' ') . ' €' : '—' }}
+                            </th>
+                            <th class="has-text-right">100 %</th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
     @endif
 
     @include('charging_sessions._sessions_table', ['emptyMessage' => 'Aucune recharge ce mois-ci.'])

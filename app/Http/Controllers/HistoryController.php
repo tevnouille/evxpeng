@@ -81,6 +81,24 @@ class HistoryController extends Controller
             $dailyCost[] = round((float) $daySessions->sum('total_cost'), 2);
         }
 
+        // Le provider est deja charge via with() : on regroupe en memoire plutot que
+        // de relancer une requete agregee.
+        $statsByProvider = $sessions
+            ->groupBy(fn ($session) => $session->provider?->name ?? 'Inconnu')
+            ->map(function ($providerSessions) use ($totalCost) {
+                $kwh = (float) $providerSessions->sum('quantity_kwh');
+                $cost = (float) $providerSessions->sum('total_cost');
+
+                return [
+                    'count' => $providerSessions->count(),
+                    'kwh' => $kwh,
+                    'cost' => $cost,
+                    'avg_cost_per_kwh' => $kwh > 0 ? $cost / $kwh : null,
+                    'cost_share' => $totalCost > 0 ? $cost / $totalCost * 100 : null,
+                ];
+            })
+            ->sortByDesc('cost');
+
         $equivalenceRows = $sessions->map(fn ($session) => (object) [
             'session_date' => $session->session_date,
             'quantity_kwh' => (float) $session->quantity_kwh,
@@ -102,6 +120,7 @@ class HistoryController extends Controller
             'dailyLabels' => $dailyLabels,
             'dailyKwh' => $dailyKwh,
             'dailyCost' => $dailyCost,
+            'statsByProvider' => $statsByProvider,
             'stats' => [
                 'kwh' => $totalKwh,
                 'cost' => $totalCost,
