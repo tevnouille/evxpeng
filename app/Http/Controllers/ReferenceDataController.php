@@ -6,9 +6,11 @@ use App\Models\Location;
 use App\Models\PowerRating;
 use App\Models\Provider;
 use App\Models\Vehicle;
+use App\Services\ChargingCurveRepository;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class ReferenceDataController extends Controller
@@ -23,17 +25,19 @@ class ReferenceDataController extends Controller
         ]);
     }
 
-    public function vehicles(): View
+    public function vehicles(ChargingCurveRepository $curves): View
     {
         return view('reference_data.vehicles', [
             'vehicles' => Vehicle::withCount('chargingSessions')->orderBy('name')->get(),
+            'curves' => $curves->all(),
         ]);
     }
 
-    public function storeVehicle(Request $request): RedirectResponse
+    public function storeVehicle(Request $request, ChargingCurveRepository $curves): RedirectResponse
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:vehicles,name'],
+            'charging_curve' => ['nullable', 'string', Rule::in($curves->slugs())],
             'kwh_per_100km' => ['nullable', 'numeric', 'min:0'],
             'essence_l_per_100km' => ['nullable', 'numeric', 'min:0'],
             'diesel_l_per_100km' => ['nullable', 'numeric', 'min:0'],
@@ -48,10 +52,11 @@ class ReferenceDataController extends Controller
         return redirect()->route('reference-data.vehicles.index')->with('success', 'Véhicule ajouté.');
     }
 
-    public function updateVehicle(Request $request, Vehicle $vehicle): RedirectResponse
+    public function updateVehicle(Request $request, Vehicle $vehicle, ChargingCurveRepository $curves): RedirectResponse
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:vehicles,name,' . $vehicle->id],
+            'charging_curve' => ['nullable', 'string', Rule::in($curves->slugs())],
             'kwh_per_100km' => ['nullable', 'numeric', 'min:0'],
             'essence_l_per_100km' => ['nullable', 'numeric', 'min:0'],
             'diesel_l_per_100km' => ['nullable', 'numeric', 'min:0'],

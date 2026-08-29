@@ -5,17 +5,22 @@
 @section('content')
     <h1 class="title">Courbe de recharge</h1>
 
-    @if ($curves->isEmpty())
-        <div class="notification is-warning is-light">Aucune courbe de recharge disponible.</div>
+    @if (! $curve)
+        <div class="notification is-warning is-light">
+            Aucun véhicule n'a de courbe de recharge associée.
+            Associez-en une depuis <a href="{{ route('reference-data.vehicles.index') }}">Administration &rarr; Véhicules</a>.
+        </div>
     @else
-        @if ($curves->count() > 1)
+        @if ($vehicles->count() > 1)
             <div class="field">
-                <label class="label">Modèle</label>
+                <label class="label">Véhicule</label>
                 <div class="control">
                     <div class="select">
-                        <select onchange="window.location.href = '{{ route('charging-curves.index') }}?modele=' + this.value">
-                            @foreach ($curves as $c)
-                                <option value="{{ $c['slug'] }}" @selected($c['slug'] === $curve['slug'])>{{ $c['name'] }}</option>
+                        <select onchange="window.location.href = '{{ route('charging-curves.index') }}?vehicule=' + this.value">
+                            @foreach ($vehicles as $v)
+                                <option value="{{ $v->id }}" @selected($v->id === $vehicle->id)>
+                                    {{ $v->name }}{{ $v->is_default ? ' (par défaut)' : '' }}
+                                </option>
                             @endforeach
                         </select>
                     </div>
@@ -24,7 +29,10 @@
         @endif
 
         <div class="box">
-            <h2 class="title is-5">{{ $curve['name'] }} <span class="has-text-grey is-size-6">{{ $curve['model_year'] }}</span></h2>
+            <h2 class="title is-5">
+                {{ $vehicle->name }}
+                <span class="has-text-grey is-size-6">{{ $curve['name'] }} &middot; {{ $curve['model_year'] }}</span>
+            </h2>
 
             <div class="columns is-multiline">
                 <div class="column is-3">

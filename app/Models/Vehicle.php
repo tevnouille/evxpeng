@@ -10,7 +10,7 @@ class Vehicle extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'is_default', 'kwh_per_100km', 'essence_l_per_100km', 'diesel_l_per_100km'];
+    protected $fillable = ['name', 'charging_curve', 'is_default', 'kwh_per_100km', 'essence_l_per_100km', 'diesel_l_per_100km'];
 
     protected $casts = [
         'is_default' => 'boolean',

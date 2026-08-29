@@ -12,9 +12,20 @@
                 <form method="POST" action="{{ route('reference-data.vehicles.store') }}">
                     @csrf
                     <div class="columns is-multiline is-vcentered">
-                        <div class="column is-4">
+                        <div class="column is-3">
                             <label class="label is-small">Nom</label>
                             <input class="input" type="text" name="name" placeholder="Nom du véhicule" required>
+                        </div>
+                        <div class="column is-3">
+                            <label class="label is-small">Courbe de recharge</label>
+                            <div class="select is-fullwidth">
+                                <select name="charging_curve">
+                                    <option value="">— aucune —</option>
+                                    @foreach ($curves as $c)
+                                        <option value="{{ $c['slug'] }}">{{ $c['name'] }} ({{ $c['model_year'] }})</option>
+                                    @endforeach
+                                </select>
+                            </div>
                         </div>
                         <div class="column is-2">
                             <label class="label is-small">Conso. (kWh/100km)</label>
@@ -42,6 +53,8 @@
             <p class="is-size-7 has-text-grey mb-3">
                 Ces valeurs alimentent l'équivalent essence/diesel du dashboard et de l'historique. Aucune valeur par défaut n'est appliquée :
                 un véhicule laissé sans consommation renseignée n'aura simplement pas d'équivalent calculé pour ses recharges.
+                La courbe de recharge associée alimente la page
+                <a href="{{ route('charging-curves.index') }}">Courbe de recharge</a> ; le véhicule par défaut y est affiché en premier.
             </p>
 
             <div class="table-container">
@@ -54,8 +67,18 @@
                                         @csrf
                                         @method('PUT')
                                         <div class="columns is-multiline is-vcentered mb-0">
-                                            <div class="column is-4">
+                                            <div class="column is-3">
                                                 <input class="input" type="text" name="name" value="{{ $vehicle->name }}" required>
+                                            </div>
+                                            <div class="column is-3">
+                                                <div class="select is-fullwidth">
+                                                    <select name="charging_curve">
+                                                        <option value="">— aucune courbe —</option>
+                                                        @foreach ($curves as $c)
+                                                            <option value="{{ $c['slug'] }}" @selected($vehicle->charging_curve === $c['slug'])>{{ $c['name'] }} ({{ $c['model_year'] }})</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
                                             </div>
                                             <div class="column is-2">
                                                 <input class="input" type="number" step="0.1" min="0" name="kwh_per_100km" value="{{ $vehicle->kwh_per_100km }}" placeholder="ex. 15">

@@ -2,26 +2,43 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Support\Facades\File;
+use App\Models\Vehicle;
+use App\Services\ChargingCurveRepository;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class ChargingCurveController extends Controller
 {
-    private const CURVE_DIR = 'data/charging-curves';
-
-    public function index(): View
+    public function __construct(private readonly ChargingCurveRepository $curves)
     {
-        $curves = $this->availableCurves();
+    }
 
-        $slug = request('modele');
-        $curve = $curves->firstWhere('slug', $slug) ?? $curves->first();
+    public function index(Request $request): View
+    {
+        // Seuls les vehicules auxquels une courbe a ete associee dans
+        // /admin/vehicules sont proposes.
+        $vehicles = Vehicle::whereNotNull('charging_curve')
+            ->orderByDesc('is_default')
+            ->orderBy('name')
+            ->get()
+            ->filter(fn ($vehicle) => $this->curves->find($vehicle->charging_curve) !== null)
+            ->values();
+
+        $requested = $request->query('vehicule');
+
+        // A defaut de choix explicite, le vehicule par defaut (orderByDesc ci-dessus
+        // le place en tete).
+        $vehicle = $vehicles->firstWhere('id', (int) $requested) ?? $vehicles->first();
+
+        $curve = $vehicle ? $this->curves->find($vehicle->charging_curve) : null;
 
         if ($curve) {
             $curve = $this->withDerivedColumns($curve);
         }
 
         return view('charging_curves.index', [
-            'curves' => $curves,
+            'vehicles' => $vehicles,
+            'vehicle' => $vehicle,
             'curve' => $curve,
         ]);
     }
@@ -71,26 +88,5 @@ class ChargingCurveController extends Controller
     private function formatDuration(int $seconds): string
     {
         return sprintf('%02d:%02d:%02d', intdiv($seconds, 3600), intdiv($seconds % 3600, 60), $seconds % 60);
-    }
-
-    /**
-     * Charge toutes les courbes disponibles depuis resources/data/charging-curves.
-     * Les courbes sont des données de référence externes (evkx.net), pas des
-     * données utilisateur : un fichier JSON par modèle suffit, pas de table.
-     */
-    private function availableCurves()
-    {
-        $dir = resource_path(self::CURVE_DIR);
-
-        if (! File::isDirectory($dir)) {
-            return collect();
-        }
-
-        return collect(File::files($dir))
-            ->filter(fn ($file) => $file->getExtension() === 'json')
-            ->map(fn ($file) => json_decode(File::get($file->getPathname()), true))
-            ->filter()
-            ->sortBy('name')
-            ->values();
     }
 }
