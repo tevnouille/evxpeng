@@ -32,11 +32,14 @@
                     <p class="title is-4">{{ $curve['max_power_kw'] }} kW</p>
                 </div>
                 <div class="column is-3">
-                    <p class="heading">Batterie</p>
+                    <p class="heading">Batterie (brute)</p>
                     <p class="title is-4">{{ str_replace('.', ',', (string) $curve['battery_kwh']) }} kWh</p>
-                    @if (! empty($curve['battery_note']))
-                        <p class="has-text-grey is-size-7">{{ $curve['battery_note'] }}</p>
-                    @endif
+                    <p class="has-text-grey is-size-7">
+                        {{ str_replace('.', ',', (string) $curve['battery_net_kwh']) }} kWh utiles
+                        @if (! empty($curve['battery_note']))
+                            &middot; {{ $curve['battery_note'] }}
+                        @endif
+                    </p>
                 </div>
                 <div class="column is-3">
                     <p class="heading">10 → 80 %</p>
@@ -80,7 +83,8 @@
                         <tr>
                             <th>SoC</th>
                             <th class="has-text-right">Puissance</th>
-                            <th class="has-text-right">Batterie</th>
+                            <th class="has-text-right">Capacité brute</th>
+                            <th class="has-text-right">Capacité nette</th>
                             <th class="has-text-right">Temps cumulé</th>
                             <th class="has-text-right">Énergie chargée</th>
                         </tr>
@@ -90,7 +94,8 @@
                             <tr>
                                 <td>{{ $point['soc'] }} %</td>
                                 <td class="has-text-right">{{ str_replace('.', ',', (string) $point['kw']) }} kW</td>
-                                <td class="has-text-right">{{ str_replace('.', ',', (string) $point['battery_kwh']) }} kWh</td>
+                                <td class="has-text-right">{{ str_replace('.', ',', (string) $point['battery_gross_kwh']) }} kWh</td>
+                                <td class="has-text-right">{{ str_replace('.', ',', (string) $point['battery_net_kwh']) }} kWh</td>
                                 <td class="has-text-right">{{ $point['time'] }}</td>
                                 <td class="has-text-right">{{ str_replace('.', ',', (string) $point['kwh']) }} kWh</td>
                             </tr>
