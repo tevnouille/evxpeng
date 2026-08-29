@@ -45,7 +45,7 @@ class PollAbrpTelemetry extends Command
             }
 
             $telemetry = $result['telemetry'];
-            $recordedAt = Carbon::parse($result['timestamp']);
+            $recordedAt = Carbon::parse($result['timestamp'])->setTimezone(config('app.timezone'));
 
             // La meme mesure est renvoyee tant que la voiture n'a pas remonte de
             // nouveau point : on ecrase la ligne de meme horodatage plutot que
