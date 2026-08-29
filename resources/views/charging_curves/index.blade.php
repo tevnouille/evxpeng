@@ -81,9 +81,9 @@
         @if ($curve['estimated'])
             <div class="notification is-warning is-light">
                 <strong>Données estimées.</strong> evkx.net indique que cette courbe est estimée à partir des données
-                constructeur et de batteries comparables, et non mesurée. Le pic annoncé ({{ $curve['max_power_kw'] }} kW,
-                soit {{ $curve['max_c_rate'] }}) est nettement supérieur à ce que relèvent les essais réels sur ce modèle :
-                à prendre comme un ordre de grandeur, pas comme une mesure.
+                constructeur et de batteries comparables, et non relevée sur un véhicule.
+                À prendre comme un ordre de grandeur : les puissances et les durées peuvent s'écarter sensiblement
+                de ce que tu constateras en charge réelle.
             </div>
         @endif
 
