@@ -11,7 +11,9 @@
                 <th>Durée recharge</th>
                 <th>€/kWh</th>
                 <th>Total €</th>
-                <th>Commentaire</th>
+                @if ($showComment ?? true)
+                    <th>Commentaire</th>
+                @endif
                 <th></th>
             </tr>
         </thead>
@@ -27,7 +29,9 @@
                     <td>{{ $session->charge_duration?->format('H:i') ?? '—' }}</td>
                     <td>{{ $session->unit_cost ?? '—' }}</td>
                     <td>{{ $session->total_cost ?? '—' }}</td>
-                    <td>{{ \Illuminate\Support\Str::limit($session->comment, 30) }}</td>
+                    @if ($showComment ?? true)
+                        <td>{{ \Illuminate\Support\Str::limit($session->comment, 30) }}</td>
+                    @endif
                     <td class="is-flex is-flex-wrap-nowrap">
                         <a href="{{ route('charging-sessions.edit', $session) }}" class="button is-small is-info is-light mr-1">Éditer</a>
                         <a href="{{ route('charging-sessions.index', ['duplicate' => $session->id]) }}" class="button is-small is-light mr-1">Dupliquer</a>
