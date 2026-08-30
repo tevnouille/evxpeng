@@ -77,6 +77,7 @@ class User extends Authenticatable
             'approved_at' => 'datetime',
             'last_seen_at' => 'datetime',
             'is_admin' => 'boolean',
+            'show_fuel_equivalent' => 'boolean',
         ];
     }
 }

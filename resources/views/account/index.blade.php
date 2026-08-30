@@ -23,6 +23,31 @@
         </div>
     </div>
 
+    <form method="POST" action="{{ route('account.preferences') }}" class="box">
+        @csrf
+        @method('PUT')
+        <h2 class="subtitle">Affichage</h2>
+
+        <div class="field">
+            <label class="checkbox">
+                <input type="checkbox" name="show_fuel_equivalent" value="1"
+                       @checked(old('show_fuel_equivalent', $user->show_fuel_equivalent))>
+                Afficher l'équivalent carburant dans l'historique
+            </label>
+            <p class="help">
+                Le bloc qui compare vos recharges à ce qu'auraient coûté les mêmes kilomètres
+                en essence ou en diesel, sur la page d'un mois. Décoché, l'historique s'en tient
+                à l'électrique.
+            </p>
+        </div>
+
+        <div class="field">
+            <div class="control">
+                <button class="button is-link" type="submit">Enregistrer</button>
+            </div>
+        </div>
+    </form>
+
     <form method="POST" action="{{ route('account.update') }}" class="box">
         @csrf
         @method('PUT')

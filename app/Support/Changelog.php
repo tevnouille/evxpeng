@@ -41,6 +41,17 @@ class Changelog
 
     private const DATA = [
         [
+            'date' => '2026-08-31',
+            'entries' => [
+                ['type' => 'nouveaute', 'text' => "Saisie d'une recharge : champ « Coût additionnel » pour le stationnement, les frais de connexion ou une pénalité. Il s'ajoute au coût réel pour donner le total facturé, et n'est pas enregistré."],
+                ['type' => 'nouveaute', 'text' => "Mon compte : une case permet de masquer le bloc « Équivalent carburant » dans l'historique."],
+                ['type' => 'amelioration', 'text' => "Localisation et fournisseur : « Autre / nouvelle » est passé en tête de liste, un bouton « Nouvelle localisation » y mène directement, et la liste s'efface pendant la saisie du nouveau nom."],
+                ['type' => 'amelioration', 'text' => "Le calendrier s'ouvre en cliquant n'importe où dans le champ Date, et l'horloge dans le champ Durée."],
+                ['type' => 'amelioration', 'text' => "Modifier ou supprimer une recharge depuis un mois de l'historique y ramène, au lieu de renvoyer sur la liste des recharges."],
+                ['type' => 'amelioration', 'text' => "Dupliquer une recharge reprend aussi son commentaire."],
+            ],
+        ],
+        [
             'date' => '2026-08-30',
             'entries' => [
                 ['type' => 'nouveaute', 'text' => "Recharges : nouveau champ « Coût réel » — ce que la recharge vaut (bouton « Recalculer » : quantité × coût unitaire) — à côté du coût facturé, qu'un bouton « Gratuit » met à zéro pour une recharge non débitée. L'historique et le dashboard affichent le total réel et le gain (facturé − réel). Les recharges existantes partent du coût facturé, à ajuster à la main si besoin."],

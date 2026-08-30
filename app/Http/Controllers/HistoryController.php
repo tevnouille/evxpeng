@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ChargingSession;
 use App\Services\FuelPriceService;
+use App\Support\CurrentUser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\View\View;
@@ -116,6 +117,7 @@ class HistoryController extends Controller
             'year' => $year,
             'month' => $month,
             'monthName' => self::MOIS_FR[$month] ?? $month,
+            'showFuelEquivalent' => (bool) (CurrentUser::get()?->show_fuel_equivalent ?? true),
             'previous' => $previous,
             'next' => $next,
             'previousMonthName' => self::MOIS_FR[$previous['month']] ?? $previous['month'],

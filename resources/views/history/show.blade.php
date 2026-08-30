@@ -72,61 +72,63 @@
             </div>
         </div>
 
-        <h2 class="title is-6 mb-2">Équivalent carburant</h2>
-        <div class="columns is-mobile is-multiline mb-1">
-            <div class="column">
-                <div class="box has-text-centered">
-                    <p class="heading">Essence équivalente</p>
-                    <p class="title is-4">{{ number_format($fuelEquivalent['essence_liters'], 2, ',', ' ') }} L</p>
+        @if ($showFuelEquivalent)
+            <h2 class="title is-6 mb-2">Équivalent carburant</h2>
+            <div class="columns is-mobile is-multiline mb-1">
+                <div class="column">
+                    <div class="box has-text-centered">
+                        <p class="heading">Essence équivalente</p>
+                        <p class="title is-4">{{ number_format($fuelEquivalent['essence_liters'], 2, ',', ' ') }} L</p>
+                    </div>
+                </div>
+                <div class="column">
+                    <div class="box has-text-centered">
+                        <p class="heading">Coût essence équivalent</p>
+                        <p class="title is-4">{{ number_format($fuelEquivalent['essence_cost'], 2, ',', ' ') }} €</p>
+                    </div>
+                </div>
+                <div class="column">
+                    <div class="box has-text-centered">
+                        <p class="heading">{{ $fuelEquivalent['savings_essence'] >= 0 ? 'Économie vs essence' : 'Surcoût vs essence' }}</p>
+                        <p class="title is-4">{{ number_format(abs($fuelEquivalent['savings_essence']), 2, ',', ' ') }} €</p>
+                    </div>
+                </div>
+                <div class="column">
+                    <div class="box has-text-centered">
+                        <p class="heading">Diesel équivalent</p>
+                        <p class="title is-4">{{ number_format($fuelEquivalent['diesel_liters'], 2, ',', ' ') }} L</p>
+                    </div>
+                </div>
+                <div class="column">
+                    <div class="box has-text-centered">
+                        <p class="heading">Coût diesel équivalent</p>
+                        <p class="title is-4">{{ number_format($fuelEquivalent['diesel_cost'], 2, ',', ' ') }} €</p>
+                    </div>
+                </div>
+                <div class="column">
+                    <div class="box has-text-centered">
+                        <p class="heading">{{ $fuelEquivalent['savings_diesel'] >= 0 ? 'Économie vs diesel' : 'Surcoût vs diesel' }}</p>
+                        <p class="title is-4">{{ number_format(abs($fuelEquivalent['savings_diesel']), 2, ',', ' ') }} €</p>
+                    </div>
                 </div>
             </div>
-            <div class="column">
-                <div class="box has-text-centered">
-                    <p class="heading">Coût essence équivalent</p>
-                    <p class="title is-4">{{ number_format($fuelEquivalent['essence_cost'], 2, ',', ' ') }} €</p>
-                </div>
-            </div>
-            <div class="column">
-                <div class="box has-text-centered">
-                    <p class="heading">{{ $fuelEquivalent['savings_essence'] >= 0 ? 'Économie vs essence' : 'Surcoût vs essence' }}</p>
-                    <p class="title is-4">{{ number_format(abs($fuelEquivalent['savings_essence']), 2, ',', ' ') }} €</p>
-                </div>
-            </div>
-            <div class="column">
-                <div class="box has-text-centered">
-                    <p class="heading">Diesel équivalent</p>
-                    <p class="title is-4">{{ number_format($fuelEquivalent['diesel_liters'], 2, ',', ' ') }} L</p>
-                </div>
-            </div>
-            <div class="column">
-                <div class="box has-text-centered">
-                    <p class="heading">Coût diesel équivalent</p>
-                    <p class="title is-4">{{ number_format($fuelEquivalent['diesel_cost'], 2, ',', ' ') }} €</p>
-                </div>
-            </div>
-            <div class="column">
-                <div class="box has-text-centered">
-                    <p class="heading">{{ $fuelEquivalent['savings_diesel'] >= 0 ? 'Économie vs diesel' : 'Surcoût vs diesel' }}</p>
-                    <p class="title is-4">{{ number_format(abs($fuelEquivalent['savings_diesel']), 2, ',', ' ') }} €</p>
-                </div>
-            </div>
-        </div>
-        <p class="is-size-7 has-text-grey mb-5">
-            Consommation propre à chaque véhicule (Administration → Véhicules) — aucune valeur par défaut :
-            une recharge dont le véhicule n'a pas de consommation renseignée n'est pas comptée dans cet équivalent
-            @if ($fuelEquivalent['configured_sessions'] < $fuelEquivalent['total_sessions'])
-                ({{ $fuelEquivalent['configured_sessions'] }}/{{ $fuelEquivalent['total_sessions'] }} recharge(s) concernée(s))
-            @endif
-            .
-            Prix appliqués par date de recharge réelle
-            (moyenne pondérée obtenue : {{ $fuelEquivalent['avg_essence_price'] ?? '—' }} €/L essence, {{ $fuelEquivalent['avg_diesel_price'] ?? '—' }} €/L diesel) —
-            {{ $fuelEquivalent['known_price_sessions'] }}/{{ $fuelEquivalent['total_sessions'] }} recharge(s) avec un prix du jour connu
-            @if ($fuelEquivalent['estimated'])
-                , le reste utilise l'estimation par défaut (1,95 €/L)
-            @endif
-            .
-            <a href="{{ route('fuel-prices.index') }}">Voir l'historique des prix carburants →</a>
-        </p>
+            <p class="is-size-7 has-text-grey mb-5">
+                Consommation propre à chaque véhicule (Administration → Véhicules) — aucune valeur par défaut :
+                une recharge dont le véhicule n'a pas de consommation renseignée n'est pas comptée dans cet équivalent
+                @if ($fuelEquivalent['configured_sessions'] < $fuelEquivalent['total_sessions'])
+                    ({{ $fuelEquivalent['configured_sessions'] }}/{{ $fuelEquivalent['total_sessions'] }} recharge(s) concernée(s))
+                @endif
+                .
+                Prix appliqués par date de recharge réelle
+                (moyenne pondérée obtenue : {{ $fuelEquivalent['avg_essence_price'] ?? '—' }} €/L essence, {{ $fuelEquivalent['avg_diesel_price'] ?? '—' }} €/L diesel) —
+                {{ $fuelEquivalent['known_price_sessions'] }}/{{ $fuelEquivalent['total_sessions'] }} recharge(s) avec un prix du jour connu
+                @if ($fuelEquivalent['estimated'])
+                    , le reste utilise l'estimation par défaut (1,95 €/L)
+                @endif
+                .
+                <a href="{{ route('fuel-prices.index') }}">Voir l'historique des prix carburants →</a>
+            </p>
+        @endif
 
         <div class="box">
             <h2 class="title is-5">Recharges par jour</h2>
@@ -202,7 +204,10 @@
         </div>
     @endif
 
-    @include('charging_sessions._sessions_table', ['emptyMessage' => 'Aucune recharge ce mois-ci.'])
+    @include('charging_sessions._sessions_table', [
+        'emptyMessage' => 'Aucune recharge ce mois-ci.',
+        'returnTo' => ['year' => $year, 'month' => $month],
+    ])
 @endsection
 
 @push('scripts')

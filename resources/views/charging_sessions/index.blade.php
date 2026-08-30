@@ -5,7 +5,7 @@
 @section('content')
     <h1 class="title">{{ $editing ? 'Modifier une recharge' : 'Nouvelle recharge' }}</h1>
     @if ($duplicateFrom)
-        <p class="notification is-info is-light">Localisation, fournisseur, puissance et coût unitaire repris de la recharge du {{ $duplicateFrom->session_date->format('d/m/Y') }}.</p>
+        <p class="notification is-info is-light">Localisation, fournisseur, puissance, coût unitaire et commentaire repris de la recharge du {{ $duplicateFrom->session_date->format('d/m/Y') }}.</p>
     @endif
 
     @if (! $editing && count($pendingCharges) > 0)
@@ -90,7 +90,10 @@
     @endif
 
     <div class="box" id="formulaire">
-        <form method="POST" action="{{ $editing ? route('charging-sessions.update', $editing) : route('charging-sessions.store') }}">
+        @php
+            $returnQuery = $returnTo ? ['return_year' => $returnTo['year'], 'return_month' => $returnTo['month']] : [];
+        @endphp
+        <form method="POST" action="{{ $editing ? route('charging-sessions.update', array_merge([$editing], $returnQuery)) : route('charging-sessions.store') }}">
             @csrf
             @if ($editing)
                 @method('PUT')
@@ -141,14 +144,14 @@
                 <div class="column is-3">
                     <div class="field">
                         <label class="label">Localisation</label>
-                        <div class="control">
+                        <div class="control" id="location_pick_wrapper">
                             <div class="select is-fullwidth">
                                 <select name="location_choice" id="location_choice" required data-searchable>
                                     <option value="" disabled {{ old('location_choice', $editing?->location_id ?? $duplicateFrom?->location_id ?? ($prefill['location_id'] ?? null)) ? '' : 'selected' }}>-- choisir --</option>
+                                    <option value="other" @selected(old('location_choice') === 'other')>➕ Autre / nouvelle localisation…</option>
                                     @foreach ($locations as $location)
                                         <option value="{{ $location->id }}" @selected(old('location_choice', $editing?->location_id ?? $duplicateFrom?->location_id ?? ($prefill['location_id'] ?? null)) == $location->id)>{{ $location->name }}</option>
                                     @endforeach
-                                    <option value="other" @selected(old('location_choice') === 'other')>Autre…</option>
                                 </select>
                             </div>
                         </div>
@@ -156,6 +159,9 @@
                             <div class="buttons are-small">
                                 <button type="button" id="geolocate_button" class="button is-light">&#128205; Utiliser ma position</button>
                                 <button type="button" id="nearby_button" class="button is-light">&#128269; Rechercher bornes</button>
+                                <button type="button" id="location_other_button" class="button is-light"
+                                        data-other-for="location_choice" data-other-input="location_other"
+                                        data-pick-wrapper="location_pick_wrapper">&#10133; Nouvelle localisation</button>
                             </div>
                         </div>
                         <div class="control mt-2" id="location_other_wrapper" style="position: relative; display: {{ old('location_choice') === 'other' ? 'block' : 'none' }};">
@@ -166,6 +172,7 @@
                             <p class="help">
                                 Tapez trois lettres&nbsp;: les bornes de la base nationale sont proposées,
                                 et en choisir une renseigne aussi le fournisseur et la puissance.
+                                <a href="#" data-back-to-list="location_choice">↩ Revenir à la liste</a>
                             </p>
                         </div>
                         <p class="help"><a href="{{ route('reference-data.index') }}">Ajouter / éditer / supprimer une localisation</a></p>
@@ -175,14 +182,14 @@
                 <div class="column is-4">
                     <div class="field">
                         <label class="label">Fournisseur borne</label>
-                        <div class="control">
+                        <div class="control" id="provider_pick_wrapper">
                             <div class="select is-fullwidth">
                                 <select name="provider_choice" id="provider_choice" required data-searchable>
                                     <option value="" disabled {{ old('provider_choice', $editing?->provider_id ?? $duplicateFrom?->provider_id ?? ($prefill['provider_id'] ?? null)) ? '' : 'selected' }}>-- choisir --</option>
+                                    <option value="other" @selected(old('provider_choice') === 'other')>➕ Autre / nouveau fournisseur…</option>
                                     @foreach ($providers as $provider)
                                         <option value="{{ $provider->id }}" @selected(old('provider_choice', $editing?->provider_id ?? $duplicateFrom?->provider_id ?? ($prefill['provider_id'] ?? null)) == $provider->id)>{{ $provider->name }}</option>
                                     @endforeach
-                                    <option value="other" @selected(old('provider_choice') === 'other')>Autre…</option>
                                 </select>
                             </div>
                         </div>
@@ -191,6 +198,7 @@
                                    placeholder="Nouveau fournisseur" value="{{ old('provider_other') }}" autocomplete="off">
                             <div class="dropdown-content" data-suggestions hidden
                                  style="position: absolute; z-index: 30; width: 100%; max-height: 16rem; overflow-y: auto;"></div>
+                            <p class="help"><a href="#" data-back-to-list="provider_choice">↩ Revenir à la liste</a></p>
                         </div>
                         <p class="help"><a href="{{ route('reference-data.index') }}">Ajouter / éditer / supprimer un fournisseur</a></p>
                     </div>
@@ -265,6 +273,21 @@
                     </div>
                 </div>
 
+                {{-- Champ d'appoint : rien n'est enregistre, il ne sert qu'a composer
+                     le total facture. D'ou l'absence de name=. --}}
+                <div class="column is-3">
+                    <div class="field">
+                        <label class="label">Coût additionnel (€)</label>
+                        <div class="control">
+                            <input class="input" type="number" step="0.01" min="0" id="extra_cost" autocomplete="off">
+                        </div>
+                        <p class="help">
+                            Stationnement, frais de connexion, pénalité… S'ajoute au coût réel
+                            pour donner le total facturé. <strong>N'est pas enregistré.</strong>
+                        </p>
+                    </div>
+                </div>
+
                 <div class="column is-3">
                     <div class="field">
                         <label class="label">Coût total facturé (€)</label>
@@ -281,8 +304,8 @@
                             </div>
                         </div>
                         <p class="help">
-                            Ce qui a été débité. Calculé automatiquement (quantité × coût unitaire)
-                            tant qu'il n'a pas été saisi à la main ; <strong>Gratuit</strong> le met à 0.
+                            Ce qui a été débité&nbsp;: coût réel + coût additionnel, tant qu'il n'a pas
+                            été saisi à la main ; <strong>Gratuit</strong> le met à 0.
                         </p>
                     </div>
                 </div>
@@ -291,7 +314,7 @@
                     <div class="field">
                         <label class="label">Commentaire</label>
                         <div class="control">
-                            <textarea class="textarea" name="comment" rows="2">{{ old('comment', $editing?->comment) }}</textarea>
+                            <textarea class="textarea" name="comment" rows="2">{{ old('comment', $editing?->comment ?? $duplicateFrom?->comment) }}</textarea>
                         </div>
                     </div>
                 </div>
@@ -308,7 +331,7 @@
                 @endif
                 @if ($editing)
                     <div class="control">
-                        <a href="{{ route('charging-sessions.index') }}" class="button is-light">Annuler</a>
+                        <a href="{{ $returnTo ? route('history.show', $returnTo) : route('charging-sessions.index') }}" class="button is-light">Annuler</a>
                     </div>
                 @endif
             </div>

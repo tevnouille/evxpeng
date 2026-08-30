@@ -41,6 +41,7 @@ class ChargingSessionController extends Controller
         ];
 
         return view('charging_sessions.index', [
+            'returnTo' => null,
             'sessions' => $this->recentSessions(),
             'vehicles' => Vehicle::orderBy('name')->get(),
             'locations' => Location::orderBy('name')->get(),
@@ -53,9 +54,10 @@ class ChargingSessionController extends Controller
         ]);
     }
 
-    public function edit(ChargingSession $chargingSession): View
+    public function edit(Request $request, ChargingSession $chargingSession): View
     {
         return view('charging_sessions.index', [
+            'returnTo' => $this->returnTo($request),
             'sessions' => $this->recentSessions(),
             'vehicles' => Vehicle::orderBy('name')->get(),
             'locations' => Location::orderBy('name')->get(),
@@ -76,7 +78,7 @@ class ChargingSessionController extends Controller
 
         if ($request->input('action') === 'save_and_duplicate') {
             return redirect()->route('charging-sessions.index', ['duplicate' => $session->id])
-                ->with('success', 'Recharge ajoutée. Localisation, fournisseur, puissance et coût unitaire repris ci-dessous.');
+                ->with('success', 'Recharge ajoutée. Localisation, fournisseur, puissance, coût unitaire et commentaire repris ci-dessous.');
         }
 
         return redirect()->route('charging-sessions.index')->with('success', 'Recharge ajoutée.');
@@ -88,14 +90,45 @@ class ChargingSessionController extends Controller
 
         $chargingSession->update($data);
 
-        return redirect()->route('charging-sessions.index')->with('success', 'Recharge mise à jour.');
+        return $this->backTo($request, 'Recharge mise à jour.');
     }
 
-    public function destroy(ChargingSession $chargingSession): RedirectResponse
+    public function destroy(Request $request, ChargingSession $chargingSession): RedirectResponse
     {
         $chargingSession->delete();
 
-        return redirect()->route('charging-sessions.index')->with('success', 'Recharge supprimée.');
+        return $this->backTo($request, 'Recharge supprimée.');
+    }
+
+    /**
+     * Mois d'ou provient la modification, quand elle vient de l'historique.
+     *
+     * On ne transporte qu'une annee et un mois, jamais une URL de retour : une
+     * URL fournie par la requete ouvrirait une redirection vers n'importe ou.
+     *
+     * @return array{year: int, month: int}|null
+     */
+    private function returnTo(Request $request): ?array
+    {
+        $year = (int) $request->query('return_year');
+        $month = (int) $request->query('return_month');
+
+        if ($year < 2000 || $year > 2100 || $month < 1 || $month > 12) {
+            return null;
+        }
+
+        return ['year' => $year, 'month' => $month];
+    }
+
+    private function backTo(Request $request, string $message): RedirectResponse
+    {
+        $returnTo = $this->returnTo($request);
+
+        $route = $returnTo === null
+            ? redirect()->route('charging-sessions.index')
+            : redirect()->route('history.show', $returnTo);
+
+        return $route->with('success', $message);
     }
 
     private function recentSessions(): Collection

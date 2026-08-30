@@ -63,6 +63,7 @@ Route::get('/historique/{year}/{month}', [HistoryController::class, 'show'])->wh
 
 Route::get('/mon-compte', [AccountController::class, 'index'])->name('account.index');
 Route::put('/mon-compte', [AccountController::class, 'update'])->name('account.update');
+Route::put('/mon-compte/preferences', [AccountController::class, 'updatePreferences'])->name('account.preferences');
 Route::post('/mon-compte/sms-test', [AccountController::class, 'testSms'])->name('account.test-sms');
 
 // Journal des nouveautes : ouvert a tous les comptes.

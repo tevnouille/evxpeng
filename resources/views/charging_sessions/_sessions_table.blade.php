@@ -1,3 +1,9 @@
+@php
+    // Modifier ou supprimer depuis la page d'un mois doit y ramener : sans cela
+    // on repartait sur /recharges, en perdant le mois consulte. On transporte
+    // l'annee et le mois, jamais une URL, pour ne pas ouvrir une redirection.
+    $returnQuery = isset($returnTo) ? ['return_year' => $returnTo['year'], 'return_month' => $returnTo['month']] : [];
+@endphp
 <div class="table-container">
     <table class="table is-fullwidth is-striped is-hoverable">
         <thead>
@@ -29,9 +35,9 @@
                     <td>{{ $session->real_cost ?? '—' }}</td>
                     <td>{{ $session->total_cost ?? '—' }}</td>
                     <td class="is-flex is-flex-wrap-nowrap">
-                        <a href="{{ route('charging-sessions.edit', $session) }}" class="button is-small is-info is-light mr-1">Éditer</a>
+                        <a href="{{ route('charging-sessions.edit', array_merge([$session], $returnQuery)) }}" class="button is-small is-info is-light mr-1">Éditer</a>
                         <a href="{{ route('charging-sessions.index', ['duplicate' => $session->id]) }}" class="button is-small is-light mr-1">Dupliquer</a>
-                        <form method="POST" action="{{ route('charging-sessions.destroy', $session) }}" onsubmit="return confirm('Supprimer cette recharge ?');">
+                        <form method="POST" action="{{ route('charging-sessions.destroy', array_merge([$session], $returnQuery)) }}" onsubmit="return confirm('Supprimer cette recharge ?');">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="button is-small is-danger is-light">Suppr.</button>

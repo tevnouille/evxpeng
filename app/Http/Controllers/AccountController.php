@@ -53,6 +53,22 @@ class AccountController extends Controller
         return redirect()->route('account.index')->with('success', 'Compte mis à jour.');
     }
 
+    /**
+     * Preferences d'affichage.
+     *
+     * Formulaire distinct de celui des identifiants SMS : une case a cochee
+     * absente de la requete vaut "decochee", donc enregistrer l'un ne doit
+     * jamais toucher a l'autre.
+     */
+    public function updatePreferences(Request $request): RedirectResponse
+    {
+        $user = CurrentUser::get();
+        $user->show_fuel_equivalent = $request->boolean('show_fuel_equivalent');
+        $user->save();
+
+        return redirect()->route('account.index')->with('success', 'Préférences enregistrées.');
+    }
+
     /** Les identifiants Free ne se verifient pas autrement qu'en envoyant. */
     public function testSms(FreeMobileSms $sms): RedirectResponse
     {

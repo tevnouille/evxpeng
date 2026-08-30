@@ -79,19 +79,86 @@ function makeSearchable(select) {
     });
 }
 
-function setupOtherToggle(selectId, wrapperId) {
+/**
+ * Bascule entre la liste existante et la saisie d'une nouvelle entree.
+ *
+ * La liste des localisations depasse la vingtaine : chercher "Autre..." tout en
+ * bas d'un menu deroulant devenait penible. Les deux modes s'excluent donc a
+ * l'ecran — on ne voit que celui dans lequel on est — et on y entre par un
+ * bouton visible autant que par la liste, ou l'option est passee en tete.
+ *
+ * @param {string} selectId
+ * @param {string} wrapperId conteneur de la saisie libre
+ * @param {string} pickWrapperId conteneur de la liste
+ */
+function setupOtherToggle(selectId, wrapperId, pickWrapperId) {
     const select = document.getElementById(selectId);
     const wrapper = document.getElementById(wrapperId);
+    const pickWrapper = document.getElementById(pickWrapperId);
 
     if (!select || !wrapper) {
         return;
     }
 
+    // Valeur a restaurer si l'utilisateur revient a la liste sans rien creer.
+    let lastListValue = select.value === 'other' ? '' : select.value;
+
     const toggle = () => {
-        wrapper.style.display = select.value === 'other' ? 'block' : 'none';
+        const isOther = select.value === 'other';
+        wrapper.style.display = isOther ? 'block' : 'none';
+
+        if (pickWrapper) {
+            pickWrapper.style.display = isOther ? 'none' : 'block';
+        }
+        if (!isOther) {
+            lastListValue = select.value;
+        }
     };
+
     select.addEventListener('change', toggle);
     toggle();
+
+    document.querySelectorAll(`[data-other-for="${selectId}"]`).forEach((button) => {
+        button.addEventListener('click', () => {
+            select.value = 'other';
+            select.dispatchEvent(new Event('change'));
+
+            const input = document.getElementById(button.dataset.otherInput);
+            if (input) {
+                input.focus();
+            }
+        });
+    });
+
+    document.querySelectorAll(`[data-back-to-list="${selectId}"]`).forEach((link) => {
+        link.addEventListener('click', (event) => {
+            event.preventDefault();
+            selectValue(select, lastListValue);
+        });
+    });
+}
+
+/**
+ * Ouvre le calendrier (ou l'horloge) des le clic dans le champ.
+ *
+ * Sans cela, seule la petite icone ouvre le selecteur natif : cliquer dans le
+ * champ ne propose que la saisie au clavier. showPicker() n'existe pas partout
+ * et refuse d'etre appelee hors geste utilisateur, d'ou le filet.
+ */
+function setupNativePickers() {
+    document.querySelectorAll('input[type="date"], input[type="time"]').forEach((input) => {
+        if (typeof input.showPicker !== 'function') {
+            return;
+        }
+
+        input.addEventListener('click', () => {
+            try {
+                input.showPicker();
+            } catch {
+                // Navigateur qui refuse : la saisie clavier reste possible.
+            }
+        });
+    });
 }
 
 /**
@@ -484,37 +551,55 @@ document.addEventListener('DOMContentLoaded', () => {
     const quantity = document.getElementById('quantity_kwh');
     const unitCost = document.getElementById('unit_cost');
     const totalCost = document.getElementById('total_cost');
-
     const realCost = document.getElementById('real_cost');
+    const extraCost = document.getElementById('extra_cost');
 
     if (quantity && unitCost && totalCost && realCost) {
-        // Quantite x cout unitaire alimente les deux champs a la fois, chacun
-        // decrochant du calcul des qu'il est saisi a la main (toujours le cas
-        // d'entree en modification, ou les valeurs sont deja remplies).
+        // Deux calculs en chaine : le cout reel vaut quantite x cout unitaire,
+        // le total facture vaut ce cout reel plus les frais annexes. Chaque
+        // champ decroche du calcul des qu'il est saisi a la main — toujours le
+        // cas d'entree en modification, ou les valeurs sont deja remplies.
         let totalManuallyEdited = totalCost.value !== '' && parseFloat(totalCost.value) !== 0;
         let realManuallyEdited = realCost.value !== '' && parseFloat(realCost.value) !== 0;
+
+        const recomputeTotal = () => {
+            if (totalManuallyEdited) {
+                return;
+            }
+            const base = parseFloat(realCost.value);
+            if (isNaN(base)) {
+                return;
+            }
+            const extra = extraCost ? parseFloat(extraCost.value) : NaN;
+            totalCost.value = (base + (isNaN(extra) ? 0 : extra)).toFixed(2);
+        };
+
+        const recompute = () => {
+            const q = parseFloat(quantity.value);
+            const u = parseFloat(unitCost.value);
+            if (!isNaN(q) && !isNaN(u) && !realManuallyEdited) {
+                realCost.value = (q * u).toFixed(2);
+            }
+            recomputeTotal();
+        };
 
         totalCost.addEventListener('input', () => {
             totalManuallyEdited = true;
         });
         realCost.addEventListener('input', () => {
             realManuallyEdited = true;
+            recomputeTotal();
         });
 
-        const recompute = () => {
-            const q = parseFloat(quantity.value);
-            const u = parseFloat(unitCost.value);
-            if (isNaN(q) || isNaN(u)) {
-                return;
-            }
-            const value = (q * u).toFixed(2);
-            if (!totalManuallyEdited) {
-                totalCost.value = value;
-            }
-            if (!realManuallyEdited) {
-                realCost.value = value;
-            }
-        };
+        // Saisir des frais annexes, c'est demander explicitement le calcul du
+        // total : cela reprend la main meme apres une saisie manuelle ou un
+        // clic sur Gratuit. A l'inverse, cliquer Gratuit ensuite remet zero.
+        if (extraCost) {
+            extraCost.addEventListener('input', () => {
+                totalManuallyEdited = false;
+                recomputeTotal();
+            });
+        }
 
         quantity.addEventListener('input', recompute);
         unitCost.addEventListener('input', recompute);
@@ -537,6 +622,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 realCost.value = (q * u).toFixed(2);
                 realManuallyEdited = false;
+                recomputeTotal();
 
                 recomputeButton.classList.add('is-success');
                 setTimeout(() => recomputeButton.classList.remove('is-success'), 800);
@@ -558,8 +644,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    setupOtherToggle('location_choice', 'location_other_wrapper');
-    setupOtherToggle('provider_choice', 'provider_other_wrapper');
+    setupOtherToggle('location_choice', 'location_other_wrapper', 'location_pick_wrapper');
+    setupOtherToggle('provider_choice', 'provider_other_wrapper', 'provider_pick_wrapper');
+    setupNativePickers();
     setupChargerSuggestions();
     setupGeolocationButton();
     setupNearbySearch();
