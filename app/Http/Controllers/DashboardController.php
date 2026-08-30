@@ -47,7 +47,7 @@ class DashboardController extends Controller
             default => "DATE_FORMAT(session_date, '%Y-%m')",
         };
 
-        $rows = ChargingSession::selectRaw("$periodExpr as period, MIN(session_date) as period_start, SUM(quantity_kwh) as kwh, SUM(total_cost) as cost, COUNT(*) as sessions_count")
+        $rows = ChargingSession::selectRaw("$periodExpr as period, MIN(session_date) as period_start, SUM(quantity_kwh) as kwh, SUM(total_cost) as cost, SUM(real_cost) as real_cost, COUNT(*) as sessions_count")
             ->when($vehicleId, fn ($query) => $query->where('vehicle_id', $vehicleId))
             ->when($year, fn ($query) => $query->whereYear('session_date', $year))
             ->groupBy('period')
@@ -94,6 +94,10 @@ class DashboardController extends Controller
             'labels' => $rows->pluck('period')->values(),
             'kwh' => $rows->pluck('kwh')->map(fn ($v) => (float) $v)->values(),
             'cost' => $rows->pluck('cost')->map(fn ($v) => (float) $v)->values(),
+            'real_cost' => $rows->pluck('real_cost')->map(fn ($v) => (float) $v)->values(),
+            // Gain = ce qui a ete facture moins ce que la recharge valait :
+            // negatif quand on a paye moins que sa valeur (recharge offerte).
+            'gain' => $rows->map(fn ($r) => round((float) $r->cost - (float) $r->real_cost, 2))->values(),
             'avg_cost_per_kwh' => $rows->map(fn ($r) => $r->kwh > 0 ? round($r->cost / $r->kwh, 4) : 0)->values(),
             'sessions_count' => $rows->pluck('sessions_count')->map(fn ($v) => (int) $v)->values(),
             'fuel_equivalent_essence_cost' => $rows->map(fn ($r) => round($equivalentByPeriod[$r->period]['essence_cost'] ?? 0, 2))->values(),

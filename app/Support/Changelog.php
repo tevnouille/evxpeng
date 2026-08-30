@@ -43,7 +43,7 @@ class Changelog
         [
             'date' => '2026-08-30',
             'entries' => [
-                ['type' => 'nouveaute', 'text' => "Recharges : nouveau champ « Coût réel » — ce que la recharge vaut (bouton « Recalculer » : quantité × coût unitaire) — à côté du coût facturé, qu'un bouton « Gratuit » met à zéro pour une recharge non débitée. L'historique affiche le total réel et le gain (facturé − réel). Les recharges existantes partent du coût facturé, à ajuster à la main si besoin."],
+                ['type' => 'nouveaute', 'text' => "Recharges : nouveau champ « Coût réel » — ce que la recharge vaut (bouton « Recalculer » : quantité × coût unitaire) — à côté du coût facturé, qu'un bouton « Gratuit » met à zéro pour une recharge non débitée. L'historique et le dashboard affichent le total réel et le gain (facturé − réel). Les recharges existantes partent du coût facturé, à ajuster à la main si besoin."],
                 ['type' => 'nouveaute', 'text' => "Saisie d'une recharge : un bouton « Rechercher bornes » propose les bornes autour de vous et remplit d'un clic le lieu, le fournisseur, la puissance et la position exacte."],
                 ['type' => 'nouveaute', 'text' => "Administration → Données récupérées : l'état des trois sources extérieures (bornes, prix des carburants, télémétrie), leur date de dernière mise à jour, et un bouton pour relancer chacune."],
                 ['type' => 'nouveaute', 'text' => "Ma voiture : tableau des kilomètres parcourus et de l'énergie rechargée jour par jour, avec un filtre par mois."],

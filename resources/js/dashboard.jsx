@@ -24,12 +24,13 @@ const GRANULARITIES = [
 
 const PROVIDER_COLORS = ['#00d1b2', '#3273dc', '#ffdd57', '#ff3860', '#b86bff', '#ff9f40', '#48c78e', '#f14668'];
 
-function StatTile({ label, value, suffix }) {
+function StatTile({ label, value, suffix, valueClass, note }) {
     return (
         <div className="column">
             <div className="box has-text-centered">
                 <p className="heading">{label}</p>
-                <p className="title is-4">{value}{suffix}</p>
+                <p className={`title is-4 ${valueClass ?? ''}`}>{value}{suffix}</p>
+                {note && <p className="has-text-grey is-size-7">{note}</p>}
             </div>
         </div>
     );
@@ -63,14 +64,24 @@ function Dashboard({ apiUrl, fuelPricesUrl, vehicles, years, currentYear }) {
         if (!data) return null;
         const kwh = data.kwh.reduce((a, b) => a + b, 0);
         const cost = data.cost.reduce((a, b) => a + b, 0);
+        const realCost = (data.real_cost ?? []).reduce((a, b) => a + b, 0);
         const sessions = data.sessions_count.reduce((a, b) => a + b, 0);
         return {
             kwh: kwh.toFixed(2),
             cost: cost.toFixed(2),
+            realCost: realCost.toFixed(2),
+            gain: cost - realCost,
             sessions,
             avgCostPerKwh: kwh > 0 ? (cost / kwh).toFixed(4) : '—',
         };
     }, [data]);
+
+    // Superposer deux courbes identiques n'apprend rien : la courbe du cout reel
+    // n'apparait que si au moins une periode s'ecarte du cout facture.
+    const hasGain = useMemo(
+        () => (data?.gain ?? []).some((g) => Math.abs(g) >= 0.01),
+        [data]
+    );
 
     return (
         <div>
@@ -124,6 +135,14 @@ function Dashboard({ apiUrl, fuelPricesUrl, vehicles, years, currentYear }) {
                     <div className="columns is-mobile is-multiline mb-4">
                         <StatTile label="Total kWh" value={totals.kwh} />
                         <StatTile label="Total facturé" value={totals.cost} suffix=" €" />
+                        <StatTile label="Total réel" value={totals.realCost} suffix=" €" />
+                        <StatTile
+                            label="Gain"
+                            value={totals.gain.toFixed(2)}
+                            suffix=" €"
+                            valueClass={totals.gain < 0 ? 'has-text-success' : totals.gain > 0 ? 'has-text-danger' : ''}
+                            note="coût facturé − coût réel"
+                        />
                         <StatTile label="Coût moyen / kWh" value={totals.avgCostPerKwh} suffix=" €" />
                         <StatTile label="Nombre de recharges" value={totals.sessions} />
                     </div>
@@ -184,7 +203,8 @@ function Dashboard({ apiUrl, fuelPricesUrl, vehicles, years, currentYear }) {
                                     data={{
                                         labels: data.labels,
                                         datasets: [
-                                            { label: 'Coût électrique (€)', data: data.cost, borderColor: '#3273dc', backgroundColor: '#3273dc', tension: 0.2 },
+                                            { label: 'Coût facturé (€)', data: data.cost, borderColor: '#3273dc', backgroundColor: '#3273dc', tension: 0.2 },
+                                            ...(hasGain ? [{ label: 'Coût réel (€)', data: data.real_cost, borderColor: '#48c78e', backgroundColor: '#48c78e', tension: 0.2 }] : []),
                                             { label: 'Équivalent essence (€)', data: data.fuel_equivalent_essence_cost, borderColor: '#ff3860', backgroundColor: '#ff3860', tension: 0.2, borderDash: [6, 4] },
                                             { label: 'Équivalent diesel (€)', data: data.fuel_equivalent_diesel_cost, borderColor: '#ffa94d', backgroundColor: '#ffa94d', tension: 0.2, borderDash: [2, 3] },
                                         ],
