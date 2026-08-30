@@ -94,6 +94,44 @@ function setupOtherToggle(selectId, wrapperId) {
     toggle();
 }
 
+/**
+ * Position courante du navigateur, sous forme de promesse.
+ *
+ * Deux boutons en ont besoin — nommer la ville, et chercher les bornes
+ * alentour — d'ou la mise en commun, y compris de l'etat "en cours" du bouton
+ * qui l'a demandee.
+ */
+function currentPosition(button, pendingLabel) {
+    return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+            reject(new Error("La géolocalisation n'est pas disponible sur ce navigateur."));
+
+            return;
+        }
+
+        const originalText = button.textContent;
+        button.disabled = true;
+        button.textContent = pendingLabel;
+
+        const restore = () => {
+            button.disabled = false;
+            button.textContent = originalText;
+        };
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                restore();
+                resolve(position.coords);
+            },
+            (error) => {
+                restore();
+                reject(new Error("Impossible d'obtenir votre position : " + error.message));
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    });
+}
+
 function setupGeolocationButton() {
     const button = document.getElementById('geolocate_button');
     const select = document.getElementById('location_choice');
@@ -104,26 +142,11 @@ function setupGeolocationButton() {
     }
 
     button.addEventListener('click', () => {
-        if (!navigator.geolocation) {
-            alert("La géolocalisation n'est pas disponible sur ce navigateur.");
-            return;
-        }
-
-        const originalText = button.textContent;
-        button.disabled = true;
-        button.textContent = 'Localisation…';
-
-        const restoreButton = () => {
-            button.disabled = false;
-            button.textContent = originalText;
-        };
-
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const { latitude, longitude } = position.coords;
+        currentPosition(button, 'Localisation…')
+            .then(({ latitude, longitude }) => {
                 const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=14&addressdetails=1`;
 
-                fetch(url, { headers: { Accept: 'application/json' } })
+                return fetch(url, { headers: { Accept: 'application/json' } })
                     .then((res) => res.json())
                     .then((data) => {
                         const address = data.address || {};
@@ -133,29 +156,18 @@ function setupGeolocationButton() {
 
                         if (!place) {
                             alert("Impossible de déterminer un nom de lieu à partir de cette position.");
+
                             return;
                         }
 
-                        select.value = 'other';
-                        select.dispatchEvent(new Event('change'));
+                        selectValue(select, 'other');
                         otherInput.value = place;
-
-                        const searchInput = document.getElementById('location_choice-search');
-                        if (searchInput) {
-                            searchInput.value = 'Autre…';
-                        }
                     })
                     .catch(() => {
                         alert('Erreur lors de la récupération du nom du lieu.');
-                    })
-                    .finally(restoreButton);
-            },
-            (error) => {
-                alert("Impossible d'obtenir votre position : " + error.message);
-                restoreButton();
-            },
-            { enableHighAccuracy: true, timeout: 10000 }
-        );
+                    });
+            })
+            .catch((error) => alert(error.message));
     });
 }
 
@@ -185,6 +197,69 @@ function selectValue(select, value) {
 }
 
 /**
+ * Renseigne le fournisseur a partir de l'operateur declare par la borne.
+ *
+ * Par defaut on ne touche a rien si un fournisseur est deja choisi : une
+ * suggestion ne doit pas defaire la saisie en cours. `force` leve cette reserve
+ * pour les gestes explicites — cliquer "Ajouter" sur une borne, c'est demander
+ * qu'elle remplace ce qui etait la.
+ */
+function fillProvider(operator, { force = false } = {}) {
+    const providerSelect = document.getElementById('provider_choice');
+    const providerOther = document.getElementById('provider_other');
+
+    if (!operator || !providerSelect) {
+        return;
+    }
+
+    const alreadyChosen = providerSelect.value !== ''
+        && (providerSelect.value !== 'other' || (providerOther && providerOther.value.trim() !== ''));
+
+    if (alreadyChosen && !force) {
+        return;
+    }
+
+    const known = Array.from(providerSelect.options).find(
+        (option) => option.value !== '' && option.value !== 'other'
+            && fold(option.textContent.trim()) === fold(operator)
+    );
+
+    if (known) {
+        selectValue(providerSelect, known.value);
+
+        return;
+    }
+
+    selectValue(providerSelect, 'other');
+
+    if (providerOther) {
+        providerOther.value = operator;
+    }
+}
+
+function fillPower(power, { force = false } = {}) {
+    const powerSelect = document.getElementById('power_rating_id');
+
+    if (!power || !powerSelect || (powerSelect.value !== '' && !force)) {
+        return;
+    }
+
+    // La borne annonce sa puissance nominale ; on retient le palier disponible
+    // immediatement inferieur ou egal, faute d'exact.
+    const options = Array.from(powerSelect.options)
+        .filter((option) => option.value !== '' && option.value !== 'other')
+        .map((option) => ({ option, kw: parseFloat(option.textContent) }))
+        .filter((entry) => !Number.isNaN(entry.kw))
+        .sort((a, b) => a.kw - b.kw);
+
+    const best = options.filter((entry) => entry.kw <= power).pop() ?? options[0];
+
+    if (best) {
+        selectValue(powerSelect, best.option.value);
+    }
+}
+
+/**
  * Assistance a la saisie depuis la base nationale des bornes.
  *
  * Choisir une borne renseigne la localisation, et complete fournisseur et
@@ -194,58 +269,6 @@ function selectValue(select, value) {
 function setupChargerSuggestions() {
     const locationOther = document.getElementById('location_other');
     const providerOther = document.getElementById('provider_other');
-    const providerSelect = document.getElementById('provider_choice');
-    const powerSelect = document.getElementById('power_rating_id');
-
-    const fillProvider = (operator) => {
-        if (!operator || !providerSelect) {
-            return;
-        }
-
-        const alreadyChosen = providerSelect.value !== ''
-            && (providerSelect.value !== 'other' || (providerOther && providerOther.value.trim() !== ''));
-
-        if (alreadyChosen) {
-            return;
-        }
-
-        const known = Array.from(providerSelect.options).find(
-            (option) => option.value !== '' && option.value !== 'other'
-                && fold(option.textContent.trim()) === fold(operator)
-        );
-
-        if (known) {
-            selectValue(providerSelect, known.value);
-
-            return;
-        }
-
-        selectValue(providerSelect, 'other');
-
-        if (providerOther) {
-            providerOther.value = operator;
-        }
-    };
-
-    const fillPower = (power) => {
-        if (!power || !powerSelect || powerSelect.value !== '') {
-            return;
-        }
-
-        // La borne annonce sa puissance nominale ; on retient le palier
-        // disponible immediatement inferieur ou egal, faute d'exact.
-        const options = Array.from(powerSelect.options)
-            .filter((option) => option.value !== '' && option.value !== 'other')
-            .map((option) => ({ option, kw: parseFloat(option.textContent) }))
-            .filter((entry) => !Number.isNaN(entry.kw))
-            .sort((a, b) => a.kw - b.kw);
-
-        const best = options.filter((entry) => entry.kw <= power).pop() ?? options[0];
-
-        if (best) {
-            selectValue(powerSelect, best.option.value);
-        }
-    };
 
     if (locationOther) {
         attachSuggestions(locationOther, {
@@ -283,6 +306,176 @@ function setupChargerSuggestions() {
             },
         });
     }
+}
+
+/**
+ * Renseigne la localisation a partir d'une borne.
+ *
+ * Si une localisation du meme nom existe deja dans la liste de l'utilisateur,
+ * on la reutilise plutot que d'en creer une deuxieme a l'identique.
+ */
+function fillLocation(station) {
+    const select = document.getElementById('location_choice');
+    const otherInput = document.getElementById('location_other');
+
+    if (!select) {
+        return;
+    }
+
+    const label = station.city || station.name;
+
+    const known = Array.from(select.options).find(
+        (option) => option.value !== '' && option.value !== 'other'
+            && fold(option.textContent.trim()) === fold(label)
+    );
+
+    if (known) {
+        selectValue(select, known.value);
+
+        return;
+    }
+
+    selectValue(select, 'other');
+
+    if (otherInput) {
+        otherInput.value = label;
+    }
+}
+
+/**
+ * Recherche des bornes autour de la position courante.
+ *
+ * La liste s'ouvre dans une fenetre modale : une colonne de formulaire est trop
+ * etroite pour montrer nom, reseau, puissance et distance cote a cote.
+ */
+function setupNearbySearch() {
+    const button = document.getElementById('nearby_button');
+    const modal = document.getElementById('nearby_modal');
+    const results = document.getElementById('nearby_results');
+    const summary = document.getElementById('nearby_summary');
+
+    if (!button || !modal || !results || !summary) {
+        return;
+    }
+
+    const close = () => modal.classList.remove('is-active');
+
+    modal.querySelectorAll('[data-nearby-close]').forEach((node) => {
+        node.addEventListener('click', close);
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            close();
+        }
+    });
+
+    const pick = (station) => {
+        fillLocation(station);
+        fillProvider(station.operator, { force: true });
+        fillPower(station.power_kw, { force: true });
+
+        // La position exacte distingue deux bornes d'une meme ville : c'est elle
+        // qui permettra de reconnaitre celle-ci la prochaine fois.
+        const latitude = document.getElementById('latitude');
+        const longitude = document.getElementById('longitude');
+
+        if (latitude && longitude) {
+            latitude.value = station.lat;
+            longitude.value = station.lon;
+        }
+
+        close();
+        document.getElementById('formulaire')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    const render = (payload) => {
+        results.replaceChildren();
+
+        if (payload.results.length === 0) {
+            summary.textContent = `Aucune borne publique trouvée à moins de ${payload.radius_km} km.`;
+
+            return;
+        }
+
+        summary.textContent = `${payload.results.length} borne(s) à moins de ${payload.radius_km} km, la plus proche d'abord.`;
+
+        const table = document.createElement('table');
+        table.className = 'table is-fullwidth is-narrow is-hoverable';
+
+        const body = document.createElement('tbody');
+
+        payload.results.forEach((station) => {
+            const row = document.createElement('tr');
+
+            const identity = document.createElement('td');
+            const title = document.createElement('strong');
+            title.textContent = station.name;
+            identity.appendChild(title);
+
+            if (station.address || station.city) {
+                const address = document.createElement('p');
+                address.className = 'has-text-grey is-size-7';
+                address.textContent = [station.address, station.city].filter(Boolean).join(' · ');
+                identity.appendChild(address);
+            }
+
+            const network = document.createElement('td');
+            network.textContent = station.operator || '—';
+
+            const power = document.createElement('td');
+            power.className = 'has-text-right';
+            power.textContent = `${station.power_kw} kW`;
+
+            const distance = document.createElement('td');
+            distance.className = 'has-text-right';
+            distance.textContent = `${String(station.distance_km).replace('.', ',')} km`;
+
+            const action = document.createElement('td');
+            action.className = 'has-text-right';
+            const add = document.createElement('button');
+            add.type = 'button';
+            add.className = 'button is-small is-primary is-light';
+            add.textContent = 'Ajouter';
+            add.addEventListener('click', () => pick(station));
+            action.appendChild(add);
+
+            [identity, network, power, distance, action].forEach((cell) => row.appendChild(cell));
+            body.appendChild(row);
+        });
+
+        table.appendChild(body);
+
+        const container = document.createElement('div');
+        container.className = 'table-container';
+        container.appendChild(table);
+        results.appendChild(container);
+    };
+
+    button.addEventListener('click', () => {
+        currentPosition(button, 'Localisation…')
+            .then(({ latitude, longitude }) => {
+                summary.textContent = 'Recherche en cours…';
+                results.replaceChildren();
+                modal.classList.add('is-active');
+
+                return fetch(`/recharges/bornes-proches?lat=${latitude}&lon=${longitude}`, {
+                    headers: { Accept: 'application/json' },
+                })
+                    .then((response) => {
+                        if (!response.ok) {
+                            throw new Error('La recherche a échoué.');
+                        }
+
+                        return response.json();
+                    })
+                    .then(render)
+                    .catch(() => {
+                        summary.textContent = "La recherche a échoué. Réessayez dans un instant.";
+                    });
+            })
+            .catch((error) => alert(error.message));
+    });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -344,4 +537,5 @@ document.addEventListener('DOMContentLoaded', () => {
     setupOtherToggle('provider_choice', 'provider_other_wrapper');
     setupChargerSuggestions();
     setupGeolocationButton();
+    setupNearbySearch();
 });

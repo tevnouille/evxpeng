@@ -103,13 +103,12 @@
             {{-- Position de la borne : c'est elle qui permettra de reconnaitre cette
                  borne precise la prochaine fois, y compris si la ville en compte
                  plusieurs. --}}
-            @if (! empty($prefill['latitude']) && ! empty($prefill['longitude']))
-                <input type="hidden" name="latitude" value="{{ $prefill['latitude'] }}">
-                <input type="hidden" name="longitude" value="{{ $prefill['longitude'] }}">
-            @elseif ($editing?->latitude && $editing?->longitude)
-                <input type="hidden" name="latitude" value="{{ $editing->latitude }}">
-                <input type="hidden" name="longitude" value="{{ $editing->longitude }}">
-            @endif
+@php
+                $formLatitude = filled($prefill['latitude'] ?? null) ? $prefill['latitude'] : $editing?->latitude;
+                $formLongitude = filled($prefill['longitude'] ?? null) ? $prefill['longitude'] : $editing?->longitude;
+            @endphp
+            <input type="hidden" name="latitude" id="latitude" value="{{ $formLatitude }}">
+            <input type="hidden" name="longitude" id="longitude" value="{{ $formLongitude }}">
 
             <div class="columns is-multiline">
                 <div class="column is-3">
@@ -154,7 +153,10 @@
                             </div>
                         </div>
                         <div class="control mt-2">
-                            <button type="button" id="geolocate_button" class="button is-small is-light">&#128205; Utiliser ma position</button>
+                            <div class="buttons are-small">
+                                <button type="button" id="geolocate_button" class="button is-light">&#128205; Utiliser ma position</button>
+                                <button type="button" id="nearby_button" class="button is-light">&#128269; Rechercher bornes</button>
+                            </div>
                         </div>
                         <div class="control mt-2" id="location_other_wrapper" style="position: relative; display: {{ old('location_choice') === 'other' ? 'block' : 'none' }};">
                             <input class="input" type="text" name="location_other" id="location_other"
@@ -291,6 +293,23 @@
                 @endif
             </div>
         </form>
+    </div>
+
+    <div class="modal" id="nearby_modal">
+        <div class="modal-background" data-nearby-close></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title is-size-5">Bornes autour de vous</p>
+                <button class="delete" aria-label="close" type="button" data-nearby-close></button>
+            </header>
+            <section class="modal-card-body">
+                <p class="has-text-grey is-size-7 mb-4" id="nearby_summary">Recherche en cours…</p>
+                <div id="nearby_results"></div>
+            </section>
+            <footer class="modal-card-foot">
+                <button class="button" type="button" data-nearby-close>Fermer</button>
+            </footer>
+        </div>
     </div>
 
     <div class="level">

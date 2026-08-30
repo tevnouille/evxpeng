@@ -23,6 +23,7 @@ Route::post('/recharges', [ChargingSessionController::class, 'store'])->name('ch
 // Assistance a la saisie : base nationale des bornes.
 Route::get('/recharges/bornes', [ChargerLookupController::class, 'stations'])->name('chargers.stations');
 Route::get('/recharges/fournisseurs', [ChargerLookupController::class, 'operators'])->name('chargers.operators');
+Route::get('/recharges/bornes-proches', [ChargerLookupController::class, 'nearby'])->name('chargers.nearby');
 
 Route::get('/recharges/{chargingSession}/edit', [ChargingSessionController::class, 'edit'])->name('charging-sessions.edit');
 Route::put('/recharges/{chargingSession}', [ChargingSessionController::class, 'update'])->name('charging-sessions.update');
