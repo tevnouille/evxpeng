@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\ChargerLookupController;
 use App\Http\Controllers\ChargingCurveController;
 use App\Http\Controllers\ChargingSessionController;
 use App\Http\Controllers\DashboardController;
@@ -18,6 +19,10 @@ Route::redirect('/', '/recharges');
 
 Route::get('/recharges', [ChargingSessionController::class, 'index'])->name('charging-sessions.index');
 Route::post('/recharges', [ChargingSessionController::class, 'store'])->name('charging-sessions.store');
+// Assistance a la saisie : base nationale des bornes.
+Route::get('/recharges/bornes', [ChargerLookupController::class, 'stations'])->name('chargers.stations');
+Route::get('/recharges/fournisseurs', [ChargerLookupController::class, 'operators'])->name('chargers.operators');
+
 Route::get('/recharges/{chargingSession}/edit', [ChargingSessionController::class, 'edit'])->name('charging-sessions.edit');
 Route::put('/recharges/{chargingSession}', [ChargingSessionController::class, 'update'])->name('charging-sessions.update');
 Route::delete('/recharges/{chargingSession}', [ChargingSessionController::class, 'destroy'])->name('charging-sessions.destroy');

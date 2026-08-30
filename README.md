@@ -23,6 +23,19 @@ unique).
 - Les listes déroulantes sont filtrables au clavier, et chacune propose
   « Autre… » pour créer une nouvelle valeur à la volée.
 
+#### Saisie assistée par la base des bornes
+
+Sur le formulaire de recharge, choisir **Autre…** en localisation ouvre un champ
+qui propose les bornes de la base nationale IRVE dès trois lettres. Chaque mot
+saisi est cherché séparément, si bien que « tesla villabé » croise l'enseigne et
+la commune. Retenir une borne remplit la localisation avec sa commune, et
+complète le fournisseur et la puissance **s'ils sont encore vides** — un choix
+déjà fait n'est jamais écrasé. Le fournisseur est repris de vos listes quand le
+nom correspond, sinon proposé en « Autre… ».
+
+Le champ « Autre… » des fournisseurs propose de la même façon les enseignes et
+opérateurs de la base, ce qui évite de retaper « TotalEnergies Charging Services ».
+
 ### Historique
 
 - Vue annuelle : une tuile par mois avec nombre de recharges, kWh et coût.

@@ -35,7 +35,7 @@
                                    data-address-input autocomplete="off">
                             <input type="hidden" name="depart_lat" value="{{ old('depart_lat') }}">
                             <input type="hidden" name="depart_lon" value="{{ old('depart_lon') }}">
-                            <div class="dropdown-content" data-address-results hidden
+                            <div class="dropdown-content" data-suggestions hidden
                                  style="position: absolute; z-index: 30; width: 100%; max-height: 16rem; overflow-y: auto;"></div>
                         </div>
                     </div>
@@ -50,7 +50,7 @@
                                    data-address-input autocomplete="off">
                             <input type="hidden" name="arrivee_lat" value="{{ old('arrivee_lat') }}">
                             <input type="hidden" name="arrivee_lon" value="{{ old('arrivee_lon') }}">
-                            <div class="dropdown-content" data-address-results hidden
+                            <div class="dropdown-content" data-suggestions hidden
                                  style="position: absolute; z-index: 30; width: 100%; max-height: 16rem; overflow-y: auto;"></div>
                         </div>
                     </div>

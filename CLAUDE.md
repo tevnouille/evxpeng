@@ -261,6 +261,22 @@ Les libelles ne sont plus uniques dans l'absolu mais **par compte** (index
 `unique:locations,name` aurait interdit a un second utilisateur d'avoir sa propre
 "Maison".
 
+## Listes de suggestions
+
+`resources/js/suggest.js` porte le mecanisme commun : debounce, navigation
+clavier, fermeture au blur, rendu delegue. Trois usages s'appuient dessus —
+adresses du planificateur et des favoris (`address-autocomplete.js`), bornes et
+fournisseurs du formulaire de recharge (`app.js`).
+
+Toujours une liste maison, **jamais un `<datalist>`** : le navigateur refiltre
+lui-meme les options d'un datalist en tenant compte des accents, et masque le
+resultat que l'API vient de renvoyer.
+
+La recherche de bornes (`ChargerLookupController`) decoupe la saisie en mots et
+exige que **chacun** se retrouve dans une des colonnes, pas forcement la meme :
+sans cela "tesla villabe" ne donnait rien, aucune colonne ne contenant les deux.
+Le tri met en tete les communes qui commencent par le premier mot.
+
 ## Alertes
 
 Pas de SMTP fonctionnel sur hostingtools (`MAIL_MAILER=log`). Pour notifier

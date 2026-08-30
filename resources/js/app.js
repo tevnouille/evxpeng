@@ -1,3 +1,5 @@
+import { attachSuggestions, fetchJson } from './suggest';
+
 // En dessous de ce nombre d'options, la liste deroulante native reste plus
 // pratique qu'un champ de recherche.
 const SEARCHABLE_MIN_OPTIONS = 12;
@@ -157,6 +159,132 @@ function setupGeolocationButton() {
     });
 }
 
+// Comparaison "comme on tape" : sans accents ni casse.
+function fold(value) {
+    return value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
+}
+
+/**
+ * Pose la valeur d'un select, y compris quand il a ete remplace par un champ de
+ * recherche (voir makeSearchable) : sans mettre a jour le champ miroir,
+ * l'utilisateur verrait l'ancien libelle.
+ */
+function selectValue(select, value) {
+    select.value = value;
+    select.dispatchEvent(new Event('change'));
+
+    const mirror = document.getElementById(`${select.id}-search`);
+
+    if (mirror) {
+        const option = select.options[select.selectedIndex];
+        mirror.value = option ? option.textContent.trim() : '';
+    }
+}
+
+/**
+ * Assistance a la saisie depuis la base nationale des bornes.
+ *
+ * Choisir une borne renseigne la localisation, et complete fournisseur et
+ * puissance s'ils sont encore vides — jamais s'ils ont deja ete choisis, on ne
+ * defait pas la saisie de l'utilisateur.
+ */
+function setupChargerSuggestions() {
+    const locationOther = document.getElementById('location_other');
+    const providerOther = document.getElementById('provider_other');
+    const providerSelect = document.getElementById('provider_choice');
+    const powerSelect = document.getElementById('power_rating_id');
+
+    const fillProvider = (operator) => {
+        if (!operator || !providerSelect) {
+            return;
+        }
+
+        const alreadyChosen = providerSelect.value !== ''
+            && (providerSelect.value !== 'other' || (providerOther && providerOther.value.trim() !== ''));
+
+        if (alreadyChosen) {
+            return;
+        }
+
+        const known = Array.from(providerSelect.options).find(
+            (option) => option.value !== '' && option.value !== 'other'
+                && fold(option.textContent.trim()) === fold(operator)
+        );
+
+        if (known) {
+            selectValue(providerSelect, known.value);
+
+            return;
+        }
+
+        selectValue(providerSelect, 'other');
+
+        if (providerOther) {
+            providerOther.value = operator;
+        }
+    };
+
+    const fillPower = (power) => {
+        if (!power || !powerSelect || powerSelect.value !== '') {
+            return;
+        }
+
+        // La borne annonce sa puissance nominale ; on retient le palier
+        // disponible immediatement inferieur ou egal, faute d'exact.
+        const options = Array.from(powerSelect.options)
+            .filter((option) => option.value !== '' && option.value !== 'other')
+            .map((option) => ({ option, kw: parseFloat(option.textContent) }))
+            .filter((entry) => !Number.isNaN(entry.kw))
+            .sort((a, b) => a.kw - b.kw);
+
+        const best = options.filter((entry) => entry.kw <= power).pop() ?? options[0];
+
+        if (best) {
+            selectValue(powerSelect, best.option.value);
+        }
+    };
+
+    if (locationOther) {
+        attachSuggestions(locationOther, {
+            search: (query) => fetchJson(`/recharges/bornes?q=${encodeURIComponent(query)}`),
+            render: (node, station) => {
+                node.appendChild(document.createTextNode(station.city || station.name));
+
+                const detail = document.createElement('span');
+                detail.className = 'has-text-grey ml-2';
+                detail.textContent = [station.name, station.operator, `${station.power_kw} kW`]
+                    .filter(Boolean).join(' · ');
+                node.appendChild(detail);
+            },
+            pick: (station) => {
+                locationOther.value = station.city || station.name;
+                fillProvider(station.operator);
+                fillPower(station.power_kw);
+            },
+        });
+    }
+
+    if (providerOther) {
+        attachSuggestions(providerOther, {
+            search: (query) => fetchJson(`/recharges/fournisseurs?q=${encodeURIComponent(query)}`),
+            render: (node, operator) => {
+                node.appendChild(document.createTextNode(operator.name));
+
+                const detail = document.createElement('span');
+                detail.className = 'has-text-grey ml-2';
+                detail.textContent = `${operator.stations} borne(s)`;
+                node.appendChild(detail);
+            },
+            pick: (operator) => {
+                providerOther.value = operator.name;
+            },
+        });
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('select[data-searchable]').forEach(makeSearchable);
 
@@ -214,5 +342,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setupOtherToggle('location_choice', 'location_other_wrapper');
     setupOtherToggle('provider_choice', 'provider_other_wrapper');
+    setupChargerSuggestions();
     setupGeolocationButton();
 });

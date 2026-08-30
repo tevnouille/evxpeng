@@ -156,8 +156,15 @@
                         <div class="control mt-2">
                             <button type="button" id="geolocate_button" class="button is-small is-light">&#128205; Utiliser ma position</button>
                         </div>
-                        <div class="control mt-2" id="location_other_wrapper" style="display: {{ old('location_choice') === 'other' ? 'block' : 'none' }};">
-                            <input class="input" type="text" name="location_other" id="location_other" placeholder="Nouvelle localisation" value="{{ old('location_other') }}">
+                        <div class="control mt-2" id="location_other_wrapper" style="position: relative; display: {{ old('location_choice') === 'other' ? 'block' : 'none' }};">
+                            <input class="input" type="text" name="location_other" id="location_other"
+                                   placeholder="Ville, ou nom de borne" value="{{ old('location_other') }}" autocomplete="off">
+                            <div class="dropdown-content" data-suggestions hidden
+                                 style="position: absolute; z-index: 30; width: 100%; max-height: 16rem; overflow-y: auto;"></div>
+                            <p class="help">
+                                Tapez trois lettres&nbsp;: les bornes de la base nationale sont proposées,
+                                et en choisir une renseigne aussi le fournisseur et la puissance.
+                            </p>
                         </div>
                         <p class="help"><a href="{{ route('reference-data.index') }}">Ajouter / éditer / supprimer une localisation</a></p>
                     </div>
@@ -177,8 +184,11 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="control mt-2" id="provider_other_wrapper" style="display: {{ old('provider_choice') === 'other' ? 'block' : 'none' }};">
-                            <input class="input" type="text" name="provider_other" placeholder="Nouveau fournisseur" value="{{ old('provider_other') }}">
+                        <div class="control mt-2" id="provider_other_wrapper" style="position: relative; display: {{ old('provider_choice') === 'other' ? 'block' : 'none' }};">
+                            <input class="input" type="text" name="provider_other" id="provider_other"
+                                   placeholder="Nouveau fournisseur" value="{{ old('provider_other') }}" autocomplete="off">
+                            <div class="dropdown-content" data-suggestions hidden
+                                 style="position: absolute; z-index: 30; width: 100%; max-height: 16rem; overflow-y: auto;"></div>
                         </div>
                         <p class="help"><a href="{{ route('reference-data.index') }}">Ajouter / éditer / supprimer un fournisseur</a></p>
                     </div>

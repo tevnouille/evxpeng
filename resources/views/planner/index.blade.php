@@ -27,7 +27,7 @@
                                    data-address-input autocomplete="off">
                             <input type="hidden" name="depart_lat" value="{{ request()->query('depart_lat') }}">
                             <input type="hidden" name="depart_lon" value="{{ request()->query('depart_lon') }}">
-                            <div class="dropdown-content" data-address-results hidden
+                            <div class="dropdown-content" data-suggestions hidden
                                  style="position: absolute; z-index: 30; width: 100%; max-height: 16rem; overflow-y: auto;"></div>
                         </div>
                     </div>
@@ -42,7 +42,7 @@
                                    data-address-input autocomplete="off">
                             <input type="hidden" name="arrivee_lat" value="{{ request()->query('arrivee_lat') }}">
                             <input type="hidden" name="arrivee_lon" value="{{ request()->query('arrivee_lon') }}">
-                            <div class="dropdown-content" data-address-results hidden
+                            <div class="dropdown-content" data-suggestions hidden
                                  style="position: absolute; z-index: 30; width: 100%; max-height: 16rem; overflow-y: auto;"></div>
                         </div>
                     </div>
