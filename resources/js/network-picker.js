@@ -23,17 +23,21 @@ export function wireNetworkFilter() {
             return;
         }
 
-        const options = Array.from(select.options);
-
-        filter.addEventListener('input', () => {
+        const apply = () => {
             const needle = fold(filter.value.trim());
 
-            options.forEach((option) => {
-                // Un reseau deja coche reste visible, sinon le filtre donnerait
-                // l'impression de l'avoir deselectionne.
-                option.hidden = needle !== '' && !option.selected && !fold(option.text).includes(needle);
+            // Les options sont relues a chaque fois, jamais capturees : dans le
+            // selecteur a deux colonnes elles changent de <select>, et un
+            // instantane pris au chargement continuait d'en masquer qui etaient
+            // passees dans la colonne des reseaux retenus.
+            Array.from(select.options).forEach((option) => {
+                option.hidden = needle !== '' && !fold(option.text).includes(needle);
             });
-        });
+        };
+
+        filter.addEventListener('input', apply);
+        // Rejoue le filtre apres un aller-retour entre les deux colonnes.
+        select.addEventListener('optionsmoved', apply);
 
         // Entree dans un champ de filtre : ne pas soumettre le formulaire par megarde.
         filter.addEventListener('keydown', (event) => {
@@ -60,14 +64,49 @@ export function wireNetworkPicker() {
 
     const byLabel = (a, b) => a.text.localeCompare(b.text, 'fr');
 
+    // Les compteurs sont rendus par le serveur : sans cela ils resteraient
+    // figes sur l'etat d'ouverture de la page, et un reseau ajoute donnerait
+    // l'impression de n'avoir rien change.
+    const counters = {
+        disponibles: document.querySelector('[data-network-count="disponibles"]'),
+        retenus: document.querySelector('[data-network-count="retenus"]'),
+    };
+    const emptyNote = document.querySelector('[data-network-empty]');
+
+    const refresh = () => {
+        if (counters.disponibles) {
+            counters.disponibles.textContent = String(available.options.length);
+        }
+
+        if (counters.retenus) {
+            counters.retenus.textContent = String(chosen.options.length);
+        }
+
+        if (emptyNote) {
+            emptyNote.hidden = chosen.options.length > 0;
+        }
+    };
+
     const move = (from, to) => {
-        Array.from(from.selectedOptions).forEach((option) => {
+        const moved = Array.from(from.selectedOptions);
+
+        if (moved.length === 0) {
+            return;
+        }
+
+        moved.forEach((option) => {
             option.selected = false;
             option.hidden = false;
             to.appendChild(option);
         });
 
         Array.from(to.options).sort(byLabel).forEach((option) => to.appendChild(option));
+
+        // Le filtre eventuellement pose sur la colonne de gauche doit se
+        // reappliquer aux options qui viennent d'y revenir.
+        [from, to].forEach((select) => select.dispatchEvent(new Event('optionsmoved')));
+
+        refresh();
     };
 
     document.querySelector('[data-network-add]')?.addEventListener('click', () => move(available, chosen));
@@ -79,6 +118,8 @@ export function wireNetworkPicker() {
 
     // Un <select multiple> ne poste que ses options selectionnees : sans cela,
     // le formulaire n'enverrait que les lignes surlignees de la colonne droite.
+    refresh();
+
     chosen.form?.addEventListener('submit', () => {
         Array.from(chosen.options).forEach((option) => {
             option.selected = true;

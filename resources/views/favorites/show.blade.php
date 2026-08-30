@@ -68,7 +68,7 @@
                 @endphp
 
                 <label class="label">Réseaux</label>
-                <div class="columns is-vcentered">
+                <div class="columns is-vcentered network-picker">
                     <div class="column is-5">
                         <div class="control mb-2">
                             <input class="input is-small" type="search" data-network-filter
@@ -82,7 +82,7 @@
                                 @endforeach
                             </select>
                         </div>
-                        <p class="help">Disponibles &mdash; {{ $available->count() }}</p>
+                        <p class="help">Disponibles &mdash; <span data-network-count="disponibles">{{ $available->count() }}</span></p>
                     </div>
 
                     <div class="column is-2 has-text-centered">
@@ -101,10 +101,10 @@
                             </select>
                         </div>
                         <p class="help">
-                            Retenus &mdash; {{ $chosen->count() }}.
-                            @if ($chosen->isEmpty())
+                            Retenus &mdash; <span data-network-count="retenus">{{ $chosen->count() }}</span>.
+                            <span data-network-empty @if (! $chosen->isEmpty()) hidden @endif>
                                 Aucun&nbsp;: toutes les bornes sont affichées.
-                            @endif
+                            </span>
                         </p>
                     </div>
                 </div>

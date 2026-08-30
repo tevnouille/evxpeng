@@ -23,6 +23,15 @@ class FreeMobileSms
 {
     private const ENDPOINT = 'https://smsapi.free-mobile.fr/sendmsg';
 
+    /**
+     * Free met parfois plus de quinze secondes a repondre, alors meme que le
+     * SMS part. Un delai trop court transforme un envoi reussi en echec.
+     */
+    private const TIMEOUT_SECONDS = 30;
+
+    /** Marge sous la taille de la colonne, pour ne jamais faire echouer l'insertion. */
+    private const MAX_REASON = 240;
+
     /** Codes documentes par Free. */
     private const REASONS = [
         400 => 'Paramètre manquant',
@@ -61,14 +70,16 @@ class FreeMobileSms
         }
 
         try {
-            $response = Http::timeout(15)->get(self::ENDPOINT, [
+            $response = Http::timeout(self::TIMEOUT_SECONDS)->get(self::ENDPOINT, [
                 'user' => $this->user->free_mobile_user,
                 'pass' => $this->user->free_mobile_password,
                 'msg' => $message,
             ]);
         } catch (\Throwable $e) {
-            Log::warning('SMS Free Mobile : appel impossible', ['message' => $e->getMessage()]);
-            $this->record($message, false, null, 'Appel impossible : '.$e->getMessage());
+            $reason = $this->reason($e);
+
+            Log::warning('SMS Free Mobile : appel impossible', ['raison' => $reason]);
+            $this->record($message, false, null, $reason);
 
             return false;
         }
@@ -87,18 +98,51 @@ class FreeMobileSms
         return false;
     }
 
+    /**
+     * Motif d'echec lisible et sans secret.
+     *
+     * Le message d'exception de Guzzle contient l'URL appelee, donc
+     * l'identifiant et la cle Free en clair : les enregistrer en base les
+     * afficherait ensuite dans le journal des envois. On coupe avant l'URL.
+     *
+     * Un delai depasse ne veut pas dire que le SMS n'est pas parti : Free repond
+     * parfois apres coup. Le libelle le dit, plutot que d'affirmer un echec.
+     */
+    private function reason(\Throwable $e): string
+    {
+        $message = preg_replace('/\s*(for|see)\s+https?:\/\/\S+/i', '', $e->getMessage()) ?? '';
+        $message = trim(preg_replace('/\s+/', ' ', $message) ?? '');
+
+        if (str_contains(strtolower($message), 'timed out') || str_contains(strtolower($message), 'timeout')) {
+            return mb_substr('Delai depasse cote application ; le SMS a pu partir malgre tout. '.$message, 0, self::MAX_REASON);
+        }
+
+        return mb_substr('Appel impossible : '.$message, 0, self::MAX_REASON);
+    }
+
+    /**
+     * Journalise la tentative.
+     *
+     * Encapsule : une trace qui echoue ne doit jamais casser la page. C'est
+     * exactement ce qui s'etait produit — un motif d'echec trop long faisait
+     * remonter une erreur SQL en 500, et l'envoi disparaissait du journal.
+     */
     private function record(string $message, bool $delivered, ?int $status, ?string $reason): void
     {
-        $sms = new SmsMessage([
-            'message' => $message,
-            'delivered' => $delivered,
-            'http_status' => $status,
-            'failure_reason' => $reason,
-        ]);
+        try {
+            $sms = new SmsMessage([
+                'message' => $message,
+                'delivered' => $delivered,
+                'http_status' => $status,
+                'failure_reason' => $reason === null ? null : mb_substr($reason, 0, self::MAX_REASON),
+            ]);
 
-        // Affectation explicite : l'envoi part le plus souvent d'une commande
-        // planifiee, ou aucun utilisateur courant n'est pose.
-        $sms->user_id = $this->user->id;
-        $sms->save();
+            // Affectation explicite : l'envoi part le plus souvent d'une commande
+            // planifiee, ou aucun utilisateur courant n'est pose.
+            $sms->user_id = $this->user->id;
+            $sms->save();
+        } catch (\Throwable $e) {
+            Log::error('SMS Free Mobile : journalisation impossible', ['message' => $e->getMessage()]);
+        }
     }
 }

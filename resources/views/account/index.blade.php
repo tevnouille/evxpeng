@@ -73,18 +73,20 @@
 
     @if ($smsConfigured)
         <div class="box">
-            <div class="level is-mobile">
-                <div class="level-left">
+            <div class="columns is-vcentered">
+                <div class="column">
                     <p>
                         Les identifiants Free ne se vérifient qu'en envoyant réellement un message.
                         <br>
                         <span class="has-text-grey is-size-7">
                             Le résultat est consultable dans le
                             <a href="{{ route('reference-data.sms.index') }}">journal des envois</a>.
+                            Free répond parfois après plusieurs dizaines de secondes&nbsp;: un envoi
+                            noté « délai dépassé » est peut-être arrivé quand même.
                         </span>
                     </p>
                 </div>
-                <div class="level-right">
+                <div class="column is-narrow">
                     <form method="POST" action="{{ route('account.test-sms') }}">
                         @csrf
                         <button class="button is-light" type="submit">Envoyer un SMS de test</button>

@@ -106,3 +106,16 @@ body {
     display: none;
 }
 
+
+/*
+ * Selecteur de reseaux a deux colonnes.
+ *
+ * Le navigateur dimensionne une liste `size="9"` sur le nombre d options
+ * visibles : filtrer la colonne de gauche la faisait retrecir, et les deux
+ * colonnes remontaient d un bloc. Une hauteur fixe garde la mise en page
+ * stable, filtre pose ou non.
+ */
+.network-picker .select.is-multiple select {
+    height: 20rem;
+    overflow-y: auto;
+}
