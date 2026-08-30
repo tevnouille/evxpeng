@@ -25,11 +25,14 @@ class ServerInventory
     /**
      * Ecosystemes dont la mise a jour se declenche depuis la page.
      *
-     * Composer en est absent a dessein : monter une dependance PHP oblige a
-     * reconstruire l'image et a recreer le conteneur — un deploiement, pas un
-     * clic. Ces montees-la restent manuelles.
+     * Composer y figure, mais sa montee n'est pas de meme nature : elle
+     * reconstruit l'image et recree le conteneur, donc le site repond mal
+     * quelques secondes. La page le dit avant de demander confirmation.
      */
-    public const UPDATABLE = ['npm', 'apt'];
+    public const UPDATABLE = ['npm', 'apt', 'composer'];
+
+    /** Ceux dont la mise a jour interrompt brievement le service. */
+    public const REDEPLOYS = ['composer'];
 
     /** Verdicts de mise a jour, du plus urgent au plus anodin. */
     public const VERDICTS = [
@@ -96,7 +99,7 @@ class ServerInventory
             [
                 'key' => 'composer',
                 'label' => 'Dépendances PHP (Composer)',
-                'note' => "Le projet lui-même. Les paquets marqués « développement » ne sont pas installés en production. Ces montées se font à la main : elles supposent de reconstruire l'image et de recréer le conteneur.",
+                'note' => "Le projet lui-même. Les paquets marqués « développement » ne sont pas installés en production. Mettre l'un d'eux à jour reconstruit l'image et redémarre le conteneur : le site répond mal une poignée de secondes.",
                 'packages' => $this->composer(),
             ],
             [
@@ -132,7 +135,7 @@ class ServerInventory
             return [
                 'name' => $p['name'],
                 'ecosystem' => 'composer',
-                'updatable' => false,
+                'updatable' => $verdict === 'recommandee',
                 'version' => $p['version'],
                 'available' => $verdict === 'inconnu' ? null : $p['available'],
                 'license' => $p['license'],
@@ -255,13 +258,51 @@ class ServerInventory
             return false;
         }
 
-        $payload = json_encode([
+        return $this->writeRequest([
             'ecosystem' => $ecosystem,
             'package' => $package,
-            'requested_at' => now()->toIso8601String(),
         ]);
+    }
 
-        return @file_put_contents(storage_path('app/'.self::UPDATE_REQUEST_FILE), $payload) !== false;
+    /**
+     * Demande la mise a jour de tout ce qui est compatible.
+     *
+     * L'hote regroupe par ecosysteme : une commande chacun, donc une seule
+     * reconstruction d'image au lieu d'une par dependance PHP.
+     */
+    public function requestUpdateAll(): bool
+    {
+        return $this->writeRequest(['mode' => 'all']);
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function writeRequest(array $payload): bool
+    {
+        $payload['requested_at'] = now()->toIso8601String();
+
+        return @file_put_contents(
+            storage_path('app/'.self::UPDATE_REQUEST_FILE),
+            json_encode($payload),
+        ) !== false;
+    }
+
+    /**
+     * Paquets qu'un traitement groupe monterait, par ecosysteme.
+     *
+     * @return array<string, int>
+     */
+    public function updatableCounts(): array
+    {
+        $counts = [];
+
+        foreach ($this->groups() as $group) {
+            $n = count(array_filter($group['packages'], fn (array $p) => $p['updatable']));
+            if ($n > 0) {
+                $counts[$group['key']] = $n;
+            }
+        }
+
+        return $counts;
     }
 
     public function updatePending(): bool

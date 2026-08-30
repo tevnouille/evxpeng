@@ -31,7 +31,31 @@ class ServerInfoController extends Controller
             'actionable' => $inventory->actionable(),
             'updatePending' => $inventory->updatePending(),
             'updateLog' => $inventory->updateLog(),
+            'updatableCounts' => $inventory->updatableCounts(),
         ]);
+    }
+
+    /**
+     * Declenche toutes les montees compatibles d'un coup.
+     *
+     * Le regroupement se fait cote hote : une commande par ecosysteme, sans
+     * quoi chaque dependance PHP entrainerait sa propre reconstruction.
+     */
+    public function updateAll(ServerInventory $inventory): RedirectResponse
+    {
+        if ($inventory->updatePending()) {
+            return back()->with('error', 'Une mise à jour est déjà en attente : laissez-la se terminer.');
+        }
+
+        if (array_sum($inventory->updatableCounts()) === 0) {
+            return back()->with('error', 'Rien à mettre à jour.');
+        }
+
+        if (! $inventory->requestUpdateAll()) {
+            return back()->with('error', 'Impossible de déposer la demande de mise à jour.');
+        }
+
+        return back()->with('success', "Mise à jour groupée demandée : elle démarre dans la minute et peut prendre plusieurs minutes. Le résultat apparaîtra dans le journal ci-dessous.");
     }
 
     /**

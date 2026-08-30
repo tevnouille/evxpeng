@@ -84,6 +84,7 @@ Route::middleware(\App\Http\Middleware\RequiresAdmin::class)->group(function () 
     Route::get('/admin/serveur', [ServerInfoController::class, 'index'])->name('reference-data.server.index');
     Route::post('/admin/serveur/verifier', [ServerInfoController::class, 'refresh'])->name('reference-data.server.refresh');
     Route::post('/admin/serveur/mettre-a-jour', [ServerInfoController::class, 'update'])->name('reference-data.server.update');
+    Route::post('/admin/serveur/tout-mettre-a-jour', [ServerInfoController::class, 'updateAll'])->name('reference-data.server.update-all');
 });
 
 // Gestion des comptes : reservee a l'administrateur.

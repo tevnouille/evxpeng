@@ -38,10 +38,27 @@
             </div>
         </div>
         <div class="level-right">
-            <form method="POST" action="{{ route('reference-data.server.refresh') }}">
-                @csrf
-                <button type="submit" class="button is-link">&#128260; Vérifier les mises à jour</button>
-            </form>
+            <div class="buttons">
+                <form method="POST" action="{{ route('reference-data.server.refresh') }}" class="mr-2">
+                    @csrf
+                    <button type="submit" class="button is-link">&#128260; Vérifier les mises à jour</button>
+                </form>
+                @if (array_sum($updatableCounts) > 0)
+                    @php
+                        $resume = collect($updatableCounts)
+                            ->map(fn ($n, $key) => $n.' '.['composer' => 'PHP', 'npm' => 'JS', 'apt' => 'système'][$key])
+                            ->implode(', ');
+                        $redeploie = isset($updatableCounts['composer']);
+                    @endphp
+                    <form method="POST" action="{{ route('reference-data.server.update-all') }}"
+                          onsubmit="return confirm('Mettre à jour les {{ array_sum($updatableCounts) }} paquet(s) compatibles ({{ $resume }}) ?{{ $redeploie ? ' Le site sera brièvement indisponible.' : '' }}');">
+                        @csrf
+                        <button type="submit" class="button is-warning" @disabled($updatePending)>
+                            &#11014; Tout mettre à jour ({{ array_sum($updatableCounts) }})
+                        </button>
+                    </form>
+                @endif
+            </div>
         </div>
     </div>
 
@@ -246,7 +263,7 @@
                                     <td class="has-text-right">
                                         @if ($package['updatable'])
                                             <form method="POST" action="{{ route('reference-data.server.update') }}"
-                                                  onsubmit="return confirm('Mettre à jour {{ $package['name'] }} en {{ $package['available'] }} ?');">
+                                                  onsubmit="return confirm('Mettre à jour {{ $package['name'] }} en {{ $package['available'] }} ?{{ in_array($package['ecosystem'], \App\Services\ServerInventory::REDEPLOYS, true) ? ' Le site sera brièvement indisponible.' : '' }}');">
                                                 @csrf
                                                 <input type="hidden" name="ecosystem" value="{{ $package['ecosystem'] }}">
                                                 <input type="hidden" name="package" value="{{ $package['name'] }}">
