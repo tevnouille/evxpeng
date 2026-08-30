@@ -36,6 +36,8 @@ class ChargingSessionController extends Controller
             'location_id' => $request->query('prefill_location'),
             'provider_id' => $request->query('prefill_provider'),
             'power_rating_id' => $request->query('prefill_power'),
+            'latitude' => $request->query('prefill_lat'),
+            'longitude' => $request->query('prefill_lon'),
         ];
 
         return view('charging_sessions.index', [
@@ -118,6 +120,8 @@ class ChargingSessionController extends Controller
             'quantity_kwh' => ['required', 'numeric', 'min:0'],
             'charge_duration' => ['nullable', 'date_format:H:i'],
             'telemetry_started_at' => ['nullable', 'date'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'unit_cost' => ['nullable', 'numeric', 'min:0'],
             'total_cost' => ['nullable', 'numeric', 'min:0'],
             'comment' => ['nullable', 'string'],

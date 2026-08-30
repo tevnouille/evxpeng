@@ -105,7 +105,12 @@ class ReferenceDataController extends Controller
     public function locations(): View
     {
         return view('reference_data.locations', [
-            'locations' => Location::withCount('chargingSessions')->orderBy('name')->get(),
+            'locations' => Location::withCount([
+                'chargingSessions',
+                // Recharges dont on connait la position exacte : ce sont elles qui
+                // permettent de distinguer plusieurs bornes d'une meme ville.
+                'chargingSessions as located_sessions_count' => fn ($query) => $query->whereNotNull('latitude'),
+            ])->orderBy('name')->get(),
         ]);
     }
 

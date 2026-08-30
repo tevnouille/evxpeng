@@ -17,6 +17,8 @@ class ChargingSession extends Model
         'location_id',
         'provider_id',
         'power_rating_id',
+        'latitude',
+        'longitude',
         'quantity_kwh',
         'charge_duration',
         'unit_cost',
@@ -30,6 +32,8 @@ class ChargingSession extends Model
         'quantity_kwh' => 'decimal:2',
         'unit_cost' => 'decimal:4',
         'total_cost' => 'decimal:2',
+        'latitude' => 'float',
+        'longitude' => 'float',
         'charge_duration' => 'datetime:H:i',
     ];
 

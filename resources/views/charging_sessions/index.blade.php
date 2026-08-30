@@ -42,7 +42,10 @@
                                 <td>
                                     @if (! empty($charge['context']['location_name']))
                                         {{ $charge['context']['location_name'] }}
-                                        <span class="has-text-grey is-size-7">à {{ $charge['context']['distance_m'] }} m</span>
+                                        <span class="has-text-grey is-size-7">
+                                            à {{ $charge['context']['distance_m'] }} m —
+                                            {{ $charge['context']['source'] === 'recharge' ? 'borne déjà utilisée' : 'position de la localisation' }}
+                                        </span>
                                     @else
                                         <span class="has-text-grey">—</span>
                                     @endif
@@ -72,6 +75,8 @@
                                            'prefill_location' => $charge['context']['location_id'] ?? null,
                                            'prefill_provider' => $charge['context']['provider_id'] ?? null,
                                            'prefill_power' => $charge['context']['power_rating_id'] ?? null,
+                                           'prefill_lat' => $charge['lat'],
+                                           'prefill_lon' => $charge['lon'],
                                        ]) }}#formulaire">
                                         Ajouter
                                     </a>
@@ -93,6 +98,17 @@
 
             @if (! empty($prefill['telemetry_started_at']))
                 <input type="hidden" name="telemetry_started_at" value="{{ $prefill['telemetry_started_at'] }}">
+            @endif
+
+            {{-- Position de la borne : c'est elle qui permettra de reconnaitre cette
+                 borne precise la prochaine fois, y compris si la ville en compte
+                 plusieurs. --}}
+            @if (! empty($prefill['latitude']) && ! empty($prefill['longitude']))
+                <input type="hidden" name="latitude" value="{{ $prefill['latitude'] }}">
+                <input type="hidden" name="longitude" value="{{ $prefill['longitude'] }}">
+            @elseif ($editing?->latitude && $editing?->longitude)
+                <input type="hidden" name="latitude" value="{{ $editing->latitude }}">
+                <input type="hidden" name="longitude" value="{{ $editing->longitude }}">
             @endif
 
             <div class="columns is-multiline">

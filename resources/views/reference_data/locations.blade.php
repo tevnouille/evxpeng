@@ -7,10 +7,16 @@
     <h1 class="title mt-2">Localisation des bornes</h1>
 
     <p class="is-size-7 has-text-grey mb-4">
-        Les coordonnées sont facultatives, mais c'est elles qui permettent de reconnaître une borne à partir
-        de la position remontée par la télémétrie : une recharge détectée à moins de 400 m d'une localisation
-        connue pré-remplit automatiquement le lieu, ainsi que le fournisseur et la puissance les plus souvent
-        saisis à cet endroit.
+        Ces coordonnées sont facultatives et ne servent que d'<strong>amorce</strong> : elles ne désignent
+        qu'un point, alors qu'une même ville peut compter plusieurs bornes. Une recharge détectée à moins de
+        400 m reprend le lieu, puis le fournisseur et la puissance les plus fréquents ici.
+    </p>
+    <p class="is-size-7 has-text-grey mb-4">
+        Ensuite, <strong>chaque recharge enregistrée mémorise la position exacte de sa borne</strong>. Une
+        nouvelle recharge est alors rapprochée de la borne connue la plus proche (250 m), avec le fournisseur
+        et la puissance qui lui sont propres — deux bornes distantes de quelques centaines de mètres dans la
+        même ville ne sont donc pas confondues. Le compteur « bornes repérées » ci-dessous indique combien de
+        recharges ont déjà une position enregistrée.
     </p>
 
     <div class="columns">
@@ -46,6 +52,10 @@
                                         @method('PUT')
                                         <div class="control is-expanded">
                                             <input class="input" type="text" name="name" value="{{ $location->name }}" required>
+                                            <p class="help">
+                                                {{ $location->charging_sessions_count }} recharge(s),
+                                                dont <strong>{{ $location->located_sessions_count }}</strong> avec position enregistrée
+                                            </p>
                                             <div class="field is-grouped mt-2">
                                                 <p class="control is-expanded">
                                                     <input class="input is-small" type="number" step="0.0000001" name="latitude" value="{{ $location->latitude }}" placeholder="Latitude">
