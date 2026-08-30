@@ -60,28 +60,57 @@
                     </div>
                 </div>
             </div>
-            <div class="column is-4">
-                <div class="field">
-                    <label class="label" for="reseaux">Réseaux</label>
-                    <div class="control mb-2">
-                        <input class="input is-small" type="search" data-network-filter
-                               placeholder="Filtrer : electra, ionity, total…" autocomplete="off"
-                               aria-controls="reseaux">
-                    </div>
-                    <div class="control">
+            <div class="column is-12">
+                @php
+                    $chosenNetworks = $route->networks ?? [];
+                    $available = $networks->reject(fn ($network) => in_array($network->network, $chosenNetworks, true));
+                    $chosen = $networks->filter(fn ($network) => in_array($network->network, $chosenNetworks, true));
+                @endphp
+
+                <label class="label">Réseaux</label>
+                <div class="columns is-vcentered">
+                    <div class="column is-5">
+                        <div class="control mb-2">
+                            <input class="input is-small" type="search" data-network-filter
+                                   placeholder="Filtrer : electra, ionity, total…" autocomplete="off"
+                                   aria-controls="reseaux-disponibles">
+                        </div>
                         <div class="select is-multiple is-fullwidth">
-                            <select id="reseaux" name="reseaux[]" multiple size="7">
-                                @foreach ($networks as $network)
-                                    <option value="{{ $network->network }}" @selected(in_array($network->network, $route->networks ?? [], true))>{{ $network->network }} ({{ number_format($network->stations, 0, ',', ' ') }})</option>
+                            <select id="reseaux-disponibles" multiple size="9">
+                                @foreach ($available as $network)
+                                    <option value="{{ $network->network }}">{{ $network->network }} ({{ number_format($network->stations, 0, ',', ' ') }})</option>
                                 @endforeach
                             </select>
                         </div>
+                        <p class="help">Disponibles &mdash; {{ $available->count() }}</p>
                     </div>
-                    <p class="help">
-                        Aucun réseau coché&nbsp;: toutes les bornes sont affichées.
-                        Ctrl/&#8984; + clic pour en choisir plusieurs.
-                    </p>
+
+                    <div class="column is-2 has-text-centered">
+                        <button class="button is-fullwidth mb-2" type="button" data-network-add
+                                title="Ajouter au trajet">Ajouter &rarr;</button>
+                        <button class="button is-fullwidth" type="button" data-network-remove
+                                title="Retirer du trajet">&larr; Retirer</button>
+                    </div>
+
+                    <div class="column is-5">
+                        <div class="select is-multiple is-fullwidth mt-5">
+                            <select id="reseaux" name="reseaux[]" multiple size="9">
+                                @foreach ($chosen as $network)
+                                    <option value="{{ $network->network }}">{{ $network->network }} ({{ number_format($network->stations, 0, ',', ' ') }})</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <p class="help">
+                            Retenus &mdash; {{ $chosen->count() }}.
+                            @if ($chosen->isEmpty())
+                                Aucun&nbsp;: toutes les bornes sont affichées.
+                            @endif
+                        </p>
+                    </div>
                 </div>
+                <p class="help">
+                    Sélectionnez à gauche puis « Ajouter », ou double-cliquez sur une ligne.
+                </p>
             </div>
 
             <div class="column is-3">
@@ -163,31 +192,39 @@
         <div id="favorites-list"></div>
     </div>
 
-    @if ($others->isNotEmpty())
-        <form method="POST" action="{{ route('favorites.copy', $route) }}" class="box">
-            @csrf
-            <h2 class="subtitle">Copier ce trajet</h2>
-            <p class="mb-3">
-                Chaque destinataire reçoit <strong>sa propre copie</strong>, bornes retenues comprises&nbsp;:
-                il peut la renommer, la compléter ou la supprimer sans que la vôtre bouge.
+    <div class="box" id="copier">
+        <h2 class="subtitle">Copier ce trajet vers un autre compte</h2>
+
+        @if ($others->isEmpty())
+            <p class="has-text-grey">
+                Aucun autre compte pour l'instant. La copie sera proposée ici dès qu'une autre
+                personne se sera connectée avec son passkey.
             </p>
+        @else
+            <form method="POST" action="{{ route('favorites.copy', $route) }}">
+                @csrf
+                <p class="mb-3">
+                    Chaque destinataire reçoit <strong>sa propre copie</strong>, bornes retenues comprises&nbsp;:
+                    il peut la renommer, la compléter ou la supprimer sans que la vôtre bouge.
+                </p>
 
-            <div class="field">
-                @foreach ($others as $other)
-                    <label class="checkbox mr-4">
-                        <input type="checkbox" name="utilisateurs[]" value="{{ $other->id }}">
-                        {{ $other->email }}
-                    </label>
-                @endforeach
-            </div>
-
-            <div class="field mt-4">
-                <div class="control">
-                    <button class="button is-link" type="submit">Copier</button>
+                <div class="field">
+                    @foreach ($others as $other)
+                        <label class="checkbox mr-4">
+                            <input type="checkbox" name="utilisateurs[]" value="{{ $other->id }}">
+                            {{ $other->email }}
+                        </label>
+                    @endforeach
                 </div>
-            </div>
-        </form>
-    @endif
+
+                <div class="field mt-4">
+                    <div class="control">
+                        <button class="button is-link" type="submit">Copier</button>
+                    </div>
+                </div>
+            </form>
+        @endif
+    </div>
 
     <p class="has-text-grey is-size-7">
         Bornes issues de la base nationale IRVE, filtrées à

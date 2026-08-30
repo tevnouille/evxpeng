@@ -33,15 +33,19 @@
                 <a class="navbar-item {{ request()->routeIs('dashboard') ? 'is-active' : '' }}" href="{{ route('dashboard') }}">
                     @include('layouts._icon', ['name' => 'dashboard'])Dashboard
                 </a>
-                <a class="navbar-item {{ request()->routeIs('my-vehicle.*') ? 'is-active' : '' }}" href="{{ route('my-vehicle.index') }}">
-                    @include('layouts._icon', ['name' => 'voiture'])Ma voiture
-                </a>
+                @if (\App\Support\CurrentUser::get()?->hasTelemetry())
+                    <a class="navbar-item {{ request()->routeIs('my-vehicle.*') ? 'is-active' : '' }}" href="{{ route('my-vehicle.index') }}">
+                        @include('layouts._icon', ['name' => 'voiture'])Ma voiture
+                    </a>
+                @endif
                 <a class="navbar-item {{ request()->routeIs('charging-curves.*') ? 'is-active' : '' }}" href="{{ route('charging-curves.index') }}">
                     @include('layouts._icon', ['name' => 'courbe'])Courbe de recharge
                 </a>
-                <a class="navbar-item {{ request()->routeIs('trips.*') ? 'is-active' : '' }}" href="{{ route('trips.index') }}">
-                    @include('layouts._icon', ['name' => 'carte'])Déplacements
-                </a>
+                @if (\App\Support\CurrentUser::get()?->hasTelemetry())
+                    <a class="navbar-item {{ request()->routeIs('trips.*') ? 'is-active' : '' }}" href="{{ route('trips.index') }}">
+                        @include('layouts._icon', ['name' => 'carte'])Déplacements
+                    </a>
+                @endif
                 <a class="navbar-item {{ request()->routeIs('planner.*') ? 'is-active' : '' }}" href="{{ route('planner.index') }}">
                     @include('layouts._icon', ['name' => 'planificateur'])Planificateur
                 </a>

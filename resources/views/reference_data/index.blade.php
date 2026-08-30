@@ -47,6 +47,21 @@
                 </p>
             </a>
         </div>
+        @if (\App\Support\CurrentUser::get()?->is_admin)
+            <div class="column is-3">
+                <a href="{{ route('reference-data.users.index') }}" class="box has-text-centered">
+                    <p class="title is-4">&#128101;</p>
+                    <p class="title is-5">Utilisateurs</p>
+                    <p class="has-text-grey">
+                        {{ \App\Models\User::count() }} compte(s)
+                        @php($pending = \App\Models\User::whereNull('approved_at')->count())
+                        @if ($pending > 0)
+                            &middot; <span class="has-text-warning-dark">{{ $pending }} en attente</span>
+                        @endif
+                    </p>
+                </a>
+            </div>
+        @endif
         <div class="column is-3">
             <a href="{{ route('account.index') }}" class="box has-text-centered">
                 <p class="title is-4">&#128100;</p>

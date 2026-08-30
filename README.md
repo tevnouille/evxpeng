@@ -162,9 +162,22 @@ assumées&nbsp;: la base nationale des bornes et l'historique des prix des
 carburants, qui sont des données publiques importées.
 
 L'identité vient de la passerelle passkey, qui transmet l'email dans l'en-tête
-`X-SSO-Email`&nbsp;; il n'y a ni inscription ni mot de passe côté application. Un
-compte est créé à la première visite, avec les puissances de borne usuelles
-pré-remplies.
+`X-SSO-Email`&nbsp;; il n'y a ni inscription ni mot de passe côté application.
+
+**Posséder un passkey ne suffit pas à entrer** : le SSO est partagé avec les autres
+services du domaine, l'application tient donc sa propre liste. Une première visite
+crée un compte *en attente* et affiche un refus&nbsp;; l'administrateur l'autorise
+depuis **Administration &rarr; Utilisateurs**, où il peut aussi autoriser un email
+d'avance, retirer un accès (les données sont conservées) ou supprimer un compte avec
+tout ce qu'il contient. Retirer l'accès ici ne touche pas au passkey, qui continue
+d'ouvrir les autres services.
+
+Un compte autorisé démarre avec les puissances de borne usuelles pré-remplies.
+
+Les pages **Ma voiture** et **Déplacements** n'apparaissent que pour les comptes
+disposant d'un véhicule relié à A Better Routeplanner — ce qui suppose un abonnement
+ABRP Premium à soi. Le critère est la présence d'un token, pas une liste d'emails :
+elles apparaissent d'elles-mêmes le jour où quelqu'un renseigne le sien.
 
 Le cloisonnement est un *scope global* Eloquent (`App\Models\Concerns\BelongsToUser`)
 et non un `where` à répéter dans chaque contrôleur&nbsp;: on ne peut pas l'oublier.

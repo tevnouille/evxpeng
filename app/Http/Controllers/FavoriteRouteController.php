@@ -102,7 +102,12 @@ class FavoriteRouteController extends Controller
             'stations' => $this->corridorStations($favorite),
             'minPowers' => self::MIN_POWERS,
             'networks' => ChargingStation::networkOptions(),
-            'others' => User::where('id', '!=', CurrentUser::id())->orderBy('email')->get(),
+            // Comptes autorises seulement : copier vers quelqu'un qui ne peut
+            // pas entrer ne servirait a rien.
+            'others' => User::where('id', '!=', CurrentUser::id())
+                ->whereNotNull('approved_at')
+                ->orderBy('email')
+                ->get(),
         ]);
     }
 

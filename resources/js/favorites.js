@@ -1,7 +1,7 @@
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { wireAddressInputs } from './address-autocomplete';
-import { wireNetworkFilter } from './network-filter';
+import { wireNetworkFilter, wireNetworkPicker } from './network-picker';
 
 // Nombre de bornes visibles au-dela duquel on cesse d'afficher leur nom en
 // permanence. Un seuil de zoom fixe ne convenait pas : a zoom egal, un corridor
@@ -368,5 +368,6 @@ function renderMap() {
 document.addEventListener('DOMContentLoaded', () => {
     wireAddressInputs();
     wireNetworkFilter();
+    wireNetworkPicker();
     renderMap();
 });

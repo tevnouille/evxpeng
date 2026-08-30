@@ -134,6 +134,7 @@
                                     <td class="has-text-right">
                                         <div class="buttons is-right are-small">
                                             <a class="button is-link is-light" href="{{ route('favorites.show', $route) }}">Ouvrir</a>
+                                            <a class="button is-light" href="{{ route('favorites.show', $route) }}#copier">Copier</a>
                                             <form method="POST" action="{{ route('favorites.destroy', $route) }}"
                                                   onsubmit="return confirm('Supprimer le trajet « {{ $route->name }} » et ses bornes ?');">
                                                 @csrf

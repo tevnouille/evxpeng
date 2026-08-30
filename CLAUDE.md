@@ -241,6 +241,21 @@ Tables restees communes a dessein : `charging_stations` (IRVE) et `fuel_prices`,
 donnees publiques importees. `vehicle_telemetries` et `charge_alerts` sont
 cloisonnees par ricochet via leur vehicule.
 
+**L'autorisation d'acces est propre a l'application** (`users.approved_at`). Le SSO
+passkey est partage avec tevflix, frigate, emby, cuisine : en retirer quelqu'un
+couperait tout. `IdentifyUser` cree bien le compte a la premiere visite — pour que
+l'administrateur voie la demande — mais repond 403 tant qu'il n'est pas autorise.
+`users.is_admin` reserve `/admin/utilisateurs`.
+
+`RequiresTelemetry` masque et ferme "Ma voiture" et "Deplacements" pour les comptes
+sans vehicule relie a ABRP. Le critere est la presence d'un token, pas une liste
+d'emails : les pages reapparaissent seules le jour ou quelqu'un renseigne le sien.
+
+**Les relations `chargingSessions`, `vehicles` et `favoriteRoutes` sur `User`
+retirent le scope global** (`withoutGlobalScope('user')`) : elles comptent ce que
+possede *un* compte donne, pas celui de la requete. Sans cela la page de gestion
+afficherait zero partout sauf pour soi.
+
 Les libelles ne sont plus uniques dans l'absolu mais **par compte** (index
 `(user_id, name)`), d'ou `uniqueForUser()` dans `ReferenceDataController` :
 `unique:locations,name` aurait interdit a un second utilisateur d'avoir sa propre

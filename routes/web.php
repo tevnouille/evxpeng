@@ -9,6 +9,7 @@ use App\Http\Controllers\FuelPriceController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\MyVehicleController;
 use App\Http\Controllers\ReferenceDataController;
+use App\Http\Controllers\UserAdminController;
 use App\Http\Controllers\RoutePlannerController;
 use App\Http\Controllers\TripMapController;
 use Illuminate\Support\Facades\Route;
@@ -26,9 +27,13 @@ Route::get('/dashboard/data', [DashboardController::class, 'data'])->name('dashb
 
 Route::get('/carburants', [FuelPriceController::class, 'index'])->name('fuel-prices.index');
 
-Route::get('/ma-voiture', [MyVehicleController::class, 'index'])->name('my-vehicle.index');
+Route::get('/ma-voiture', [MyVehicleController::class, 'index'])
+    ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
+    ->name('my-vehicle.index');
 
-Route::get('/deplacements', [TripMapController::class, 'index'])->name('trips.index');
+Route::get('/deplacements', [TripMapController::class, 'index'])
+    ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
+    ->name('trips.index');
 
 Route::get('/planificateur', [RoutePlannerController::class, 'index'])->name('planner.index');
 Route::get('/planificateur/adresses', [RoutePlannerController::class, 'suggestions'])->name('planner.suggestions');
@@ -55,6 +60,15 @@ Route::post('/mon-compte/sms-test', [AccountController::class, 'testSms'])->name
 Route::get('/admin', [ReferenceDataController::class, 'index'])->name('reference-data.index');
 
 Route::get('/admin/sms', [ReferenceDataController::class, 'smsMessages'])->name('reference-data.sms.index');
+
+// Gestion des comptes : reservee a l'administrateur.
+Route::middleware(\App\Http\Middleware\RequiresAdmin::class)->group(function () {
+    Route::get('/admin/utilisateurs', [UserAdminController::class, 'index'])->name('reference-data.users.index');
+    Route::post('/admin/utilisateurs', [UserAdminController::class, 'store'])->name('reference-data.users.store');
+    Route::put('/admin/utilisateurs/{user}/autoriser', [UserAdminController::class, 'approve'])->name('reference-data.users.approve');
+    Route::put('/admin/utilisateurs/{user}/retirer', [UserAdminController::class, 'revoke'])->name('reference-data.users.revoke');
+    Route::delete('/admin/utilisateurs/{user}', [UserAdminController::class, 'destroy'])->name('reference-data.users.destroy');
+});
 
 Route::get('/admin/vehicules', [ReferenceDataController::class, 'vehicles'])->name('reference-data.vehicles.index');
 Route::post('/admin/vehicules', [ReferenceDataController::class, 'storeVehicle'])->name('reference-data.vehicles.store');

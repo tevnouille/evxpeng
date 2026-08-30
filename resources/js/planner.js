@@ -1,7 +1,7 @@
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { wireAddressInputs } from './address-autocomplete';
-import { wireNetworkFilter } from './network-filter';
+import { wireNetworkFilter } from './network-picker';
 
 function endpointMarker(color) {
     return {
