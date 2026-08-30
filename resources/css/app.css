@@ -78,3 +78,31 @@ body {
     }
 }
 
+/* Nom de la borne a cote de sa pastille, sur la carte des trajets favoris.
+   Etiquette discrete : elle doit se lire sans masquer le fond de carte, et il
+   peut y en avoir une quinzaine a l'ecran. */
+.leaflet-tooltip.station-label {
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(10, 10, 10, 0.12);
+    box-shadow: none;
+    color: #363636;
+    font-size: 0.7rem;
+    font-weight: 500;
+    padding: 1px 5px;
+    max-width: 15rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.leaflet-tooltip.station-label.is-favorite {
+    background: #ffdd57;
+    border-color: #363636;
+    font-weight: 700;
+}
+
+/* La fleche par defaut alourdit inutilement une etiquette de cette taille. */
+.leaflet-tooltip.station-label::before {
+    display: none;
+}
+

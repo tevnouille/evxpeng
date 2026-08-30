@@ -3,6 +3,13 @@ import 'leaflet/dist/leaflet.css';
 import { wireAddressInputs } from './address-autocomplete';
 import { wireNetworkFilter } from './network-filter';
 
+// Nombre de bornes visibles au-dela duquel on cesse d'afficher leur nom en
+// permanence. Un seuil de zoom fixe ne convenait pas : a zoom egal, un corridor
+// filtre sur deux reseaux tient largement l'affichage la ou la base complete
+// empile des centaines d'etiquettes. C'est donc la densite a l'ecran qui decide,
+// et le survol reste disponible dans tous les cas.
+const MAX_PINNED_LABELS = 25;
+
 // Couleur de la pastille selon la puissance : sur un corridor de plusieurs
 // centaines de bornes, c'est la seule information lisible d'un coup d'oeil.
 function colorFor(power) {
@@ -19,6 +26,16 @@ function colorFor(power) {
     }
 
     return '#b5b5b5';
+}
+
+function tooltipOptions(permanent) {
+    return {
+        permanent,
+        direction: 'right',
+        offset: [8, 0],
+        opacity: 0.95,
+        className: 'station-label',
+    };
 }
 
 function csrfToken() {
@@ -135,7 +152,10 @@ function renderMap() {
             routeLink.href = payload.route_google_url;
         }
 
-        markers.forEach((marker, id) => marker.setStyle(styleFor(byId.get(id))));
+        markers.forEach((marker, id) => {
+            marker.setStyle(styleFor(byId.get(id)));
+            label(marker, id, labelsPinned);
+        });
         map.closePopup();
         syncOrphans();
         renderList();
@@ -172,9 +192,50 @@ function renderMap() {
         const marker = L.circleMarker([station.lat, station.lon], styleFor(station)).addTo(map);
 
         marker.bindPopup(() => popupFor(station));
+        marker.bindTooltip(station.name, tooltipOptions(false));
         markers.set(station.id, marker);
         byId.set(station.id, station);
     });
+
+    // Le passage survol <-> permanent demande de relier l'etiquette : Leaflet ne
+    // permet pas de changer `permanent` apres coup. On ne le fait donc qu'au
+    // franchissement du seuil, pas a chaque zoom.
+    let labelsPinned = null;
+
+    function updateLabels() {
+        const bounds = map.getBounds();
+        let visible = 0;
+
+        markers.forEach((marker) => {
+            if (bounds.contains(marker.getLatLng())) {
+                visible++;
+            }
+        });
+
+        const pinned = visible <= MAX_PINNED_LABELS;
+
+        if (pinned === labelsPinned) {
+            return;
+        }
+
+        labelsPinned = pinned;
+
+        markers.forEach((marker, id) => label(marker, id, pinned));
+    }
+
+    // Une borne retenue garde son nom sous les yeux quelle que soit la densite :
+    // c'est celle qui compte.
+    function label(marker, id, pinned) {
+        const favorite = isFavorite(id);
+
+        marker.unbindTooltip();
+        marker.bindTooltip(byId.get(id).name, {
+            ...tooltipOptions(favorite || pinned),
+            className: favorite ? 'station-label is-favorite' : 'station-label',
+        });
+    }
+
+    map.on('zoomend moveend', updateLabels);
 
     // Favoris hors corridor : meme rendu, mais construits depuis la copie
     // stockee avec le trajet.
@@ -198,6 +259,8 @@ function renderMap() {
             const marker = L.circleMarker([favorite.lat, favorite.lon], {
                 radius: 9, color: '#363636', weight: 3, fillColor: '#ffdd57', fillOpacity: 1,
             }).addTo(map);
+
+            marker.bindTooltip(favorite.name, { ...tooltipOptions(true), className: 'station-label is-favorite' });
 
             marker.bindPopup(() => {
                 const box = element('div');
@@ -293,6 +356,13 @@ function renderMap() {
     syncOrphans();
     renderList();
     map.fitBounds(line.getBounds(), { padding: [30, 30] });
+    updateLabels();
+    // Les bornes deja retenues portent leur nom des l'ouverture.
+    markers.forEach((marker, id) => {
+        if (isFavorite(id)) {
+            label(marker, id, false);
+        }
+    });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
