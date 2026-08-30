@@ -36,14 +36,20 @@
 
     <div class="columns is-multiline">
         @foreach ($months as $number => $name)
-            @php($stats = $statsByMonth[$number] ?? ['count' => 0, 'kwh' => 0, 'cost' => 0])
+            @php($stats = $statsByMonth[$number] ?? ['count' => 0, 'kwh' => 0, 'cost' => 0, 'real_cost' => 0, 'gain' => 0])
             <div class="column is-3-desktop is-4-tablet is-6-mobile">
                 <a href="{{ route('history.show', ['year' => $year, 'month' => $number]) }}" class="box has-text-centered has-text-link" style="display: block;">
                     <p class="title is-5">{{ $name }}</p>
                     @if ($stats['count'] > 0)
                         <p class="has-text-grey">{{ $stats['count'] }} recharge(s)</p>
                         <p class="has-text-grey">{{ number_format($stats['kwh'], 2, ',', ' ') }} kWh</p>
-                        <p class="has-text-grey">{{ number_format($stats['cost'], 2, ',', ' ') }} €</p>
+                        <p class="has-text-grey">{{ number_format($stats['cost'], 2, ',', ' ') }} € facturés</p>
+                        @if ($stats['gain'] != 0)
+                            <p class="has-text-grey">
+                                {{ number_format($stats['real_cost'], 2, ',', ' ') }} € réels
+                                <span class="{{ $stats['gain'] < 0 ? 'has-text-success' : 'has-text-danger' }}">({{ number_format($stats['gain'], 2, ',', ' ') }} €)</span>
+                            </p>
+                        @endif
                     @else
                         <p class="has-text-grey">Aucune recharge enregistrée</p>
                     @endif

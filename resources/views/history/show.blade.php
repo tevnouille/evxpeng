@@ -32,6 +32,21 @@
             </div>
             <div class="column">
                 <div class="box has-text-centered">
+                    <p class="heading">Total réel</p>
+                    <p class="title is-4">{{ number_format($stats['real_cost'], 2, ',', ' ') }} €</p>
+                </div>
+            </div>
+            <div class="column">
+                <div class="box has-text-centered">
+                    <p class="heading">Gain</p>
+                    <p class="title is-4 {{ $stats['gain'] < 0 ? 'has-text-success' : ($stats['gain'] > 0 ? 'has-text-danger' : '') }}">
+                        {{ number_format($stats['gain'], 2, ',', ' ') }} €
+                    </p>
+                    <p class="has-text-grey is-size-7">coût réel − coût facturé</p>
+                </div>
+            </div>
+            <div class="column">
+                <div class="box has-text-centered">
                     <p class="heading">Coût moyen / kWh</p>
                     <p class="title is-4">{{ $stats['avg_cost_per_kwh'] !== null ? number_format($stats['avg_cost_per_kwh'], 4, ',', ' ') . ' €' : '—' }}</p>
                 </div>

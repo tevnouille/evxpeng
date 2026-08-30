@@ -24,6 +24,7 @@ class ChargingSession extends Model
         'charge_duration',
         'unit_cost',
         'total_cost',
+        'real_cost',
         'comment',
     ];
 
@@ -33,6 +34,7 @@ class ChargingSession extends Model
         'quantity_kwh' => 'decimal:2',
         'unit_cost' => 'decimal:4',
         'total_cost' => 'decimal:2',
+        'real_cost' => 'decimal:2',
         'latitude' => 'float',
         'longitude' => 'float',
         'charge_duration' => 'datetime:H:i',

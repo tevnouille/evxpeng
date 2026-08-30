@@ -267,6 +267,20 @@
                     </div>
                 </div>
 
+                <div class="column is-3">
+                    <div class="field">
+                        <label class="label">Coût réel (€)</label>
+                        <div class="control">
+                            <input class="input" type="number" step="0.01" min="0" name="real_cost" id="real_cost"
+                                value="{{ old('real_cost', $editing?->real_cost) }}">
+                        </div>
+                        <p class="help">
+                            Ce que la recharge a réellement coûté. Vide = identique au coût facturé ;
+                            mettre <strong>0</strong> si elle était gratuite ou n'a pas été débitée.
+                        </p>
+                    </div>
+                </div>
+
                 <div class="column is-12">
                     <div class="field">
                         <label class="label">Commentaire</label>

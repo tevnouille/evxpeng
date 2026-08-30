@@ -124,11 +124,18 @@ class ChargingSessionController extends Controller
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'unit_cost' => ['nullable', 'numeric', 'min:0'],
             'total_cost' => ['nullable', 'numeric', 'min:0'],
+            'real_cost' => ['nullable', 'numeric', 'min:0'],
             'comment' => ['nullable', 'string'],
         ]);
 
         $location = $this->resolveChoice(Location::class, $validated['location_choice'], $validated['location_other'] ?? null);
         $provider = $this->resolveChoice(Provider::class, $validated['provider_choice'], $validated['provider_other'] ?? null);
+
+        // Laisse vide, le cout reel suit le cout facture ; 0 explicite = recharge
+        // gratuite ou non debitee.
+        if (($validated['real_cost'] ?? null) === null) {
+            $validated['real_cost'] = $validated['total_cost'] ?? null;
+        }
 
         unset($validated['location_choice'], $validated['location_other'], $validated['provider_choice'], $validated['provider_other']);
         $validated['location_id'] = $location->id;

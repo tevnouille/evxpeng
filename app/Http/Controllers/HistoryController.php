@@ -32,7 +32,7 @@ class HistoryController extends Controller
 
         $year = (int) $request->query('year', $currentYear);
 
-        $statsByMonth = ChargingSession::selectRaw('MONTH(session_date) as mois, COUNT(*) as total, SUM(quantity_kwh) as kwh, SUM(total_cost) as cost')
+        $statsByMonth = ChargingSession::selectRaw('MONTH(session_date) as mois, COUNT(*) as total, SUM(quantity_kwh) as kwh, SUM(total_cost) as cost, SUM(real_cost) as real_cost')
             ->whereYear('session_date', $year)
             ->groupBy('mois')
             ->get()
@@ -41,6 +41,8 @@ class HistoryController extends Controller
                 'count' => (int) $row->total,
                 'kwh' => (float) $row->kwh,
                 'cost' => (float) $row->cost,
+                'real_cost' => (float) $row->real_cost,
+                'gain' => round((float) $row->real_cost - (float) $row->cost, 2),
             ]);
 
         return view('history.index', [
@@ -67,6 +69,7 @@ class HistoryController extends Controller
 
         $totalKwh = (float) $sessions->sum('quantity_kwh');
         $totalCost = (float) $sessions->sum('total_cost');
+        $totalRealCost = (float) $sessions->sum('real_cost');
 
         $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
         $sessionsByDay = $sessions->groupBy(fn ($s) => $s->session_date->day);
@@ -124,6 +127,8 @@ class HistoryController extends Controller
             'stats' => [
                 'kwh' => $totalKwh,
                 'cost' => $totalCost,
+                'real_cost' => $totalRealCost,
+                'gain' => round($totalRealCost - $totalCost, 2),
                 'avg_cost_per_kwh' => $totalKwh > 0 ? $totalCost / $totalKwh : null,
                 'sessions_count' => $sessions->count(),
             ],
