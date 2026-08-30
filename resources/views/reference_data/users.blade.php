@@ -1,16 +1,10 @@
 @extends('layouts.app')
 
-@section('title', 'Utilisateurs')
+@section('title', 'Administration — Utilisateurs')
 
 @section('content')
-    <nav class="breadcrumb is-small" aria-label="breadcrumbs">
-        <ul>
-            <li><a href="{{ route('reference-data.index') }}">Administration</a></li>
-            <li class="is-active"><a href="#" aria-current="page">Utilisateurs</a></li>
-        </ul>
-    </nav>
-
-    <h1 class="title">Utilisateurs</h1>
+    <a href="{{ route('reference-data.index') }}" class="is-size-7">&larr; Administration</a>
+    <h1 class="title mt-2">Utilisateurs</h1>
 
     <div class="notification is-info is-light">
         L'identification reste le <strong>passkey</strong>&nbsp;: cette page ne crée pas d'identité, elle

@@ -1,9 +1,10 @@
 @extends('layouts.app')
 
-@section('title', 'Données récupérées')
+@section('title', 'Administration — Données récupérées')
 
 @section('content')
-    <h1 class="title">Données récupérées</h1>
+    <a href="{{ route('reference-data.index') }}" class="is-size-7">&larr; Administration</a>
+    <h1 class="title mt-2">Données récupérées</h1>
     <p class="subtitle is-6">
         Ce que l'application va chercher ailleurs, et depuis quand.
     </p>
