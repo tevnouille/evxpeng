@@ -243,18 +243,18 @@ def update_composer(package, target):
         rollback()
         return False, f'composer update a echoue :\n{out[-1200:]}'
 
-    ok, build = run(['docker-compose', 'build', 'app'], timeout=BUILD_TIMEOUT)
+    ok, build = run(['sudo', '-n', 'docker-compose', 'build', 'app'], timeout=BUILD_TIMEOUT)
     if not ok:
         rollback()
         return False, f"Reconstruction de l'image en echec, verrou precedent remis :\n{build[-1200:]}"
 
-    run(['docker-compose', 'up', '-d', 'app'], timeout=300)
+    run(['sudo', '-n', 'docker-compose', 'up', '-d', 'app'], timeout=300)
 
     if not site_answers():
         # Le deploiement a casse le site : retour a l'etat d'avant.
         rollback()
-        run(['docker-compose', 'build', 'app'], timeout=BUILD_TIMEOUT)
-        run(['docker-compose', 'up', '-d', 'app'], timeout=300)
+        run(['sudo', '-n', 'docker-compose', 'build', 'app'], timeout=BUILD_TIMEOUT)
+        run(['sudo', '-n', 'docker-compose', 'up', '-d', 'app'], timeout=300)
         return False, ("Le site ne repondait plus apres le deploiement : "
                        "la version precedente a ete remise en place.")
 
@@ -291,8 +291,12 @@ def update_composer_batch(pairs):
     return update_composer([name for name, _ in pairs], None)
 
 
-HANDLERS = {'npm': update_npm, 'apt': update_apt, 'composer': update_composer}
-BATCH_HANDLERS = {'npm': update_npm_batch, 'apt': update_apt_batch, 'composer': update_composer_batch}
+# Composer est absent des deux tables : le code de sa montee reste plus bas,
+# mais il n'est pas atteignable. Le remettre suppose d'abord un docker-compose
+# capable de recreer le conteneur, et un rechargement de nginx dans la foulee —
+# il garde en cache l'adresse de l'ancien conteneur.
+HANDLERS = {'npm': update_npm, 'apt': update_apt}
+BATCH_HANDLERS = {'npm': update_npm_batch, 'apt': update_apt_batch}
 
 
 def update_everything():

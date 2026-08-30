@@ -271,7 +271,7 @@
                                                         @disabled($updatePending)>Mettre à jour</button>
                                             </form>
                                         @elseif ($package['ecosystem'] === 'composer' && in_array($package['verdict'], ['recommandee', 'a-evaluer'], true))
-                                            <span class="has-text-grey is-size-7" title="Monter une dépendance PHP oblige à reconstruire l'image et à recréer le conteneur.">
+                                            <span class="has-text-grey is-size-7" title="Monter une dépendance PHP oblige à reconstruire l'image et à recréer le conteneur, ce que l'outillage de cette machine ne sait pas faire sans interrompre le service.">
                                                 à la main
                                             </span>
                                         @endif

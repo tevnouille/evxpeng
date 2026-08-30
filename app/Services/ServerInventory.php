@@ -25,14 +25,17 @@ class ServerInventory
     /**
      * Ecosystemes dont la mise a jour se declenche depuis la page.
      *
-     * Composer y figure, mais sa montee n'est pas de meme nature : elle
-     * reconstruit l'image et recree le conteneur, donc le site repond mal
-     * quelques secondes. La page le dit avant de demander confirmation.
+     * Composer en est retire apres essai : le monter suppose de reconstruire
+     * l'image et de recreer le conteneur, or docker-compose 1.29 de cet hote
+     * ne sait plus le faire avec la version de Docker installee, et recreer le
+     * conteneur change son adresse — que nginx garde en cache. L'essai a
+     * laisse le site indisponible quelques minutes. Ces montees restent
+     * manuelles tant que l'outillage de deploiement n'est pas repare.
      */
-    public const UPDATABLE = ['npm', 'apt', 'composer'];
+    public const UPDATABLE = ['npm', 'apt'];
 
-    /** Ceux dont la mise a jour interrompt brievement le service. */
-    public const REDEPLOYS = ['composer'];
+    /** Ceux dont la mise a jour interromprait le service. Aucun pour l'instant. */
+    public const REDEPLOYS = [];
 
     /** Verdicts de mise a jour, du plus urgent au plus anodin. */
     public const VERDICTS = [
@@ -99,7 +102,7 @@ class ServerInventory
             [
                 'key' => 'composer',
                 'label' => 'Dépendances PHP (Composer)',
-                'note' => "Le projet lui-même. Les paquets marqués « développement » ne sont pas installés en production. Mettre l'un d'eux à jour reconstruit l'image et redémarre le conteneur : le site répond mal une poignée de secondes.",
+                'note' => "Le projet lui-même. Les paquets marqués « développement » ne sont pas installés en production. Ces montées se font à la main : elles supposent de reconstruire l'image et de recréer le conteneur, ce que l'outillage de cette machine ne sait pas faire sans interrompre le service.",
                 'packages' => $this->composer(),
             ],
             [
@@ -135,7 +138,7 @@ class ServerInventory
             return [
                 'name' => $p['name'],
                 'ecosystem' => 'composer',
-                'updatable' => $verdict === 'recommandee',
+                'updatable' => false,
                 'version' => $p['version'],
                 'available' => $verdict === 'inconnu' ? null : $p['available'],
                 'license' => $p['license'],
