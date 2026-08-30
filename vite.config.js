@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.js', 'resources/js/dashboard.jsx', 'resources/js/history.js', 'resources/js/charging-curve.js', 'resources/js/telemetry.js', 'resources/js/trips.js'],
+            input: ['resources/css/app.css', 'resources/js/app.js', 'resources/js/dashboard.jsx', 'resources/js/history.js', 'resources/js/charging-curve.js', 'resources/js/telemetry.js', 'resources/js/trips.js', 'resources/js/planner.js'],
             refresh: true,
         }),
         react(),

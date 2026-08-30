@@ -113,6 +113,32 @@ Ce n'est donc pas du temps réel.
 Configuration : `ABRP_API_KEY` dans le `.env` (clé « Telemetry-Only », gratuite) et
 un token par véhicule dans `/admin/vehicules`.
 
+### Planificateur d'itinéraire
+
+La page **Planificateur** calcule un trajet avec ses arrêts de recharge : on saisit
+un départ, une arrivée, une puissance minimale de borne et éventuellement des
+réseaux préférés, et l'application propose les arrêts, le niveau de charge à
+l'arrivée et au départ de chacun, la durée de chaque recharge et le total.
+
+Elle **n'utilise pas l'API de planification d'Iternio** : celle-ci est commerciale
+(frais de mise en service puis facturation au plan) et répond `403 Feature plan is
+not available` à la clé « Telemetry-Only » gratuite. Le plan est donc calculé
+localement, à partir de trois sources gratuites :
+
+| Brique | Source |
+| --- | --- |
+| Itinéraire routier | OSRM (serveur de démonstration public) |
+| Bornes de recharge | Base nationale IRVE (data.gouv.fr), importée en base |
+| Temps de charge | La courbe de recharge du véhicule, déjà utilisée par `/courbe-de-recharge` |
+| Adresses | Base Adresse Nationale, puis Nominatim hors de France |
+
+Les réseaux sélectionnés sont par défaut une **préférence** (ils pèsent dans le
+choix de la borne) et non un filtre : une case à cocher permet de les imposer.
+
+Le modèle est volontairement simple — consommation constante, ni relief, ni météo,
+ni trafic, borne supposée libre et à sa puissance nominale. Il donne un ordre de
+grandeur et une liste d'arrêts crédibles, pas une prévision au kilomètre près.
+
 ## Stack
 
 - **Laravel 13** / PHP 8.4, **MariaDB 11**
@@ -137,6 +163,7 @@ Seuls Docker et Docker Compose sont nécessaires sur la machine hôte.
 | --- | --- |
 | `php artisan fuel-prices:backfill` | Importe l'historique annuel des prix des carburants |
 | `php artisan telemetry:poll` | Récupère le niveau de charge des véhicules auprès d'ABRP |
+| `php artisan irve:import` | Importe la base nationale des bornes de recharge (planificateur) |
 | `php artisan view:clear` | Vide le cache des vues après modification d'un Blade |
 
 ## Notes pour les agents

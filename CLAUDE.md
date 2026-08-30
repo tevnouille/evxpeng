@@ -173,6 +173,33 @@ Depuis l'ajout de la télémétrie, l'application a un vrai scheduler Laravel
 
 C'est l'endroit où brancher les prochaines tâches périodiques.
 
+## Planificateur : pourquoi pas l'API Iternio
+
+L'API de planification d'Iternio (`https://api.iternio.com/2/plan`, celle qui fait
+tourner ABRP) est **commerciale** : frais de mise en service puis facturation au
+plan délivré. La clé « Telemetry-Only » utilisée pour la télémétrie n'y donne
+aucun droit — testé, elle répond `403 {"message":"Feature plan is not available"}`,
+et le reste de l'API v2 répond `403 missing feature`. Inutile de réessayer sans
+contrat.
+
+Le planificateur est donc calculé localement, à partir de sources gratuites :
+
+- **OSRM** pour l'itinéraire (`services.osrm.base_url`, serveur de démonstration
+  public par défaut) ;
+- **base nationale IRVE** de data.gouv.fr pour les bornes, importée en base par
+  `php artisan irve:import` dans `charging_stations` (une ligne par station, pas
+  par point de charge) ;
+- **Base Adresse Nationale** puis Nominatim pour le géocodage ;
+- la **courbe de recharge** du véhicule pour les temps de charge.
+
+Piège rencontré : OSRM, data.gouv et Nominatim répondent **403 à un client sans
+User-Agent**, ce que Guzzle est par défaut. D'où `App\Services\HttpUserAgent`, par
+lequel tous ces appels passent.
+
+Le modèle de bridage de puissance vit dans `App\Services\ChargeCurveSimulator`,
+partagé avec `ChargingCurveController` : deux implémentations de la même formule
+finiraient par diverger.
+
 ## Alertes
 
 Pas de SMTP fonctionnel sur hostingtools (`MAIL_MAILER=log`). Pour notifier

@@ -28,6 +28,7 @@
                 <a class="navbar-item {{ request()->routeIs('my-vehicle.*') ? 'is-active' : '' }}" href="{{ route('my-vehicle.index') }}">Ma voiture</a>
                 <a class="navbar-item {{ request()->routeIs('charging-curves.*') ? 'is-active' : '' }}" href="{{ route('charging-curves.index') }}">Courbe de recharge</a>
                 <a class="navbar-item {{ request()->routeIs('trips.*') ? 'is-active' : '' }}" href="{{ route('trips.index') }}">Déplacements</a>
+                <a class="navbar-item {{ request()->routeIs('planner.*') ? 'is-active' : '' }}" href="{{ route('planner.index') }}">Planificateur</a>
                 <a class="navbar-item {{ request()->routeIs('reference-data.*') ? 'is-active' : '' }}" href="{{ route('reference-data.index') }}">Administration</a>
             </div>
         </div>

@@ -168,6 +168,19 @@ Permet de récupérer automatiquement le niveau de charge de la voiture.
    * * * * * sudo /usr/bin/docker exec ev-app php artisan schedule:run >/dev/null 2>&1
    ```
 
+## 10. Importer la base des bornes de recharge (planificateur)
+
+La page **Planificateur** a besoin de la base nationale IRVE. L'import télécharge
+un fichier d'environ 150 Mo, l'agrège en stations et le range en base :
+
+```bash
+docker exec ev-app php artisan irve:import
+```
+
+Compter trois à quatre minutes pour environ 57 000 stations. Une tâche planifiée
+le rejoue chaque lundi à 4 h 30 ; il n'y a rien d'autre à configurer, aucune clé
+n'est nécessaire.
+
 ## Mise à jour
 
 ```bash

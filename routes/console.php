@@ -25,3 +25,7 @@ Schedule::command('telemetry:poll')
     ->when(fn () => VehicleTelemetry::where('is_charging', true)
         ->where('recorded_at', '>=', now()->subMinutes(20))
         ->exists());
+
+// La base IRVE bouge de quelques centaines de stations par semaine : un import
+// hebdomadaire suffit largement, et il dure plusieurs minutes.
+Schedule::command('irve:import')->weeklyOn(1, '04:30')->withoutOverlapping();

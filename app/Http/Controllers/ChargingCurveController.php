@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Vehicle;
+use App\Services\ChargeCurveSimulator;
 use App\Services\ChargingCurveRepository;
 use App\Services\TelemetrySessionDetector;
 use Illuminate\Http\JsonResponse;
@@ -14,8 +15,10 @@ class ChargingCurveController extends Controller
     /** Puissances de borne proposees, en kW. */
     public const CHARGER_POWERS = [7.4, 11.0, 50.0, 150.0, 300.0];
 
-    public function __construct(private readonly ChargingCurveRepository $curves)
-    {
+    public function __construct(
+        private readonly ChargingCurveRepository $curves,
+        private readonly ChargeCurveSimulator $simulator,
+    ) {
     }
 
     public function index(Request $request): View
@@ -271,25 +274,17 @@ class ChargingCurveController extends Controller
         $points = $curve['points'];
         $targets = [80, 90, 100];
 
-        $cumulative = 0.0;
-        $previous = null;
+        // Le bridage lui-meme vit dans le simulateur, partage avec le
+        // planificateur : deux implementations de la meme formule finiraient par
+        // diverger.
+        $seconds = $this->simulator->cumulativeSeconds($points, $cap);
 
         foreach ($points as $index => $point) {
             $kw = (float) $point['kw'];
             $points[$index]['kw_effective'] = round($cap !== null ? min($cap, $kw) : $kw, 1);
 
-            if ($previous !== null) {
-                $elapsed = $this->toSeconds($point['time']) - $this->toSeconds($previous['time']);
-                // La puissance representative du segment est la moyenne de ses
-                // bornes : c'est elle qu'encode implicitement la duree relevee.
-                $average = ((float) $previous['kw'] + $kw) / 2;
-                $limited = $cap !== null ? min($cap, $average) : $average;
-
-                $cumulative += $limited > 0 ? $elapsed * ($average / $limited) : 0;
-            }
-
-            $points[$index]['seconds'] = (int) round($cumulative);
-            $points[$index]['time'] = $this->formatDuration((int) round($cumulative));
+            $points[$index]['seconds'] = $seconds[$index];
+            $points[$index]['time'] = $this->formatDuration($seconds[$index]);
 
             // Capacite nette non calculee ici : elle serait identique a la colonne
             // "Energie chargee" de la courbe (evkx compte l'energie sur la capacite utile).
@@ -298,8 +293,6 @@ class ChargingCurveController extends Controller
             $points[$index]['range_km'] = ($consumption !== null && $consumption > 0)
                 ? (int) round((float) $point['kwh'] / $consumption * 100)
                 : null;
-
-            $previous = $point;
         }
 
         $secondsBySoc = array_column($points, 'seconds', 'soc');
@@ -367,13 +360,6 @@ class ChargingCurveController extends Controller
         }
 
         return round(((float) $kwhBySoc[$to] - (float) $kwhBySoc[$from]) / ($seconds / 3600), 1);
-    }
-
-    private function toSeconds(string $time): int
-    {
-        [$hours, $minutes, $seconds] = array_pad(array_map('intval', explode(':', $time)), 3, 0);
-
-        return $hours * 3600 + $minutes * 60 + $seconds;
     }
 
     private function formatDuration(int $seconds): string

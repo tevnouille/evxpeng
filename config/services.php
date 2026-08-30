@@ -50,6 +50,19 @@ return [
         'password' => env('FREE_MOBILE_PASS'),
     ],
 
+    'osrm' => [
+        // Serveur de calcul d'itineraire. La demo publique suffit au volume d'une
+        // application personnelle ; l'URL reste configurable pour pouvoir
+        // basculer sur une instance privee si elle se met a refuser les appels.
+        'base_url' => env('OSRM_BASE_URL', 'https://router.project-osrm.org'),
+    ],
+
+    'irve' => [
+        // Fichier consolide de la base nationale des bornes de recharge.
+        // L'identifiant de ressource est stable, c'est son contenu qui change.
+        'url' => env('IRVE_CSV_URL', 'https://www.data.gouv.fr/api/1/datasets/r/eb76d20a-8501-400e-b336-d85724de5435'),
+    ],
+
     'charge_alerts' => [
         // Paliers de niveau de charge donnant lieu a un SMS, au franchissement.
         'thresholds' => [79, 89, 95, 96, 97, 98, 99, 100],
