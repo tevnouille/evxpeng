@@ -3,6 +3,7 @@
 use App\Http\Controllers\ChargingCurveController;
 use App\Http\Controllers\ChargingSessionController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FavoriteRouteController;
 use App\Http\Controllers\FuelPriceController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\MyVehicleController;
@@ -30,6 +31,14 @@ Route::get('/deplacements', [TripMapController::class, 'index'])->name('trips.in
 
 Route::get('/planificateur', [RoutePlannerController::class, 'index'])->name('planner.index');
 Route::get('/planificateur/adresses', [RoutePlannerController::class, 'suggestions'])->name('planner.suggestions');
+
+Route::get('/favoris', [FavoriteRouteController::class, 'index'])->name('favorites.index');
+Route::post('/favoris', [FavoriteRouteController::class, 'store'])->name('favorites.store');
+Route::get('/favoris/{favorite}', [FavoriteRouteController::class, 'show'])->name('favorites.show');
+Route::put('/favoris/{favorite}', [FavoriteRouteController::class, 'update'])->name('favorites.update');
+Route::delete('/favoris/{favorite}', [FavoriteRouteController::class, 'destroy'])->name('favorites.destroy');
+Route::post('/favoris/{favorite}/bornes', [FavoriteRouteController::class, 'addStation'])->name('favorites.stations.store');
+Route::delete('/favoris/{favorite}/bornes/{station}', [FavoriteRouteController::class, 'removeStation'])->name('favorites.stations.destroy');
 
 Route::get('/courbe-de-recharge', [ChargingCurveController::class, 'index'])->name('charging-curves.index');
 Route::get('/courbe-de-recharge/etat/{vehicle}', [ChargingCurveController::class, 'state'])->name('charging-curves.state');

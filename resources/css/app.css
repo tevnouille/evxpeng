@@ -55,3 +55,26 @@ body {
     color: inherit;
 }
 
+/* Neuf entrees avec leur icone : la barre depasse la largeur disponible en
+   dessous de ~1440 px. Bulma ne laisse pas .navbar-menu retrecir, l'entree
+   "Administration" se retrouvait alors coupee hors ecran. On resserre un peu
+   les entrees et on autorise le repli sur une seconde ligne. */
+@media (min-width: 1024px) {
+    .navbar {
+        min-height: auto;
+    }
+
+    .navbar-menu {
+        flex-shrink: 1;
+    }
+
+    .navbar-menu .navbar-start {
+        flex-wrap: wrap;
+    }
+
+    .navbar-menu .navbar-item {
+        padding-left: 0.6rem;
+        padding-right: 0.6rem;
+    }
+}
+

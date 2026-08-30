@@ -47,10 +47,10 @@ class RouteService
         return [
             'distance_km' => round(((float) $route['distance']) / 1000, 1),
             'duration_minutes' => round(((float) $route['duration']) / 60, 1),
-            // OSRM renvoie du [lon, lat] ; on garde cet ordre en interne et on
-            // n'inverse qu'a l'affichage, ou Leaflet attend [lat, lon].
+            // OSRM renvoie du [lon, lat] ; on remet dans l'ordre [lat, lon] des
+            // ici, celui de Leaflet et de tout le reste de l'application.
             'coordinates' => array_map(
-                fn ($point) => [(float) $point[0], (float) $point[1]],
+                fn ($point) => [(float) $point[1], (float) $point[0]],
                 $route['geometry']['coordinates'] ?? []
             ),
         ];

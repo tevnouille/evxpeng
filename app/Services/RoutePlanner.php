@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\ChargingStation;
 use App\Models\Vehicle;
 
 /**
@@ -23,12 +22,6 @@ use App\Models\Vehicle;
  */
 class RoutePlanner
 {
-    /** Pas d'echantillonnage du trace, en km. */
-    private const SAMPLE_KM = 2.0;
-
-    /** Cote d'une cellule de l'index spatial, en degres (~11 km en latitude). */
-    private const GRID_DEGREES = 0.1;
-
     /** Distance minimale entre deux arrets : s'arreter au bout de 10 km n'a pas de sens. */
     private const MIN_LEG_KM = 25.0;
 
@@ -44,6 +37,7 @@ class RoutePlanner
     public function __construct(
         private readonly Geocoder $geocoder,
         private readonly RouteService $router,
+        private readonly RouteCorridor $corridor,
         private readonly ChargeCurveSimulator $simulator,
         private readonly ChargingCurveRepository $curves,
     ) {
@@ -61,8 +55,8 @@ class RoutePlanner
             return $this->failure('Aucune courbe de recharge n\'est associée à ce véhicule.');
         }
 
-        $from = $this->geocoder->locate((string) $options['from']);
-        $to = $this->geocoder->locate((string) $options['to']);
+        $from = $this->geocoder->resolve((string) $options['from'], $options['from_lat'] ?? null, $options['from_lon'] ?? null);
+        $to = $this->geocoder->resolve((string) $options['to'], $options['to_lat'] ?? null, $options['to_lon'] ?? null);
 
         if ($from === null) {
             return $this->failure('Adresse de départ introuvable.');
@@ -78,7 +72,7 @@ class RoutePlanner
             return $this->failure('Aucun itinéraire routier trouvé entre ces deux points.');
         }
 
-        $samples = $this->sample($route['coordinates']);
+        $samples = $this->corridor->sample($route['coordinates']);
         $total = $route['distance_km'];
 
         $consumption = (float) $options['consumption'];
@@ -91,8 +85,8 @@ class RoutePlanner
             return $this->failure('Consommation invalide.');
         }
 
-        $candidates = $this->candidates($samples, $options);
-        $simulation = $this->simulate($curve, $samples, $total, $kmPerPercent, $candidates, $options);
+        $candidates = $this->corridor->stations($samples, $options);
+        $simulation = $this->simulate($curve, $total, $kmPerPercent, $candidates, $options);
 
         if (isset($simulation['error'])) {
             // On rend quand meme l'itineraire : voir le trace et le nombre de
@@ -102,7 +96,7 @@ class RoutePlanner
                 'from' => $from,
                 'to' => $to,
                 'distance_km' => $total,
-                'geometry' => $this->geometry($route['coordinates']),
+                'geometry' => $this->corridor->simplify($route['coordinates']),
                 'candidates_count' => count($candidates),
             ];
         }
@@ -122,7 +116,7 @@ class RoutePlanner
             'legs' => $simulation['legs'],
             'arrival_soc' => $simulation['arrival_soc'],
             'energy_kwh' => round($total * $consumption / 100, 1),
-            'geometry' => $this->geometry($route['coordinates']),
+            'geometry' => $this->corridor->simplify($route['coordinates']),
             'candidates_count' => count($candidates),
             'consumption' => $consumption,
             'range_km' => (int) round(100 * $kmPerPercent),
@@ -132,11 +126,10 @@ class RoutePlanner
     /**
      * Deroule le trajet et place les arrets.
      *
-     * @param  array<int, array{lat: float, lon: float, km: float}>  $samples
      * @param  array<int, array<string, mixed>>  $candidates
      * @return array<string, mixed>
      */
-    private function simulate(array $curve, array $samples, float $total, float $kmPerPercent, array $candidates, array $options): array
+    private function simulate(array $curve, float $total, float $kmPerPercent, array $candidates, array $options): array
     {
         $soc = (float) $options['start_soc'];
         $reserve = (float) $options['reserve_soc'];
@@ -275,198 +268,6 @@ class RoutePlanner
         }
 
         return null;
-    }
-
-    /**
-     * Bornes situees le long du trace, avec leur progression kilometrique.
-     *
-     * @param  array<int, array{lat: float, lon: float, km: float}>  $samples
-     * @return array<int, array<string, mixed>>
-     */
-    private function candidates(array $samples, array $options): array
-    {
-        $detour = (float) $options['max_detour_km'];
-        $networks = array_values(array_filter((array) ($options['networks'] ?? [])));
-
-        $lats = array_column($samples, 'lat');
-        $lons = array_column($samples, 'lon');
-
-        // Marge de la boite englobante : 1 degre de latitude vaut ~111 km, la
-        // longitude retrecit avec la latitude.
-        $padLat = $detour / 111.0;
-        $padLon = $detour / max(20.0, 111.0 * cos(deg2rad(array_sum($lats) / count($lats))));
-
-        $query = ChargingStation::query()
-            ->whereBetween('lat', [min($lats) - $padLat, max($lats) + $padLat])
-            ->whereBetween('lon', [min($lons) - $padLon, max($lons) + $padLon])
-            ->where('max_power_kw', '>=', (float) $options['min_power'])
-            ->where('is_public', true);
-
-        // Par defaut les reseaux choisis ne font que peser dans le score : mieux
-        // vaut une borne hors reseau qu'un plan impossible. Le filtre dur reste
-        // disponible pour qui n'a qu'un seul badge.
-        if ($networks !== [] && ($options['networks_only'] ?? false)) {
-            $query->where(function ($sub) use ($networks) {
-                foreach ($networks as $network) {
-                    $sub->orWhere('network', $network)->orWhere('operator', $network);
-                }
-            });
-        }
-
-        $grid = [];
-
-        foreach ($samples as $index => $sample) {
-            $grid[$this->cell($sample['lat'], $sample['lon'])][] = $index;
-        }
-
-        // La cellule la plus etroite fait ~7,5 km (longitude, nord de la France) :
-        // il faut donc balayer assez de cellules voisines pour couvrir le detour.
-        $span = max(1, (int) ceil($detour / 7.0));
-        $candidates = [];
-
-        foreach ($query->cursor() as $station) {
-            $nearest = $this->nearestSample($station, $samples, $grid, $span);
-
-            if ($nearest === null || $nearest['distance'] > $detour) {
-                continue;
-            }
-
-            $candidates[] = [
-                'km' => $nearest['km'],
-                'detour_km' => $nearest['distance'],
-                'power_kw' => (float) $station->max_power_kw,
-                'preferred' => $networks !== []
-                    && (in_array($station->network, $networks, true) || in_array($station->operator, $networks, true)),
-                'station' => [
-                    'id' => $station->id,
-                    'name' => $station->name,
-                    'network' => $station->network,
-                    'operator' => $station->operator,
-                    'address' => $station->address,
-                    'city' => $station->city,
-                    'lat' => (float) $station->lat,
-                    'lon' => (float) $station->lon,
-                    'power_kw' => (float) $station->max_power_kw,
-                    'points_count' => $station->points_count,
-                ],
-            ];
-        }
-
-        usort($candidates, fn ($a, $b) => $a['km'] <=> $b['km']);
-
-        return $candidates;
-    }
-
-    /**
-     * @param  array<int, array{lat: float, lon: float, km: float}>  $samples
-     * @param  array<string, array<int, int>>  $grid
-     * @return array{km: float, distance: float}|null
-     */
-    private function nearestSample(ChargingStation $station, array $samples, array $grid, int $span): ?array
-    {
-        $lat = (float) $station->lat;
-        $lon = (float) $station->lon;
-        $baseLat = (int) floor($lat / self::GRID_DEGREES);
-        $baseLon = (int) floor($lon / self::GRID_DEGREES);
-
-        $best = null;
-
-        for ($dLat = -$span; $dLat <= $span; $dLat++) {
-            for ($dLon = -$span; $dLon <= $span; $dLon++) {
-                foreach ($grid[($baseLat + $dLat).':'.($baseLon + $dLon)] ?? [] as $index) {
-                    $sample = $samples[$index];
-                    $distance = $this->haversine($lat, $lon, $sample['lat'], $sample['lon']);
-
-                    if ($best === null || $distance < $best['distance']) {
-                        $best = ['km' => $sample['km'], 'distance' => $distance];
-                    }
-                }
-            }
-        }
-
-        return $best;
-    }
-
-    private function cell(float $lat, float $lon): string
-    {
-        return ((int) floor($lat / self::GRID_DEGREES)).':'.((int) floor($lon / self::GRID_DEGREES));
-    }
-
-    /**
-     * Reechantillonne le trace a pas constant, avec la distance cumulee.
-     *
-     * @param  array<int, array{0: float, 1: float}>  $coordinates
-     * @return array<int, array{lat: float, lon: float, km: float}>
-     */
-    private function sample(array $coordinates): array
-    {
-        $samples = [];
-        $cumulative = 0.0;
-        $lastKept = -INF;
-        $previous = null;
-
-        foreach ($coordinates as $point) {
-            [$lon, $lat] = $point;
-
-            if ($previous !== null) {
-                $cumulative += $this->haversine($previous[1], $previous[0], $lat, $lon);
-            }
-
-            if ($cumulative - $lastKept >= self::SAMPLE_KM || $previous === null) {
-                $samples[] = ['lat' => $lat, 'lon' => $lon, 'km' => $cumulative];
-                $lastKept = $cumulative;
-            }
-
-            $previous = $point;
-        }
-
-        // Le dernier point est l'arrivee : sans lui, une borne proche du terminus
-        // serait rattachee a un kilometrage trop court.
-        if ($previous !== null) {
-            $samples[] = ['lat' => $previous[1], 'lon' => $previous[0], 'km' => $cumulative];
-        }
-
-        return $samples;
-    }
-
-    /**
-     * Trace allege pour la carte : au-dela de ~1 500 points, Leaflet rame sans
-     * qu'on y gagne en lisibilite.
-     *
-     * @param  array<int, array{0: float, 1: float}>  $coordinates
-     * @return array<int, array{0: float, 1: float}>
-     */
-    private function geometry(array $coordinates): array
-    {
-        $step = max(1, (int) ceil(count($coordinates) / 1500));
-        $simplified = [];
-
-        foreach ($coordinates as $index => $point) {
-            if ($index % $step === 0) {
-                $simplified[] = [round($point[1], 5), round($point[0], 5)];
-            }
-        }
-
-        $last = end($coordinates);
-
-        if ($last !== false) {
-            $simplified[] = [round($last[1], 5), round($last[0], 5)];
-        }
-
-        return $simplified;
-    }
-
-    private function haversine(float $lat1, float $lon1, float $lat2, float $lon2): float
-    {
-        $earthKm = 6371.0;
-
-        $dLat = deg2rad($lat2 - $lat1);
-        $dLon = deg2rad($lon2 - $lon1);
-
-        $a = sin($dLat / 2) ** 2
-            + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon / 2) ** 2;
-
-        return $earthKm * 2 * atan2(sqrt($a), sqrt(1 - $a));
     }
 
     /**

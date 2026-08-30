@@ -25,6 +25,8 @@
                             <input class="input" type="text" id="depart" name="depart"
                                    value="{{ $form['from'] }}" placeholder="Villabé, une adresse, ou 48.5836, 2.4436" required
                                    data-address-input autocomplete="off">
+                            <input type="hidden" name="depart_lat" value="{{ request()->query('depart_lat') }}">
+                            <input type="hidden" name="depart_lon" value="{{ request()->query('depart_lon') }}">
                             <div class="dropdown-content" data-address-results hidden
                                  style="position: absolute; z-index: 30; width: 100%; max-height: 16rem; overflow-y: auto;"></div>
                         </div>
@@ -38,6 +40,8 @@
                             <input class="input" type="text" id="arrivee" name="arrivee"
                                    value="{{ $form['to'] }}" placeholder="Lyon, Marseille, une adresse…" required
                                    data-address-input autocomplete="off">
+                            <input type="hidden" name="arrivee_lat" value="{{ request()->query('arrivee_lat') }}">
+                            <input type="hidden" name="arrivee_lon" value="{{ request()->query('arrivee_lon') }}">
                             <div class="dropdown-content" data-address-results hidden
                                  style="position: absolute; z-index: 30; width: 100%; max-height: 16rem; overflow-y: auto;"></div>
                         </div>
@@ -277,6 +281,7 @@
                                     <th class="has-text-right">Départ</th>
                                     <th class="has-text-right">Énergie</th>
                                     <th class="has-text-right">Durée</th>
+                                    <th>Navigation</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -307,6 +312,16 @@
                                             @if ($stop['average_kw'])
                                                 <br><span class="has-text-grey is-size-7">{{ number_format($stop['average_kw'], 0, ',', ' ') }} kW moy.</span>
                                             @endif
+                                        </td>
+                                        <td>
+                                            {{-- Les libelles IRVE sont parfois trompeurs : ces liens montrent
+                                                 la position reelle, qui elle fait foi. --}}
+                                            <div class="buttons are-small">
+                                                <a class="button is-small is-link is-light" target="_blank" rel="noopener"
+                                                   href="https://www.google.com/maps/search/?api=1&query={{ $stop['station']['lat'] }},{{ $stop['station']['lon'] }}">Maps</a>
+                                                <a class="button is-small is-link is-light" target="_blank" rel="noopener"
+                                                   href="https://www.waze.com/ul?ll={{ $stop['station']['lat'] }},{{ $stop['station']['lon'] }}&amp;navigate=yes">Waze</a>
+                                            </div>
                                         </td>
                                     </tr>
                                 @endforeach

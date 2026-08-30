@@ -139,6 +139,20 @@ Le modèle est volontairement simple — consommation constante, ni relief, ni m
 ni trafic, borne supposée libre et à sa puissance nominale. Il donne un ordre de
 grandeur et une liste d'arrêts crédibles, pas une prévision au kilomètre près.
 
+### Trajets favoris
+
+La page **Favoris** répond à un besoin différent du planificateur&nbsp;: pas de plan
+optimisé, mais la carte de **toutes** les bornes du parcours, à la manière de
+Chargemap, et le choix manuel de celles qu'on veut retenir.
+
+On nomme le trajet, on saisit départ et arrivée, on filtre par puissance minimale,
+réseaux et détour maximal, puis on clique les bornes sur la carte. Le récapitulatif
+liste les bornes retenues avec, pour chacune, un lien **Google Maps** et un lien
+**Waze**, plus un lien vers l'itinéraire complet dans Google Maps (bornes en étapes).
+
+Une borne retenue est **recopiée** dans le trajet, pas seulement référencée&nbsp;:
+elle reste affichée même si l'import IRVE suivant la fait disparaître.
+
 ## Stack
 
 - **Laravel 13** / PHP 8.4, **MariaDB 11**

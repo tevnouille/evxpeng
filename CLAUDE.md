@@ -200,6 +200,19 @@ Le modèle de bridage de puissance vit dans `App\Services\ChargeCurveSimulator`,
 partagé avec `ChargingCurveController` : deux implémentations de la même formule
 finiraient par diverger.
 
+## Libelles IRVE : c'est la position qui fait foi
+
+Le fichier consolide contient des lignes dont les coordonnees ne correspondent pas
+a l'adresse declaree — « IONITY Tavel Nord », annonce sur l'A9 dans le Gard, porte
+des coordonnees sur l'A6 dans le Rhone. Le champ `consolidated_is_lon_lat_correct`
+existe mais vaut `False` sur un quart du fichier : filtrer dessus amputerait la
+base bien au-dela des vrais defauts.
+
+Le parti pris est donc d'afficher la borne la ou ses coordonnees la placent, et de
+donner partout des liens Google Maps et Waze pointant sur ces coordonnees. Les
+pages le disent : le libelle vient tel quel de la base, c'est la position qui fait
+foi.
+
 ## Alertes
 
 Pas de SMTP fonctionnel sur hostingtools (`MAIL_MAILER=log`). Pour notifier

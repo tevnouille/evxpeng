@@ -57,12 +57,21 @@ class RoutePlannerController extends Controller
                 'consommation' => ['nullable', 'numeric', 'between:5,40'],
                 'reseaux' => ['nullable', 'array'],
                 'reseaux.*' => ['string', 'max:120'],
+                'depart_lat' => ['nullable', 'numeric', 'between:-90,90'],
+                'depart_lon' => ['nullable', 'numeric', 'between:-180,180'],
+                'arrivee_lat' => ['nullable', 'numeric', 'between:-90,90'],
+                'arrivee_lon' => ['nullable', 'numeric', 'between:-180,180'],
                 'reseaux_only' => ['nullable', 'boolean'],
             ]);
 
             $plan = $this->planner->plan($vehicle, [
                 'from' => $validated['depart'],
                 'to' => $validated['arrivee'],
+                // Point exact retenu dans la liste de suggestions, s'il y en a un.
+                'from_lat' => $validated['depart_lat'] ?? null,
+                'from_lon' => $validated['depart_lon'] ?? null,
+                'to_lat' => $validated['arrivee_lat'] ?? null,
+                'to_lon' => $validated['arrivee_lon'] ?? null,
                 'start_soc' => $form['start_soc'],
                 'arrival_soc' => $form['arrival_soc'],
                 'reserve_soc' => $form['reserve_soc'],
@@ -80,7 +89,7 @@ class RoutePlannerController extends Controller
             'vehicle' => $vehicle,
             'form' => $form,
             'plan' => $plan,
-            'networks' => $this->networks(),
+            'networks' => ChargingStation::networkOptions(),
             'minPowers' => self::MIN_POWERS,
             'maxSocs' => self::MAX_SOCS,
             'stationCount' => $stationCount,
@@ -122,30 +131,5 @@ class RoutePlannerController extends Controller
             'networks_only' => $request->boolean('reseaux_only'),
             'telemetry_soc' => $telemetrySoc !== null ? (float) $telemetrySoc : null,
         ];
-    }
-
-    /**
-     * Reseaux proposes au filtre.
-     *
-     * C'est l'operateur (le CPO) qui fait le reseau, pas l'enseigne : IRVE
-     * renseigne `nom_enseigne` site par site, si bien qu'Electra y apparait sous
-     * 400 libelles differents ("Electra Villejuif", "Electra Vitrolles"...) alors
-     * que `nom_operateur` vaut partout "ELECTRA".
-     *
-     * Liste alphabetique et non par volume : elle se parcourt au clavier depuis
-     * le champ de recherche, ou l'ordre par frequence n'aide plus.
-     *
-     * @return \Illuminate\Support\Collection<int, object>
-     */
-    private function networks()
-    {
-        return ChargingStation::query()
-            ->whereNotNull('operator')
-            ->where('operator', '!=', '')
-            ->selectRaw('operator as network, COUNT(*) as stations')
-            ->groupBy('operator')
-            ->havingRaw('COUNT(*) >= 5')
-            ->orderBy('operator')
-            ->get();
     }
 }

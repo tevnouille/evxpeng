@@ -24,6 +24,31 @@ class ChargingStation extends Model
         'is_public',
     ];
 
+    /**
+     * Reseaux proposes aux filtres du planificateur et des trajets favoris.
+     *
+     * C'est l'operateur (le CPO) qui fait le reseau, pas l'enseigne : IRVE
+     * renseigne `nom_enseigne` site par site, si bien qu'Electra y apparait sous
+     * 400 libelles differents ("Electra Villejuif", "Electra Vitrolles"...) alors
+     * que `nom_operateur` vaut partout "ELECTRA".
+     *
+     * Liste alphabetique et non par volume : elle se parcourt depuis un champ de
+     * recherche, ou l'ordre par frequence n'aide plus.
+     *
+     * @return \Illuminate\Support\Collection<int, object>
+     */
+    public static function networkOptions(int $minimum = 5)
+    {
+        return static::query()
+            ->whereNotNull('operator')
+            ->where('operator', '!=', '')
+            ->selectRaw('operator as network, COUNT(*) as stations')
+            ->groupBy('operator')
+            ->havingRaw('COUNT(*) >= ?', [$minimum])
+            ->orderBy('operator')
+            ->get();
+    }
+
     protected $casts = [
         'lat' => 'float',
         'lon' => 'float',

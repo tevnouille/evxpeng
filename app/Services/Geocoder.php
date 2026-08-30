@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-
 /**
  * Resolution d'une adresse libre en coordonnees.
  *
@@ -12,8 +11,43 @@ namespace App\Services;
  */
 class Geocoder
 {
+    /**
+     * Ecart de score tolere pour preferer une commune au premier resultat.
+     *
+     * "Chambery" seul renvoie d'abord la rue Chambery de Beaupreau-en-Mauges
+     * (0,958) avant la ville de Savoie (0,954) : quatre millemes separent le
+     * lieu-dit de la prefecture. Une marge de 0,10 rattrape ces coudees sans
+     * detourner une vraie recherche de rue, ou la commune tombe bien plus bas.
+     */
+    private const MUNICIPALITY_MARGIN = 0.10;
+
     public function __construct(private readonly HttpUserAgent $agent)
     {
+    }
+
+    /**
+     * Point choisi explicitement dans la liste de suggestions, sinon geocodage
+     * du texte saisi.
+     *
+     * Les coordonnees retenues a la selection font foi : re-geocoder le libelle
+     * affiche peut retomber ailleurs, la BAN ne rendant pas toujours le meme
+     * resultat pour le texte qu'elle vient elle-meme de proposer.
+     *
+     * @return array{label: string, lat: float, lon: float}|null
+     */
+    public function resolve(?string $query, mixed $lat = null, mixed $lon = null): ?array
+    {
+        if (is_numeric($lat) && is_numeric($lon) && abs((float) $lat) <= 90 && abs((float) $lon) <= 180) {
+            $label = trim((string) $query);
+
+            return [
+                'label' => $label !== '' ? $label : sprintf('%.5f, %.5f', (float) $lat, (float) $lon),
+                'lat' => (float) $lat,
+                'lon' => (float) $lon,
+            ];
+        }
+
+        return $this->locate((string) $query);
     }
 
     /**
@@ -35,7 +69,12 @@ class Geocoder
     /**
      * Suggestions pour la saisie assistee du formulaire.
      *
-     * @return array<int, array{label: string, lat: float, lon: float}>
+     * `label` et `context` sont separes a dessein : le contexte sert a
+     * departager deux homonymes a l'ecran, mais l'accoler au libelle rendrait le
+     * texte inexploitable par la BAN — "Villabe (91, Essonne, Ile-de-France)"
+     * renvoie un chemin de Corbeil-Essonnes.
+     *
+     * @return array<int, array{label: string, context: string, lat: float, lon: float}>
      */
     public function suggest(string $query, int $limit = 8): array
     {
@@ -77,6 +116,7 @@ class Geocoder
 
         return [
             'label' => sprintf('%.5f, %.5f', $lat, $lon),
+            'context' => '',
             'lat' => $lat,
             'lon' => $lon,
         ];
@@ -86,14 +126,52 @@ class Geocoder
     {
         $response = $this->agent->get('https://api-adresse.data.gouv.fr/search/', [
             'q' => $query,
-            'limit' => 1,
+            'limit' => 5,
         ]);
 
-        $feature = $response['features'][0] ?? null;
+        $features = $response['features'] ?? [];
 
-        return $feature ? $this->fromBanFeature($feature) : null;
+        if (! is_array($features) || $features === []) {
+            return null;
+        }
+
+        return $this->fromBanFeature($this->preferMunicipality($features, $query));
     }
 
+    /**
+     * Une saisie sans chiffre est presque toujours un nom de ville : on remonte
+     * la commune si elle est au coude a coude avec le premier resultat.
+     *
+     * @param  array<int, array<string, mixed>>  $features
+     * @return array<string, mixed>
+     */
+    private function preferMunicipality(array $features, string $query): array
+    {
+        $best = $features[0];
+
+        if (preg_match('/\d/', $query)) {
+            return $best;
+        }
+
+        $topScore = (float) ($best['properties']['score'] ?? 0);
+
+        foreach ($features as $feature) {
+            if (($feature['properties']['type'] ?? '') !== 'municipality') {
+                continue;
+            }
+
+            if ((float) ($feature['properties']['score'] ?? 0) >= $topScore - self::MUNICIPALITY_MARGIN) {
+                return $feature;
+            }
+        }
+
+        return $best;
+    }
+
+    /**
+     * @param  array<string, mixed>  $feature
+     * @return array{label: string, context: string, lat: float, lon: float}|null
+     */
     private function fromBanFeature(array $feature): ?array
     {
         $coordinates = $feature['geometry']['coordinates'] ?? null;
@@ -103,10 +181,10 @@ class Geocoder
         }
 
         $properties = $feature['properties'] ?? [];
-        $context = $properties['context'] ?? '';
 
         return [
-            'label' => trim(($properties['label'] ?? '').($context !== '' ? ' ('.$context.')' : '')),
+            'label' => (string) ($properties['label'] ?? ''),
+            'context' => (string) ($properties['context'] ?? ''),
             'lat' => (float) $coordinates[1],
             'lon' => (float) $coordinates[0],
         ];
@@ -128,6 +206,7 @@ class Geocoder
 
         return [
             'label' => (string) ($result['display_name'] ?? $query),
+            'context' => '',
             'lat' => (float) $result['lat'],
             'lon' => (float) $result['lon'],
         ];

@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    {{-- Lu par les appels fetch (ajout/retrait d'une borne favorite). --}}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'EV Recharges')</title>
     <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -22,14 +24,33 @@
         </div>
         <div id="navMenu" class="navbar-menu">
             <div class="navbar-start">
-                <a class="navbar-item {{ request()->routeIs('charging-sessions.*') ? 'is-active' : '' }}" href="{{ route('charging-sessions.index') }}">Recharges</a>
-                <a class="navbar-item {{ request()->routeIs('history.*') ? 'is-active' : '' }}" href="{{ route('history.index') }}">Historique</a>
-                <a class="navbar-item {{ request()->routeIs('dashboard') ? 'is-active' : '' }}" href="{{ route('dashboard') }}">Dashboard</a>
-                <a class="navbar-item {{ request()->routeIs('my-vehicle.*') ? 'is-active' : '' }}" href="{{ route('my-vehicle.index') }}">Ma voiture</a>
-                <a class="navbar-item {{ request()->routeIs('charging-curves.*') ? 'is-active' : '' }}" href="{{ route('charging-curves.index') }}">Courbe de recharge</a>
-                <a class="navbar-item {{ request()->routeIs('trips.*') ? 'is-active' : '' }}" href="{{ route('trips.index') }}">Déplacements</a>
-                <a class="navbar-item {{ request()->routeIs('planner.*') ? 'is-active' : '' }}" href="{{ route('planner.index') }}">Planificateur</a>
-                <a class="navbar-item {{ request()->routeIs('reference-data.*') ? 'is-active' : '' }}" href="{{ route('reference-data.index') }}">Administration</a>
+                <a class="navbar-item {{ request()->routeIs('charging-sessions.*') ? 'is-active' : '' }}" href="{{ route('charging-sessions.index') }}">
+                    @include('layouts._icon', ['name' => 'recharges'])Recharges
+                </a>
+                <a class="navbar-item {{ request()->routeIs('history.*') ? 'is-active' : '' }}" href="{{ route('history.index') }}">
+                    @include('layouts._icon', ['name' => 'historique'])Historique
+                </a>
+                <a class="navbar-item {{ request()->routeIs('dashboard') ? 'is-active' : '' }}" href="{{ route('dashboard') }}">
+                    @include('layouts._icon', ['name' => 'dashboard'])Dashboard
+                </a>
+                <a class="navbar-item {{ request()->routeIs('my-vehicle.*') ? 'is-active' : '' }}" href="{{ route('my-vehicle.index') }}">
+                    @include('layouts._icon', ['name' => 'voiture'])Ma voiture
+                </a>
+                <a class="navbar-item {{ request()->routeIs('charging-curves.*') ? 'is-active' : '' }}" href="{{ route('charging-curves.index') }}">
+                    @include('layouts._icon', ['name' => 'courbe'])Courbe de recharge
+                </a>
+                <a class="navbar-item {{ request()->routeIs('trips.*') ? 'is-active' : '' }}" href="{{ route('trips.index') }}">
+                    @include('layouts._icon', ['name' => 'carte'])Déplacements
+                </a>
+                <a class="navbar-item {{ request()->routeIs('planner.*') ? 'is-active' : '' }}" href="{{ route('planner.index') }}">
+                    @include('layouts._icon', ['name' => 'planificateur'])Planificateur
+                </a>
+                <a class="navbar-item {{ request()->routeIs('favorites.*') ? 'is-active' : '' }}" href="{{ route('favorites.index') }}">
+                    @include('layouts._icon', ['name' => 'favoris'])Favoris
+                </a>
+                <a class="navbar-item {{ request()->routeIs('reference-data.*') ? 'is-active' : '' }}" href="{{ route('reference-data.index') }}">
+                    @include('layouts._icon', ['name' => 'administration'])Administration
+                </a>
             </div>
         </div>
     </nav>
