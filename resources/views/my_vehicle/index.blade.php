@@ -233,7 +233,7 @@
                 </div>
                 <div class="level-right">
                     <div class="select is-small">
-                        <select onchange="window.location.href = '{{ route('my-vehicle.index') }}?vehicule={{ $vehicle->id }}&jours=' + this.value">
+                        <select onchange="window.location.href = '{{ route('my-vehicle.index', array_merge(Arr::except(request()->query(), ['jours']), ['vehicule' => $vehicle->id])) }}&jours=' + this.value">
                             @foreach ([7, 14, 30, 90] as $option)
                                 <option value="{{ $option }}" @selected($days === $option)>{{ $option }} jours</option>
                             @endforeach
@@ -253,6 +253,92 @@
                     data-charging='@json($chartCharging)'></canvas>
                 <p class="has-text-grey is-size-7 mt-3">
                     Les points verts correspondent aux relevés pendant lesquels la voiture était en charge.
+                </p>
+            @endif
+        </div>
+
+        <div class="box">
+            <div class="columns is-vcentered mb-2">
+                <div class="column">
+                    <h2 class="title is-5 mb-0">Kilomètres et recharges au quotidien</h2>
+                </div>
+                @if (! empty($months))
+                    <div class="column is-narrow">
+                        <div class="select is-small">
+                            <select onchange="window.location.href = '{{ route('my-vehicle.index', array_merge(Arr::except(request()->query(), ['mois']), ['vehicule' => $vehicle->id])) }}&mois=' + this.value">
+                                @foreach ($months as $option)
+                                    <option value="{{ $option }}" @selected($month && $month->format('Y-m') === $option)>
+                                        {{ \Carbon\CarbonImmutable::createFromFormat('Y-m-d', $option . '-01')->translatedFormat('F Y') }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                @endif
+            </div>
+
+            @if (empty($activityDays))
+                <p class="has-text-grey">Aucun relevé pour l'instant : le tableau se remplira au fil des collectes.</p>
+            @else
+                <p class="has-text-grey is-size-7 mb-4">
+                    Les kilomètres viennent de l'odomètre, que seule une source OBD remonte&nbsp;;
+                    un trajet à cheval sur minuit est compté le jour de son arrivée.
+                    L'énergie est celle <strong>entrée dans la batterie</strong>, déduite de l'écart
+                    de niveau de charge — inférieure à celle facturée à la borne.
+                    Un jour sans aucun relevé affiche «&nbsp;—&nbsp;»&nbsp;: ce n'est pas un jour sans rouler.
+                </p>
+
+                <div class="table-container">
+                    <table class="table is-fullwidth is-narrow is-striped is-hoverable">
+                        <thead>
+                            <tr>
+                                <th>Jour</th>
+                                <th class="has-text-right">Distance</th>
+                                <th class="has-text-right">Recharges</th>
+                                <th class="has-text-right">Énergie rechargée</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($activityDays as $day)
+                                <tr @class(['has-text-grey' => ! $day['has_data']])>
+                                    <td>{{ $day['date']->translatedFormat('D d/m') }}</td>
+                                    <td class="has-text-right">
+                                        @if (! $day['has_data'])
+                                            —
+                                        @elseif (! $day['has_odometer'])
+                                            <span title="Aucun relevé d'odomètre ce jour-là">?</span>
+                                        @else
+                                            {{ number_format($day['km'], 0, ',', ' ') }} km
+                                        @endif
+                                    </td>
+                                    <td class="has-text-right">{{ $day['charges'] ?: '' }}</td>
+                                    <td class="has-text-right">
+                                        {{ $day['kwh'] > 0 ? str_replace('.', ',', (string) round($day['kwh'], 2)) . ' kWh' : '' }}
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                        <tfoot>
+                            <tr class="has-text-weight-bold">
+                                <td>Total</td>
+                                <td class="has-text-right">{{ number_format($activityTotals['km'], 0, ',', ' ') }} km</td>
+                                <td class="has-text-right">{{ $activityTotals['charges'] ?: '' }}</td>
+                                <td class="has-text-right">
+                                    {{ $activityTotals['kwh'] > 0 ? str_replace('.', ',', (string) $activityTotals['kwh']) . ' kWh' : '' }}
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <p class="has-text-grey is-size-7">
+                    {{ $activityTotals['days_with_data'] }} jour(s) avec au moins un relevé sur le mois.
+                    @if ($activityTotals['kwh_per_100km'])
+                        Consommation apparente&nbsp;:
+                        <strong>{{ str_replace('.', ',', (string) $activityTotals['kwh_per_100km']) }} kWh/100 km</strong>
+                        — indicative, l'énergie rechargée et les kilomètres parcourus ne couvrent pas
+                        exactement la même période.
+                    @endif
                 </p>
             @endif
         </div>

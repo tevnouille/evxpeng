@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Vehicle;
 use App\Services\ChargingCurveRepository;
+use App\Services\DailyVehicleActivity;
 use App\Services\TelemetrySessionDetector;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -15,6 +17,7 @@ class MyVehicleController extends Controller
     public function __construct(
         private readonly ChargingCurveRepository $curves,
         private readonly TelemetrySessionDetector $detector,
+        private readonly DailyVehicleActivity $activity,
     ) {
     }
 
@@ -56,7 +59,19 @@ class MyVehicleController extends Controller
         $raw = $telemetry?->raw ?? [];
         $rawTelemetry = $raw['telemetry'] ?? [];
 
+        // Le tableau quotidien porte son propre filtre : il couvre un mois
+        // entier, la ou la courbe raisonne en nombre de jours glissants.
+        $months = $vehicle ? $this->activity->availableMonths($vehicle) : [];
+        $month = $this->resolveMonth($request->query('mois'), $months);
+        $activity = ($vehicle && $month)
+            ? $this->activity->forMonth($vehicle, $month, $netCapacity)
+            : ['days' => [], 'totals' => []];
+
         return view('my_vehicle.index', [
+            'months' => $months,
+            'month' => $month,
+            'activityDays' => $activity['days'],
+            'activityTotals' => $activity['totals'],
             'heading' => $rawTelemetry['heading'] ?? null,
             'headingLabel' => $this->cardinal($rawTelemetry['heading'] ?? null),
             'typecode' => $raw['typecode'] ?? null,
@@ -78,6 +93,26 @@ class MyVehicleController extends Controller
             'chartCharging' => $history->pluck('is_charging')->map(fn ($v) => (bool) $v)->values(),
             'pointCount' => $history->count(),
         ]);
+    }
+
+    /**
+     * Mois demande, ramene a un mois qui existe reellement.
+     *
+     * Le mois par defaut est le plus recent qui porte des releves, et non le
+     * mois courant : apres une interruption de collecte, ouvrir la page sur un
+     * tableau vide donnerait a croire que la voiture n'a pas roule.
+     *
+     * @param  array<int, string>  $months
+     */
+    private function resolveMonth(?string $requested, array $months): ?CarbonImmutable
+    {
+        if ($months === []) {
+            return null;
+        }
+
+        $chosen = in_array($requested, $months, true) ? $requested : $months[0];
+
+        return CarbonImmutable::createFromFormat('Y-m-d', $chosen.'-01', config('app.timezone'))->startOfMonth();
     }
 
     /**
