@@ -251,3 +251,13 @@ Les libelles ne sont plus uniques dans l'absolu mais **par compte** (index
 Pas de SMTP fonctionnel sur hostingtools (`MAIL_MAILER=log`). Pour notifier
 l'utilisateur, utiliser l'API SMS Free Mobile **en GET** (le POST renvoie 400
 malgré la documentation).
+
+**Les identifiants Free Mobile ne sont pas dans le `.env`** : ils vivent sur la
+ligne `users` de chacun (`free_mobile_user`, `free_mobile_password`, cette
+dernière chiffrée par le cast `encrypted`), et se renseignent dans `/mon-compte`.
+Une clé d'API doit pouvoir être relue pour appeler Free, d'où `encrypted` et non
+`hashed`. Corollaire : elle est illisible si `APP_KEY` change.
+
+Il n'y a **aucun repli sur un compte commun** — sans identifiants, pas de SMS.
+Un repli ferait sonner le téléphone du propriétaire du `.env` à chaque recharge
+de n'importe quel utilisateur.

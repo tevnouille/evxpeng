@@ -171,9 +171,11 @@ et non un `where` à répéter dans chaque contrôleur&nbsp;: on ne peut pas l'o
 Il ne s'applique pas en console, où `telemetry:poll` doit interroger les véhicules
 de tout le monde.
 
-**Alertes SMS** : chacun renseigne son compte Free Mobile dans **Mon compte**.
-Sans identifiants, pas d'alerte — il n'y a délibérément pas de repli sur un compte
-commun, une recharge ne doit pas faire sonner le téléphone d'un autre.
+**Alertes SMS** : chacun renseigne son compte Free Mobile dans **Mon compte**&nbsp;;
+les identifiants sont stockés sur son compte, pas dans la configuration du serveur,
+et la clé est chiffrée en base. Sans identifiants, pas d'alerte — il n'y a
+délibérément pas de repli sur un compte commun, une recharge ne doit pas faire
+sonner le téléphone d'un autre.
 
 **Copie de trajet** : depuis la fiche d'un trajet favori, on le copie vers d'autres
 comptes, bornes retenues comprises. C'est une copie et non un partage — le

@@ -9,13 +9,17 @@ use Illuminate\Database\Migrations\Migration;
  * Ils etaient globaux tant que l'application etait mono-compte. Les laisser en
  * configuration ferait partir les alertes de tout le monde sur le meme
  * telephone : chaque compte porte desormais les siens.
+ *
+ * Lecture directe de l'environnement : la cle de configuration correspondante a
+ * ete supprimee une fois la bascule faite, cette migration doit rester jouable
+ * sur une base neuve (ou elle ne trouvera rien, et ne fera rien).
  */
 return new class extends Migration
 {
     public function up(): void
     {
-        $user = config('services.free_mobile.user');
-        $password = config('services.free_mobile.password');
+        $user = env('FREE_MOBILE_USER');
+        $password = env('FREE_MOBILE_PASS');
 
         if (blank($user) || blank($password)) {
             return;
