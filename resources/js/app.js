@@ -184,6 +184,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
         quantity.addEventListener('input', recompute);
         unitCost.addEventListener('input', recompute);
+
+        // En modification le total est toujours deja rempli, donc le calcul
+        // automatique est desactive d'entree. Ce bouton le force, et reactive le
+        // suivi tant que l'utilisateur ne retouche pas le total lui-meme.
+        const recomputeButton = document.getElementById('recompute_total');
+
+        if (recomputeButton) {
+            recomputeButton.addEventListener('click', () => {
+                const q = parseFloat(quantity.value);
+                const u = parseFloat(unitCost.value);
+
+                if (isNaN(q) || isNaN(u)) {
+                    recomputeButton.classList.add('is-danger');
+                    recomputeButton.title = 'Renseignez la quantité et le coût unitaire.';
+                    setTimeout(() => recomputeButton.classList.remove('is-danger'), 1500);
+
+                    return;
+                }
+
+                totalCost.value = (q * u).toFixed(2);
+                totalManuallyEdited = false;
+
+                recomputeButton.classList.add('is-success');
+                setTimeout(() => recomputeButton.classList.remove('is-success'), 800);
+            });
+        }
     }
 
     setupOtherToggle('location_choice', 'location_other_wrapper');

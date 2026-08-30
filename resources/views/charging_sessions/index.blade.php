@@ -218,11 +218,24 @@
                 <div class="column is-3">
                     <div class="field">
                         <label class="label">Coût total facturé (€)</label>
-                        <div class="control">
-                            <input class="input" type="number" step="0.01" min="0" name="total_cost" id="total_cost"
-                                value="{{ old('total_cost', $editing ? $editing->total_cost : 0) }}">
+                        <div class="field has-addons">
+                            <div class="control is-expanded">
+                                <input class="input" type="number" step="0.01" min="0" name="total_cost" id="total_cost"
+                                    value="{{ old('total_cost', $editing ? $editing->total_cost : 0) }}">
+                            </div>
+                            <div class="control">
+                                {{-- Le calcul automatique s'arrete des qu'un total est saisi, ce qui est
+                                     toujours le cas en modification : ce bouton le force. --}}
+                                <button type="button" class="button is-light" id="recompute_total"
+                                    title="Recalculer : quantité × coût unitaire">
+                                    Recalculer
+                                </button>
+                            </div>
                         </div>
-                        <p class="help">Calculé automatiquement (quantité × coût unitaire), modifiable.</p>
+                        <p class="help">
+                            Calculé automatiquement (quantité × coût unitaire) tant qu'il n'a pas été saisi à la main.
+                            En modification, utilisez <strong>Recalculer</strong>.
+                        </p>
                     </div>
                 </div>
 
