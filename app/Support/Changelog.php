@@ -43,6 +43,7 @@ class Changelog
         [
             'date' => '2026-08-30',
             'entries' => [
+                ['type' => 'nouveaute', 'text' => "Administration → Information serveurs : caractéristiques de la machine, versions des briques logicielles, et l'inventaire complet des paquets système, Composer et npm — version installée, version disponible, licence, et si la mise à jour est compatible ou représente un changement de version majeure. Un bouton « Vérifier les mises à jour » relance le relevé."],
                 ['type' => 'nouveaute', 'text' => "Saisie d'une recharge : champ « Coût additionnel » pour le stationnement, les frais de connexion ou une pénalité. Il s'ajoute au coût réel pour donner le total facturé, et n'est pas enregistré."],
                 ['type' => 'nouveaute', 'text' => "Mon compte : une case permet de masquer le bloc « Équivalent carburant » dans l'historique."],
                 ['type' => 'amelioration', 'text' => "Localisation et fournisseur : « Autre / nouvelle » est passé en tête de liste, un bouton « Nouvelle localisation » y mène directement, et la liste s'efface pendant la saisie du nouveau nom."],

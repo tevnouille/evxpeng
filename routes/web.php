@@ -14,6 +14,7 @@ use App\Http\Controllers\MyVehicleController;
 use App\Http\Controllers\ReferenceDataController;
 use App\Http\Controllers\UserAdminController;
 use App\Http\Controllers\RoutePlannerController;
+use App\Http\Controllers\ServerInfoController;
 use App\Http\Controllers\TripMapController;
 use Illuminate\Support\Facades\Route;
 
@@ -77,6 +78,12 @@ Route::get('/admin/sms', [ReferenceDataController::class, 'smsMessages'])->name(
 // c'est le controleur qui refuse la relance des sources partagees a un non-admin.
 Route::get('/admin/sources', [DataSourceController::class, 'index'])->name('reference-data.sources.index');
 Route::post('/admin/sources/{source}', [DataSourceController::class, 'refresh'])->name('reference-data.sources.refresh');
+
+// Etat du serveur : versions et paquets, donc reserve a l'administrateur.
+Route::middleware(\App\Http\Middleware\RequiresAdmin::class)->group(function () {
+    Route::get('/admin/serveur', [ServerInfoController::class, 'index'])->name('reference-data.server.index');
+    Route::post('/admin/serveur/verifier', [ServerInfoController::class, 'refresh'])->name('reference-data.server.refresh');
+});
 
 // Gestion des comptes : reservee a l'administrateur.
 Route::middleware(\App\Http\Middleware\RequiresAdmin::class)->group(function () {

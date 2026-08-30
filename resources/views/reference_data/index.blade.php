@@ -61,6 +61,24 @@
         </div>
         @if (\App\Support\CurrentUser::get()?->is_admin)
             <div class="column is-3">
+                <a href="{{ route('reference-data.server.index') }}" class="box has-text-centered">
+                    <p class="title is-4">&#128421;</p>
+                    <p class="title is-5">Information serveurs</p>
+                    <p class="has-text-grey">
+                        @php($serverInventory = app(\App\Services\ServerInventory::class))
+                        @if ($serverInventory->exists())
+                            @php($todo = $serverInventory->actionable())
+                            {{ $todo }} paquet(s) à examiner
+                            @if ($serverInventory->isStale())
+                                &middot; <span class="has-text-warning-dark">relevé daté</span>
+                            @endif
+                        @else
+                            relevé à produire
+                        @endif
+                    </p>
+                </a>
+            </div>
+            <div class="column is-3">
                 <a href="{{ route('reference-data.users.index') }}" class="box has-text-centered">
                     <p class="title is-4">&#128101;</p>
                     <p class="title is-5">Utilisateurs</p>
