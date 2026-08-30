@@ -34,6 +34,18 @@
                 <p class="has-text-grey is-size-7">
                     Paliers de charge notifiés : <strong>{{ implode(' %, ', $thresholds) }} %</strong>
                 </p>
+
+                @if ($configured)
+                    <form method="POST" action="{{ route('account.test-sms') }}" class="mt-3">
+                        @csrf
+                        <button class="button is-small is-light" type="submit">Envoyer un SMS de test</button>
+                    </form>
+                    <p class="has-text-grey is-size-7 mt-2">
+                        L'envoi apparaîtra dans le journal ci-dessous. Free répond parfois après
+                        plusieurs dizaines de secondes&nbsp;: un envoi noté «&nbsp;délai dépassé&nbsp;»
+                        est peut-être arrivé quand même.
+                    </p>
+                @endif
             </div>
         </div>
     </div>

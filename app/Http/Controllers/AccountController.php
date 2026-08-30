@@ -59,10 +59,9 @@ class AccountController extends Controller
         $user = CurrentUser::get();
 
         if ($sms->forUser($user)->send('EV Recharges : test d\'envoi.')) {
-            return redirect()->route('account.index')->with('success', 'SMS de test envoyé.');
+            return back()->with('success', 'SMS de test envoyé.');
         }
 
-        return redirect()->route('account.index')
-            ->with('error', 'Envoi refusé. Le détail figure dans le journal des envois.');
+        return back()->with('error', 'Envoi refusé. Le détail figure dans le journal des envois.');
     }
 }
