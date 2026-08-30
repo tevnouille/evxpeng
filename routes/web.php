@@ -3,6 +3,7 @@
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\ChargerLookupController;
 use App\Http\Controllers\ChargingCurveController;
+use App\Http\Controllers\ChangelogController;
 use App\Http\Controllers\ChargingSessionController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DataSourceController;
@@ -63,6 +64,9 @@ Route::get('/historique/{year}/{month}', [HistoryController::class, 'show'])->wh
 Route::get('/mon-compte', [AccountController::class, 'index'])->name('account.index');
 Route::put('/mon-compte', [AccountController::class, 'update'])->name('account.update');
 Route::post('/mon-compte/sms-test', [AccountController::class, 'testSms'])->name('account.test-sms');
+
+// Journal des nouveautes : ouvert a tous les comptes.
+Route::get('/changelog', [ChangelogController::class, 'index'])->name('changelog');
 
 Route::get('/admin', [ReferenceDataController::class, 'index'])->name('reference-data.index');
 

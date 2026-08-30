@@ -27,12 +27,20 @@
                 <a class="navbar-item {{ request()->routeIs('charging-sessions.*') ? 'is-active' : '' }}" href="{{ route('charging-sessions.index') }}">
                     @include('layouts._icon', ['name' => 'recharges'])Recharges
                 </a>
-                <a class="navbar-item {{ request()->routeIs('history.*') ? 'is-active' : '' }}" href="{{ route('history.index') }}">
-                    @include('layouts._icon', ['name' => 'historique'])Historique
-                </a>
-                <a class="navbar-item {{ request()->routeIs('dashboard') ? 'is-active' : '' }}" href="{{ route('dashboard') }}">
-                    @include('layouts._icon', ['name' => 'dashboard'])Dashboard
-                </a>
+                <div class="navbar-item has-dropdown is-hoverable">
+                    <a class="navbar-link {{ request()->routeIs('history.*') || request()->routeIs('dashboard') ? 'is-active' : '' }}"
+                       href="{{ route('history.index') }}">
+                        @include('layouts._icon', ['name' => 'suivi'])Suivi
+                    </a>
+                    <div class="navbar-dropdown">
+                        <a class="navbar-item {{ request()->routeIs('history.*') ? 'is-active' : '' }}" href="{{ route('history.index') }}">
+                            @include('layouts._icon', ['name' => 'historique'])Historique
+                        </a>
+                        <a class="navbar-item {{ request()->routeIs('dashboard') ? 'is-active' : '' }}" href="{{ route('dashboard') }}">
+                            @include('layouts._icon', ['name' => 'dashboard'])Dashboard
+                        </a>
+                    </div>
+                </div>
                 @if (\App\Support\CurrentUser::get()?->hasTelemetry())
                     <a class="navbar-item {{ request()->routeIs('my-vehicle.*') ? 'is-active' : '' }}" href="{{ route('my-vehicle.index') }}">
                         @include('layouts._icon', ['name' => 'voiture'])Ma voiture
@@ -41,23 +49,34 @@
                 <a class="navbar-item {{ request()->routeIs('charging-curves.*') ? 'is-active' : '' }}" href="{{ route('charging-curves.index') }}">
                     @include('layouts._icon', ['name' => 'courbe'])Courbe de recharge
                 </a>
-                @if (\App\Support\CurrentUser::get()?->hasTelemetry())
-                    <a class="navbar-item {{ request()->routeIs('trips.*') ? 'is-active' : '' }}" href="{{ route('trips.index') }}">
-                        @include('layouts._icon', ['name' => 'carte'])Déplacements
+                <div class="navbar-item has-dropdown is-hoverable">
+                    <a class="navbar-link {{ request()->routeIs('trips.*') || request()->routeIs('planner.*') || request()->routeIs('favorites.*') ? 'is-active' : '' }}"
+                       href="{{ route('favorites.index') }}">
+                        @include('layouts._icon', ['name' => 'trajets'])Trajets
                     </a>
-                @endif
-                <a class="navbar-item {{ request()->routeIs('planner.*') ? 'is-active' : '' }}" href="{{ route('planner.index') }}">
-                    @include('layouts._icon', ['name' => 'planificateur'])Planificateur
-                </a>
-                <a class="navbar-item {{ request()->routeIs('favorites.*') ? 'is-active' : '' }}" href="{{ route('favorites.index') }}">
-                    @include('layouts._icon', ['name' => 'favoris'])Favoris
-                </a>
+                    <div class="navbar-dropdown">
+                        @if (\App\Support\CurrentUser::get()?->hasTelemetry())
+                            <a class="navbar-item {{ request()->routeIs('trips.*') ? 'is-active' : '' }}" href="{{ route('trips.index') }}">
+                                @include('layouts._icon', ['name' => 'carte'])Déplacements
+                            </a>
+                        @endif
+                        <a class="navbar-item {{ request()->routeIs('planner.*') ? 'is-active' : '' }}" href="{{ route('planner.index') }}">
+                            @include('layouts._icon', ['name' => 'planificateur'])Planificateur
+                        </a>
+                        <a class="navbar-item {{ request()->routeIs('favorites.*') ? 'is-active' : '' }}" href="{{ route('favorites.index') }}">
+                            @include('layouts._icon', ['name' => 'favoris'])Favoris
+                        </a>
+                    </div>
+                </div>
                 <a class="navbar-item {{ request()->routeIs('reference-data.*') ? 'is-active' : '' }}" href="{{ route('reference-data.index') }}">
                     @include('layouts._icon', ['name' => 'administration'])Administration
                 </a>
             </div>
 
             <div class="navbar-end">
+                <a class="navbar-item {{ request()->routeIs('changelog') ? 'is-active' : '' }}" href="{{ route('changelog') }}">
+                    @include('layouts._icon', ['name' => 'changelog'])Changelog
+                </a>
                 @if ($user = \App\Support\CurrentUser::get())
                     <a class="navbar-item {{ request()->routeIs('account.*') ? 'is-active' : '' }}" href="{{ route('account.index') }}">
                         @include('layouts._icon', ['name' => 'compte']){{ $user->email }}
