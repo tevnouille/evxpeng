@@ -19,6 +19,17 @@ class ServerInventory
 
     private const FILE = 'system/server-inventory.json';
     private const REQUEST_FILE = 'system/server-inventory.request';
+    private const UPDATE_REQUEST_FILE = 'system/server-update.request';
+    private const UPDATE_LOG_FILE = 'system/server-update.log';
+
+    /**
+     * Ecosystemes dont la mise a jour se declenche depuis la page.
+     *
+     * Composer en est absent a dessein : monter une dependance PHP oblige a
+     * reconstruire l'image et a recreer le conteneur — un deploiement, pas un
+     * clic. Ces montees-la restent manuelles.
+     */
+    public const UPDATABLE = ['npm', 'apt'];
 
     /** Verdicts de mise a jour, du plus urgent au plus anodin. */
     public const VERDICTS = [
@@ -85,7 +96,7 @@ class ServerInventory
             [
                 'key' => 'composer',
                 'label' => 'Dépendances PHP (Composer)',
-                'note' => "Le projet lui-même. Les paquets marqués « développement » ne sont pas installés en production.",
+                'note' => "Le projet lui-même. Les paquets marqués « développement » ne sont pas installés en production. Ces montées se font à la main : elles supposent de reconstruire l'image et de recréer le conteneur.",
                 'packages' => $this->composer(),
             ],
             [
@@ -120,6 +131,8 @@ class ServerInventory
 
             return [
                 'name' => $p['name'],
+                'ecosystem' => 'composer',
+                'updatable' => false,
                 'version' => $p['version'],
                 'available' => $verdict === 'inconnu' ? null : $p['available'],
                 'license' => $p['license'],
@@ -150,6 +163,8 @@ class ServerInventory
 
             return [
                 'name' => $p['name'],
+                'ecosystem' => 'npm',
+                'updatable' => $verdict === 'recommandee',
                 'version' => $p['version'],
                 'available' => $p['available'],
                 'license' => $p['license'],
@@ -170,6 +185,8 @@ class ServerInventory
     {
         $rows = array_map(fn (array $p): array => [
             'name' => $p['name'],
+            'ecosystem' => 'apt',
+            'updatable' => $p['outdated'],
             'version' => $p['version'],
             'available' => $p['available'],
             'license' => $p['license'],
@@ -224,6 +241,51 @@ class ServerInventory
         return $counts['securite'] + $counts['abandonne'] + $counts['recommandee'] + $counts['a-evaluer'];
     }
 
+
+    /**
+     * Demande la mise a jour d'un paquet.
+     *
+     * Comme pour le releve, le conteneur ne fait que deposer une demande :
+     * c'est l'hote qui l'execute, apres avoir lui-meme reverifie que la montee
+     * est compatible.
+     */
+    public function requestUpdate(string $ecosystem, string $package): bool
+    {
+        if (! in_array($ecosystem, self::UPDATABLE, true)) {
+            return false;
+        }
+
+        $payload = json_encode([
+            'ecosystem' => $ecosystem,
+            'package' => $package,
+            'requested_at' => now()->toIso8601String(),
+        ]);
+
+        return @file_put_contents(storage_path('app/'.self::UPDATE_REQUEST_FILE), $payload) !== false;
+    }
+
+    public function updatePending(): bool
+    {
+        return file_exists(storage_path('app/'.self::UPDATE_REQUEST_FILE));
+    }
+
+    /**
+     * Journal des mises a jour tentees, la plus recente d'abord.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function updateLog(): array
+    {
+        $path = storage_path('app/'.self::UPDATE_LOG_FILE);
+
+        if (! is_readable($path)) {
+            return [];
+        }
+
+        $decoded = json_decode((string) file_get_contents($path), true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
 
     /**
      * Demande un nouveau releve.

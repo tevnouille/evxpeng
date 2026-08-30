@@ -52,6 +52,39 @@
         </div>
     @endif
 
+    @if ($updatePending)
+        <div class="notification is-warning is-light">
+            Une mise à jour est en cours&nbsp;: elle démarre dans la minute et peut durer
+            quelques dizaines de secondes. Rechargez la page pour en voir l'issue.
+        </div>
+    @endif
+
+    @if (count($updateLog) > 0)
+        <div class="box">
+            <h2 class="title is-5">Dernières mises à jour</h2>
+            <div class="table-container">
+                <table class="table is-fullwidth is-striped is-narrow">
+                    <tbody>
+                        @foreach (array_slice($updateLog, 0, 12) as $operation)
+                            <tr>
+                                <td class="is-size-7 has-text-grey">
+                                    {{ \Illuminate\Support\Carbon::parse($operation['at'])->timezone(config('app.timezone'))->format('d/m H:i') }}
+                                </td>
+                                <td>{{ $operation['package'] }} <span class="tag is-light is-size-7">{{ $operation['ecosystem'] }}</span></td>
+                                <td>
+                                    <span class="tag {{ $operation['success'] ? 'is-success' : 'is-danger' }}">
+                                        {{ $operation['success'] ? 'Réussie' : 'Échec' }}
+                                    </span>
+                                </td>
+                                <td class="is-size-7">{{ \Illuminate\Support\Str::limit($operation['message'], 160) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
+
     @if ($available)
         <div class="columns is-mobile is-multiline mb-4">
             @foreach (\App\Services\ServerInventory::VERDICTS as $key => $verdict)
@@ -182,6 +215,7 @@
                                 <th>Disponible</th>
                                 <th>Licence</th>
                                 <th>Mise à jour</th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -209,6 +243,22 @@
                                     </td>
                                     <td class="is-size-7">{{ $package['license'] ?? '—' }}</td>
                                     <td><span class="tag {{ $verdict['class'] }}">{{ $verdict['label'] }}</span></td>
+                                    <td class="has-text-right">
+                                        @if ($package['updatable'])
+                                            <form method="POST" action="{{ route('reference-data.server.update') }}"
+                                                  onsubmit="return confirm('Mettre à jour {{ $package['name'] }} en {{ $package['available'] }} ?');">
+                                                @csrf
+                                                <input type="hidden" name="ecosystem" value="{{ $package['ecosystem'] }}">
+                                                <input type="hidden" name="package" value="{{ $package['name'] }}">
+                                                <button type="submit" class="button is-small is-link is-light"
+                                                        @disabled($updatePending)>Mettre à jour</button>
+                                            </form>
+                                        @elseif ($package['ecosystem'] === 'composer' && in_array($package['verdict'], ['recommandee', 'a-evaluer'], true))
+                                            <span class="has-text-grey is-size-7" title="Monter une dépendance PHP oblige à reconstruire l'image et à recréer le conteneur.">
+                                                à la main
+                                            </span>
+                                        @endif
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>

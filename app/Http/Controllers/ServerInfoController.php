@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\ServerInventory;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
@@ -28,7 +29,37 @@ class ServerInfoController extends Controller
             'groups' => $inventory->groups(),
             'counts' => $inventory->counts(),
             'actionable' => $inventory->actionable(),
+            'updatePending' => $inventory->updatePending(),
+            'updateLog' => $inventory->updateLog(),
         ]);
+    }
+
+    /**
+     * Declenche la mise a jour d'un paquet.
+     *
+     * L'application ne fait que deposer la demande : l'hote la reprend, et
+     * revalide de son cote que la montee est compatible. Composer est refuse
+     * ici comme la-bas — la monter suppose de reconstruire l'image.
+     */
+    public function update(Request $request, ServerInventory $inventory): RedirectResponse
+    {
+        $data = $request->validate([
+            'ecosystem' => ['required', 'string', 'in:'.implode(',', ServerInventory::UPDATABLE)],
+            'package' => ['required', 'string', 'max:200'],
+        ]);
+
+        if ($inventory->updatePending()) {
+            return back()->with('error', 'Une mise à jour est déjà en attente : laissez-la se terminer.');
+        }
+
+        if (! $inventory->requestUpdate($data['ecosystem'], $data['package'])) {
+            return back()->with('error', 'Impossible de déposer la demande de mise à jour.');
+        }
+
+        return back()->with('success', sprintf(
+            'Mise à jour de %s demandée : elle est appliquée dans la minute, le résultat apparaîtra dans le journal ci-dessous.',
+            $data['package'],
+        ));
     }
 
     public function refresh(ServerInventory $inventory): RedirectResponse
