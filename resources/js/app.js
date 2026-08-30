@@ -485,34 +485,44 @@ document.addEventListener('DOMContentLoaded', () => {
     const unitCost = document.getElementById('unit_cost');
     const totalCost = document.getElementById('total_cost');
 
-    if (quantity && unitCost && totalCost) {
+    const realCost = document.getElementById('real_cost');
+
+    if (quantity && unitCost && totalCost && realCost) {
+        // Quantite x cout unitaire alimente les deux champs a la fois, chacun
+        // decrochant du calcul des qu'il est saisi a la main (toujours le cas
+        // d'entree en modification, ou les valeurs sont deja remplies).
         let totalManuallyEdited = totalCost.value !== '' && parseFloat(totalCost.value) !== 0;
+        let realManuallyEdited = realCost.value !== '' && parseFloat(realCost.value) !== 0;
 
         totalCost.addEventListener('input', () => {
             totalManuallyEdited = true;
         });
+        realCost.addEventListener('input', () => {
+            realManuallyEdited = true;
+        });
 
         const recompute = () => {
-            if (totalManuallyEdited) {
-                return;
-            }
             const q = parseFloat(quantity.value);
             const u = parseFloat(unitCost.value);
-            if (!isNaN(q) && !isNaN(u)) {
-                totalCost.value = (q * u).toFixed(2);
+            if (isNaN(q) || isNaN(u)) {
+                return;
+            }
+            const value = (q * u).toFixed(2);
+            if (!totalManuallyEdited) {
+                totalCost.value = value;
+            }
+            if (!realManuallyEdited) {
+                realCost.value = value;
             }
         };
 
         quantity.addEventListener('input', recompute);
         unitCost.addEventListener('input', recompute);
 
-        // Le cout reel est la valeur de la recharge : ce bouton la calcule
-        // (quantite x cout unitaire), utile quand la recharge n'a pas ete
-        // facturee a ce prix-la.
-        const realCost = document.getElementById('real_cost');
+        // Force le calcul du cout reel et reactive son suivi automatique.
         const recomputeButton = document.getElementById('recompute_real');
 
-        if (realCost && recomputeButton) {
+        if (recomputeButton) {
             recomputeButton.addEventListener('click', () => {
                 const q = parseFloat(quantity.value);
                 const u = parseFloat(unitCost.value);
@@ -526,6 +536,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 realCost.value = (q * u).toFixed(2);
+                realManuallyEdited = false;
 
                 recomputeButton.classList.add('is-success');
                 setTimeout(() => recomputeButton.classList.remove('is-success'), 800);
