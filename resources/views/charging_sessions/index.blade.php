@@ -295,8 +295,5 @@
         </div>
     </div>
 
-    @include('charging_sessions._sessions_table', [
-        'emptyMessage' => "Aucune recharge enregistrée pour l'instant.",
-        'showComment' => false,
-    ])
+    @include('charging_sessions._sessions_table', ['emptyMessage' => "Aucune recharge enregistrée pour l'instant."])
 @endsection
