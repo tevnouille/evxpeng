@@ -26,7 +26,9 @@
                     @if ($configured)
                         <span class="tag is-success is-medium">API Free Mobile configurée</span>
                     @else
-                        <span class="tag is-danger is-medium">Identifiants absents du .env</span>
+                        <span class="tag is-danger is-medium">
+                            <a href="{{ route('account.index') }}" class="has-text-white">Identifiants Free Mobile à renseigner</a>
+                        </span>
                     @endif
                 </p>
                 <p class="has-text-grey is-size-7">

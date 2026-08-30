@@ -16,6 +16,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // et transmettent X-Forwarded-Proto ; sans ca, isSecure() renvoie false
         // et les assets/redirections sont generes en http:// (mixed content).
         $middleware->trustProxies(at: '*');
+
+        // Identite fournie par la passerelle passkey : sans elle, aucune page
+        // n'est servie, et c'est elle qui cloisonne les donnees par compte.
+        $middleware->web(append: [\App\Http\Middleware\IdentifyUser::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

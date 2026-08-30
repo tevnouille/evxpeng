@@ -9,10 +9,12 @@ use App\Models\SmsMessage;
 use App\Models\Vehicle;
 use App\Services\ChargingCurveRepository;
 use App\Services\FreeMobileSms;
+use App\Support\CurrentUser;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Unique;
 use Illuminate\View\View;
 
 class ReferenceDataController extends Controller
@@ -35,7 +37,8 @@ class ReferenceDataController extends Controller
             'messages' => SmsMessage::latest('created_at')->paginate(50),
             'deliveredCount' => SmsMessage::where('delivered', true)->count(),
             'failedCount' => SmsMessage::where('delivered', false)->count(),
-            'configured' => $sms->configured(),
+            // Les identifiants appartiennent au compte connecte, pas a l'application.
+            'configured' => $sms->forUser(CurrentUser::get())->configured(),
             'thresholds' => config('services.charge_alerts.thresholds', []),
         ]);
     }
@@ -51,7 +54,7 @@ class ReferenceDataController extends Controller
     public function storeVehicle(Request $request, ChargingCurveRepository $curves): RedirectResponse
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255', 'unique:vehicles,name'],
+            'name' => ['required', 'string', 'max:255', $this->uniqueForUser('vehicles', 'name')],
             'charging_curve' => ['nullable', 'string', Rule::in($curves->slugs())],
             'abrp_token' => ['nullable', 'string', 'max:255'],
             'kwh_per_100km' => ['nullable', 'numeric', 'min:0'],
@@ -71,7 +74,7 @@ class ReferenceDataController extends Controller
     public function updateVehicle(Request $request, Vehicle $vehicle, ChargingCurveRepository $curves): RedirectResponse
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255', 'unique:vehicles,name,' . $vehicle->id],
+            'name' => ['required', 'string', 'max:255', $this->uniqueForUser('vehicles', 'name', $vehicle->id)],
             'charging_curve' => ['nullable', 'string', Rule::in($curves->slugs())],
             'abrp_token' => ['nullable', 'string', 'max:255'],
             'kwh_per_100km' => ['nullable', 'numeric', 'min:0'],
@@ -117,7 +120,7 @@ class ReferenceDataController extends Controller
     public function storeLocation(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255', 'unique:locations,name'],
+            'name' => ['required', 'string', 'max:255', $this->uniqueForUser('locations', 'name')],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
         ]);
@@ -130,7 +133,7 @@ class ReferenceDataController extends Controller
     public function updateLocation(Request $request, Location $location): RedirectResponse
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255', 'unique:locations,name,' . $location->id],
+            'name' => ['required', 'string', 'max:255', $this->uniqueForUser('locations', 'name', $location->id)],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
         ]);
@@ -161,7 +164,7 @@ class ReferenceDataController extends Controller
 
     public function storeProvider(Request $request): RedirectResponse
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:255', 'unique:providers,name']]);
+        $data = $request->validate(['name' => ['required', 'string', 'max:255', $this->uniqueForUser('providers', 'name')]]);
 
         Provider::create($data);
 
@@ -170,7 +173,7 @@ class ReferenceDataController extends Controller
 
     public function updateProvider(Request $request, Provider $provider): RedirectResponse
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:255', 'unique:providers,name,' . $provider->id]]);
+        $data = $request->validate(['name' => ['required', 'string', 'max:255', $this->uniqueForUser('providers', 'name', $provider->id)]]);
 
         $provider->update($data);
 
@@ -198,7 +201,7 @@ class ReferenceDataController extends Controller
 
     public function storePowerRating(Request $request): RedirectResponse
     {
-        $data = $request->validate(['kw' => ['required', 'numeric', 'min:0', 'unique:power_ratings,kw']]);
+        $data = $request->validate(['kw' => ['required', 'numeric', 'min:0', $this->uniqueForUser('power_ratings', 'kw')]]);
 
         PowerRating::create($data);
 
@@ -207,7 +210,7 @@ class ReferenceDataController extends Controller
 
     public function updatePowerRating(Request $request, PowerRating $powerRating): RedirectResponse
     {
-        $data = $request->validate(['kw' => ['required', 'numeric', 'min:0', 'unique:power_ratings,kw,' . $powerRating->id]]);
+        $data = $request->validate(['kw' => ['required', 'numeric', 'min:0', $this->uniqueForUser('power_ratings', 'kw', $powerRating->id)]]);
 
         $powerRating->update($data);
 
@@ -224,5 +227,16 @@ class ReferenceDataController extends Controller
         }
 
         return redirect()->route('reference-data.power-ratings.index')->with('success', 'Puissance supprimée.');
+    }
+
+    /**
+     * Unicite d'un libelle a l'interieur du compte, et non dans toute la base :
+     * deux utilisateurs ont le droit d'avoir chacun leur "Maison".
+     */
+    private function uniqueForUser(string $table, string $column, ?int $ignore = null): Unique
+    {
+        $rule = Rule::unique($table, $column)->where('user_id', CurrentUser::id());
+
+        return $ignore === null ? $rule : $rule->ignore($ignore);
     }
 }

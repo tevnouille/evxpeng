@@ -213,6 +213,39 @@ donner partout des liens Google Maps et Waze pointant sur ces coordonnees. Les
 pages le disent : le libelle vient tel quel de la base, c'est la position qui fait
 foi.
 
+## Cloisonnement par utilisateur
+
+Depuis l'ouverture a plusieurs passkeys, chaque compte ne voit que ses donnees.
+Trois pieces :
+
+- `App\Http\Middleware\IdentifyUser` lit l'en-tete `X-SSO-Email` pose par la
+  passerelle, cree le compte a la premiere visite et refuse la requete (403) si
+  l'en-tete manque. La passerelle ecrase cet en-tete avec `proxy_set_header` :
+  un client ne peut pas se l'inventer.
+- `App\Support\CurrentUser` porte l'utilisateur de la requete.
+- `App\Models\Concerns\BelongsToUser` ajoute un **scope global** et remplit
+  `user_id` a la creation. Scope global et non `where` disperses : on ne peut pas
+  l'oublier, et une fuite entre comptes demanderait de le retirer explicitement.
+
+**`user_id` n'est jamais `fillable`** : le proprietaire d'une ligne ne doit pas
+pouvoir venir d'un champ de formulaire. La copie de trajet, qui cree
+deliberement une ligne pour quelqu'un d'autre, l'affecte directement sur le
+modele — le hook `creating` utilise `??=` et respecte donc une valeur posee.
+
+**Hors requete web, `CurrentUser::id()` vaut null et le scope ne s'applique pas.**
+C'est voulu : `telemetry:poll` doit voir les vehicules de tous les comptes. Le
+corollaire est qu'une commande artisan travaille sur toute la base — y penser
+avant d'ecrire une commande qui modifie des donnees.
+
+Tables restees communes a dessein : `charging_stations` (IRVE) et `fuel_prices`,
+donnees publiques importees. `vehicle_telemetries` et `charge_alerts` sont
+cloisonnees par ricochet via leur vehicule.
+
+Les libelles ne sont plus uniques dans l'absolu mais **par compte** (index
+`(user_id, name)`), d'ou `uniqueForUser()` dans `ReferenceDataController` :
+`unique:locations,name` aurait interdit a un second utilisateur d'avoir sa propre
+"Maison".
+
 ## Alertes
 
 Pas de SMTP fonctionnel sur hostingtools (`MAIL_MAILER=log`). Pour notifier

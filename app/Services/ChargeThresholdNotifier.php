@@ -29,7 +29,13 @@ class ChargeThresholdNotifier
     {
         $thresholds = config('services.charge_alerts.thresholds', []);
 
-        if (! $this->sms->configured() || $thresholds === [] || ! $current->is_charging || $current->soc === null) {
+        // Le SMS part sur le compte Free du proprietaire du vehicule, jamais sur
+        // un compte commun : une recharge ne doit pas faire sonner le telephone
+        // de quelqu'un d'autre.
+        $owner = $vehicle->user;
+        $sms = $owner ? $this->sms->forUser($owner) : null;
+
+        if ($sms === null || ! $sms->configured() || $thresholds === [] || ! $current->is_charging || $current->soc === null) {
             return [];
         }
 
@@ -70,7 +76,7 @@ class ChargeThresholdNotifier
 
         // Plusieurs paliers d'un coup (trou de telemetrie, ou reprise apres un
         // echec) ne donnent qu'un SMS : celui du palier le plus haut.
-        $sent = $this->sms->send($this->message($vehicle, $current, $pending, $soc));
+        $sent = $sms->send($this->message($vehicle, $current, $pending, $soc));
 
         foreach ($pending as $threshold) {
             ChargeAlert::updateOrCreate(

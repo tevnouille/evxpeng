@@ -10,7 +10,12 @@
         </ul>
     </nav>
 
-    <h1 class="title">{{ $route->name }}</h1>
+    <h1 class="title">
+        {{ $route->name }}
+        @if ($route->copied_from)
+            <span class="tag is-info is-light ml-2">copié de {{ $route->copied_from }}</span>
+        @endif
+    </h1>
 
     <div class="box">
         <div class="columns is-multiline">
@@ -157,6 +162,32 @@
         <h2 class="subtitle">Bornes retenues</h2>
         <div id="favorites-list"></div>
     </div>
+
+    @if ($others->isNotEmpty())
+        <form method="POST" action="{{ route('favorites.copy', $route) }}" class="box">
+            @csrf
+            <h2 class="subtitle">Copier ce trajet</h2>
+            <p class="mb-3">
+                Chaque destinataire reçoit <strong>sa propre copie</strong>, bornes retenues comprises&nbsp;:
+                il peut la renommer, la compléter ou la supprimer sans que la vôtre bouge.
+            </p>
+
+            <div class="field">
+                @foreach ($others as $other)
+                    <label class="checkbox mr-4">
+                        <input type="checkbox" name="utilisateurs[]" value="{{ $other->id }}">
+                        {{ $other->email }}
+                    </label>
+                @endforeach
+            </div>
+
+            <div class="field mt-4">
+                <div class="control">
+                    <button class="button is-link" type="submit">Copier</button>
+                </div>
+            </div>
+        </form>
+    @endif
 
     <p class="has-text-grey is-size-7">
         Bornes issues de la base nationale IRVE, filtrées à

@@ -153,6 +153,33 @@ liste les bornes retenues avec, pour chacune, un lien **Google Maps** et un lien
 Une borne retenue est **recopiée** dans le trajet, pas seulement référencée&nbsp;:
 elle reste affichée même si l'import IRVE suivant la fait disparaître.
 
+### Plusieurs utilisateurs, données cloisonnées
+
+L'application est ouverte à tous les passkeys enregistrés. **Chaque compte ne voit
+que ses propres données** : recharges, véhicules, localisations, fournisseurs,
+puissances, trajets favoris et journal SMS. Rien n'est partagé, à deux exceptions
+assumées&nbsp;: la base nationale des bornes et l'historique des prix des
+carburants, qui sont des données publiques importées.
+
+L'identité vient de la passerelle passkey, qui transmet l'email dans l'en-tête
+`X-SSO-Email`&nbsp;; il n'y a ni inscription ni mot de passe côté application. Un
+compte est créé à la première visite, avec les puissances de borne usuelles
+pré-remplies.
+
+Le cloisonnement est un *scope global* Eloquent (`App\Models\Concerns\BelongsToUser`)
+et non un `where` à répéter dans chaque contrôleur&nbsp;: on ne peut pas l'oublier.
+Il ne s'applique pas en console, où `telemetry:poll` doit interroger les véhicules
+de tout le monde.
+
+**Alertes SMS** : chacun renseigne son compte Free Mobile dans **Mon compte**.
+Sans identifiants, pas d'alerte — il n'y a délibérément pas de repli sur un compte
+commun, une recharge ne doit pas faire sonner le téléphone d'un autre.
+
+**Copie de trajet** : depuis la fiche d'un trajet favori, on le copie vers d'autres
+comptes, bornes retenues comprises. C'est une copie et non un partage — le
+destinataire reçoit un trajet à lui, qu'il peut modifier ou supprimer sans toucher
+à l'original.
+
 ## Stack
 
 - **Laravel 13** / PHP 8.4, **MariaDB 11**

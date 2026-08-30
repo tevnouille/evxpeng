@@ -2,13 +2,17 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToUser;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class FavoriteRoute extends Model
 {
+    use BelongsToUser;
+
     protected $fillable = [
         'name',
+        'copied_from',
         'from_label', 'from_lat', 'from_lon',
         'to_label', 'to_lat', 'to_lon',
         'min_power_kw', 'max_detour_km', 'networks',

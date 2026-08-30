@@ -5,12 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\ChargingStation;
 use App\Models\FavoriteRoute;
 use App\Models\FavoriteRouteStation;
+use App\Models\User;
 use App\Services\Geocoder;
 use App\Services\RouteCorridor;
 use App\Services\RouteService;
+use App\Support\CurrentUser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 /**
@@ -99,6 +102,7 @@ class FavoriteRouteController extends Controller
             'stations' => $this->corridorStations($favorite),
             'minPowers' => self::MIN_POWERS,
             'networks' => ChargingStation::networkOptions(),
+            'others' => User::where('id', '!=', CurrentUser::id())->orderBy('email')->get(),
         ]);
     }
 
@@ -130,6 +134,53 @@ class FavoriteRouteController extends Controller
         $favorite->delete();
 
         return redirect()->route('favorites.index')->with('success', 'Trajet supprimé.');
+    }
+
+    /**
+     * Copie le trajet, avec ses bornes, dans le compte d'autres utilisateurs.
+     *
+     * Une copie et non un partage : le destinataire recoit un trajet a lui,
+     * qu'il peut renommer, completer ou supprimer sans que l'original bouge.
+     * C'est aussi ce qui evite toute question de droits croises.
+     */
+    public function copy(Request $request, FavoriteRoute $favorite): RedirectResponse
+    {
+        $data = $request->validate([
+            'utilisateurs' => ['required', 'array', 'min:1'],
+            'utilisateurs.*' => ['integer', 'exists:users,id'],
+        ]);
+
+        $me = CurrentUser::get();
+
+        $recipients = User::whereIn('id', $data['utilisateurs'])
+            ->where('id', '!=', $me->id)
+            ->get();
+
+        if ($recipients->isEmpty()) {
+            return back()->with('error', 'Aucun destinataire retenu.');
+        }
+
+        $favorite->load('stations');
+
+        DB::transaction(function () use ($favorite, $recipients, $me) {
+            foreach ($recipients as $recipient) {
+                $copy = $favorite->replicate();
+                $copy->user_id = $recipient->id;
+                $copy->copied_from = $me->email;
+                $copy->save();
+
+                foreach ($favorite->stations as $station) {
+                    $clone = $station->replicate();
+                    $clone->favorite_route_id = $copy->id;
+                    $clone->save();
+                }
+            }
+        });
+
+        return back()->with('success', sprintf(
+            'Trajet copié à %s.',
+            $recipients->pluck('email')->implode(', ')
+        ));
     }
 
     /** Ajout d'une borne aux favoris du trajet, depuis la carte. */

@@ -46,6 +46,10 @@ return [
     'free_mobile' => [
         // API SMS Free Mobile : a activer depuis l'espace abonne. Seul le GET est
         // accepte, et la reponse se limite a un code HTTP.
+        //
+        // Ces valeurs ne servent plus qu'a amorcer le compte proprietaire lors de
+        // la migration vers le multi-comptes : chaque utilisateur porte desormais
+        // ses propres identifiants, renseignes dans /mon-compte.
         'user' => env('FREE_MOBILE_USER'),
         'password' => env('FREE_MOBILE_PASS'),
     ],

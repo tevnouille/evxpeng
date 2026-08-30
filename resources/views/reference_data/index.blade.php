@@ -47,5 +47,12 @@
                 </p>
             </a>
         </div>
+        <div class="column is-3">
+            <a href="{{ route('account.index') }}" class="box has-text-centered">
+                <p class="title is-4">&#128100;</p>
+                <p class="title is-5">Mon compte</p>
+                <p class="has-text-grey">{{ \App\Support\CurrentUser::get()?->email }}</p>
+            </a>
+        </div>
     </div>
 @endsection

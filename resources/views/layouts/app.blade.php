@@ -52,6 +52,14 @@
                     @include('layouts._icon', ['name' => 'administration'])Administration
                 </a>
             </div>
+
+            <div class="navbar-end">
+                @if ($user = \App\Support\CurrentUser::get())
+                    <a class="navbar-item {{ request()->routeIs('account.*') ? 'is-active' : '' }}" href="{{ route('account.index') }}">
+                        @include('layouts._icon', ['name' => 'compte']){{ $user->email }}
+                    </a>
+                @endif
+            </div>
         </div>
     </nav>
 

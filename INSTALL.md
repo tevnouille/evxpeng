@@ -181,6 +181,28 @@ Compter trois à quatre minutes pour environ 57 000 stations. Une tâche planifi
 le rejoue chaque lundi à 4 h 30 ; il n'y a rien d'autre à configurer, aucune clé
 n'est nécessaire.
 
+## 11. Ouvrir l'application à plusieurs utilisateurs
+
+L'identité est fournie par la passerelle passkey. Dans sa configuration nginx
+(`/var/docker/ev-gate/nginx/gate.conf`), le `location /` doit transmettre l'email
+de la session à l'application :
+
+```nginx
+auth_request_set $sso_email $upstream_http_x_sso_email;
+proxy_set_header X-SSO-Email $sso_email;
+```
+
+`proxy_set_header` écrase systématiquement ce qu'un client aurait pu envoyer :
+l'en-tête n'est pas falsifiable depuis l'extérieur. Sans lui, l'application répond
+403 sur toutes ses pages.
+
+Pour restreindre l'accès à un seul compte, ajouter `?required_email=...` à
+l'`proxy_pass` du `location = /_sso_check` ; sans ce paramètre, tous les passkeys
+enregistrés sont acceptés et chacun obtient son propre espace.
+
+Le `.env` porte `EV_OWNER_EMAIL`, le compte auquel la migration rattache les
+données existantes lors du passage au multi-comptes.
+
 ## Mise à jour
 
 ```bash

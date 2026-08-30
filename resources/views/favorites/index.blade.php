@@ -123,6 +123,9 @@
                                 <tr>
                                     <td>
                                         <a href="{{ route('favorites.show', $route) }}"><strong>{{ $route->name }}</strong></a>
+                                        @if ($route->copied_from)
+                                            <br><span class="tag is-info is-light">copié de {{ $route->copied_from }}</span>
+                                        @endif
                                     </td>
                                     <td class="is-size-7">{{ $route->from_label }}</td>
                                     <td class="is-size-7">{{ $route->to_label }}</td>

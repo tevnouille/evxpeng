@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\ChargingCurveController;
 use App\Http\Controllers\ChargingSessionController;
 use App\Http\Controllers\DashboardController;
@@ -39,12 +40,17 @@ Route::put('/favoris/{favorite}', [FavoriteRouteController::class, 'update'])->n
 Route::delete('/favoris/{favorite}', [FavoriteRouteController::class, 'destroy'])->name('favorites.destroy');
 Route::post('/favoris/{favorite}/bornes', [FavoriteRouteController::class, 'addStation'])->name('favorites.stations.store');
 Route::delete('/favoris/{favorite}/bornes/{station}', [FavoriteRouteController::class, 'removeStation'])->name('favorites.stations.destroy');
+Route::post('/favoris/{favorite}/copier', [FavoriteRouteController::class, 'copy'])->name('favorites.copy');
 
 Route::get('/courbe-de-recharge', [ChargingCurveController::class, 'index'])->name('charging-curves.index');
 Route::get('/courbe-de-recharge/etat/{vehicle}', [ChargingCurveController::class, 'state'])->name('charging-curves.state');
 
 Route::get('/historique', [HistoryController::class, 'index'])->name('history.index');
 Route::get('/historique/{year}/{month}', [HistoryController::class, 'show'])->whereNumber('year')->whereNumber('month')->name('history.show');
+
+Route::get('/mon-compte', [AccountController::class, 'index'])->name('account.index');
+Route::put('/mon-compte', [AccountController::class, 'update'])->name('account.update');
+Route::post('/mon-compte/sms-test', [AccountController::class, 'testSms'])->name('account.test-sms');
 
 Route::get('/admin', [ReferenceDataController::class, 'index'])->name('reference-data.index');
 
