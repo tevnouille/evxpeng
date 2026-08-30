@@ -38,6 +38,29 @@ class FuelPriceService
     }
 
     /**
+     * Rappelle le service et reecrit le releve du jour.
+     *
+     * `ensureToday()` s'arrete des qu'une ligne existe : c'est ce qu'il faut au
+     * fil de l'eau, mais pas pour une relance manuelle, qui doit justement
+     * pouvoir corriger un releve deja enregistre.
+     */
+    public function refreshToday(): bool
+    {
+        $prices = $this->fetchNationalAverages();
+
+        if ($prices === null) {
+            return false;
+        }
+
+        FuelPrice::updateOrCreate(
+            ['date' => Carbon::today()],
+            ['essence_price' => $prices['essence'], 'diesel_price' => $prices['diesel']],
+        );
+
+        return true;
+    }
+
+    /**
      * @return array{essence: float, diesel: float, estimated: bool}
      */
     public function pricesForDate(CarbonInterface|string $date): array

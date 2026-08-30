@@ -5,6 +5,7 @@ use App\Http\Controllers\ChargerLookupController;
 use App\Http\Controllers\ChargingCurveController;
 use App\Http\Controllers\ChargingSessionController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DataSourceController;
 use App\Http\Controllers\FavoriteRouteController;
 use App\Http\Controllers\FuelPriceController;
 use App\Http\Controllers\HistoryController;
@@ -65,6 +66,11 @@ Route::post('/mon-compte/sms-test', [AccountController::class, 'testSms'])->name
 Route::get('/admin', [ReferenceDataController::class, 'index'])->name('reference-data.index');
 
 Route::get('/admin/sms', [ReferenceDataController::class, 'smsMessages'])->name('reference-data.sms.index');
+
+// Etat des donnees rapatriees de l'exterieur. La page est consultable par tous ;
+// c'est le controleur qui refuse la relance des sources partagees a un non-admin.
+Route::get('/admin/sources', [DataSourceController::class, 'index'])->name('reference-data.sources.index');
+Route::post('/admin/sources/{source}', [DataSourceController::class, 'refresh'])->name('reference-data.sources.refresh');
 
 // Gestion des comptes : reservee a l'administrateur.
 Route::middleware(\App\Http\Middleware\RequiresAdmin::class)->group(function () {

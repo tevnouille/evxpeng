@@ -47,6 +47,18 @@
                 </p>
             </a>
         </div>
+        <div class="column is-3">
+            <a href="{{ route('reference-data.sources.index') }}" class="box has-text-centered">
+                <p class="title is-4">&#128225;</p>
+                <p class="title is-5">Données récupérées</p>
+                <p class="has-text-grey">
+                    {{ $dataSourceCount }} source(s) externe(s)
+                    @if ($staleSourceCount > 0)
+                        &middot; <span class="has-text-warning-dark">{{ $staleSourceCount }} en retard</span>
+                    @endif
+                </p>
+            </a>
+        </div>
         @if (\App\Support\CurrentUser::get()?->is_admin)
             <div class="column is-3">
                 <a href="{{ route('reference-data.users.index') }}" class="box has-text-centered">

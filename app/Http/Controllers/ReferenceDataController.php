@@ -8,6 +8,7 @@ use App\Models\Provider;
 use App\Models\SmsMessage;
 use App\Models\Vehicle;
 use App\Services\ChargingCurveRepository;
+use App\Services\DataSourceInventory;
 use App\Services\FreeMobileSms;
 use App\Support\CurrentUser;
 use Illuminate\Database\QueryException;
@@ -19,8 +20,10 @@ use Illuminate\View\View;
 
 class ReferenceDataController extends Controller
 {
-    public function index(): View
+    public function index(DataSourceInventory $inventory): View
     {
+        $sources = $inventory->all();
+
         return view('reference_data.index', [
             'vehiclesCount' => Vehicle::count(),
             'locationsCount' => Location::count(),
@@ -28,6 +31,11 @@ class ReferenceDataController extends Controller
             'powerRatingsCount' => PowerRating::count(),
             'smsCount' => SmsMessage::count(),
             'smsFailedCount' => SmsMessage::where('delivered', false)->count(),
+            'dataSourceCount' => count($sources),
+            // Une collecte arretee ne se signale pas d'elle-meme : la remonter
+            // des l'accueil evite de decouvrir des semaines plus tard que les
+            // bornes datent d'un mois.
+            'staleSourceCount' => count(array_filter($sources, fn ($source) => $inventory->isStale($source))),
         ]);
     }
 
