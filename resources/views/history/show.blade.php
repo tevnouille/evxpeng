@@ -42,7 +42,7 @@
                     <p class="title is-4 {{ $stats['gain'] < 0 ? 'has-text-success' : ($stats['gain'] > 0 ? 'has-text-danger' : '') }}">
                         {{ number_format($stats['gain'], 2, ',', ' ') }} €
                     </p>
-                    <p class="has-text-grey is-size-7">coût réel − coût facturé</p>
+                    <p class="has-text-grey is-size-7">coût facturé − coût réel</p>
                 </div>
             </div>
             <div class="column">

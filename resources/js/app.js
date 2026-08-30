@@ -506,12 +506,13 @@ document.addEventListener('DOMContentLoaded', () => {
         quantity.addEventListener('input', recompute);
         unitCost.addEventListener('input', recompute);
 
-        // En modification le total est toujours deja rempli, donc le calcul
-        // automatique est desactive d'entree. Ce bouton le force, et reactive le
-        // suivi tant que l'utilisateur ne retouche pas le total lui-meme.
-        const recomputeButton = document.getElementById('recompute_total');
+        // Le cout reel est la valeur de la recharge : ce bouton la calcule
+        // (quantite x cout unitaire), utile quand la recharge n'a pas ete
+        // facturee a ce prix-la.
+        const realCost = document.getElementById('real_cost');
+        const recomputeButton = document.getElementById('recompute_real');
 
-        if (recomputeButton) {
+        if (realCost && recomputeButton) {
             recomputeButton.addEventListener('click', () => {
                 const q = parseFloat(quantity.value);
                 const u = parseFloat(unitCost.value);
@@ -524,11 +525,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                totalCost.value = (q * u).toFixed(2);
-                totalManuallyEdited = false;
+                realCost.value = (q * u).toFixed(2);
 
                 recomputeButton.classList.add('is-success');
                 setTimeout(() => recomputeButton.classList.remove('is-success'), 800);
+            });
+        }
+
+        // Recharge gratuite ou non debitee : facture a zero, et on fige le
+        // calcul automatique pour qu'il ne le remplace pas ensuite.
+        const freeButton = document.getElementById('free_charge');
+
+        if (freeButton) {
+            freeButton.addEventListener('click', () => {
+                totalCost.value = '0.00';
+                totalManuallyEdited = true;
+
+                freeButton.classList.add('is-success');
+                setTimeout(() => freeButton.classList.remove('is-success'), 800);
             });
         }
     }

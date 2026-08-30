@@ -10,8 +10,8 @@
                 <th>kWh</th>
                 <th>Durée recharge</th>
                 <th>€/kWh</th>
-                <th>Total €</th>
                 <th>Réel €</th>
+                <th>Total €</th>
                 <th></th>
             </tr>
         </thead>
@@ -26,8 +26,8 @@
                     <td>{{ $session->quantity_kwh }}</td>
                     <td>{{ $session->charge_duration?->format('H:i') ?? '—' }}</td>
                     <td>{{ $session->unit_cost ?? '—' }}</td>
-                    <td>{{ $session->total_cost ?? '—' }}</td>
                     <td>{{ $session->real_cost ?? '—' }}</td>
+                    <td>{{ $session->total_cost ?? '—' }}</td>
                     <td class="is-flex is-flex-wrap-nowrap">
                         <a href="{{ route('charging-sessions.edit', $session) }}" class="button is-small is-info is-light mr-1">Éditer</a>
                         <a href="{{ route('charging-sessions.index', ['duplicate' => $session->id]) }}" class="button is-small is-light mr-1">Dupliquer</a>

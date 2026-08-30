@@ -42,7 +42,7 @@ class HistoryController extends Controller
                 'kwh' => (float) $row->kwh,
                 'cost' => (float) $row->cost,
                 'real_cost' => (float) $row->real_cost,
-                'gain' => round((float) $row->real_cost - (float) $row->cost, 2),
+                'gain' => round((float) $row->cost - (float) $row->real_cost, 2),
             ]);
 
         return view('history.index', [
@@ -128,7 +128,7 @@ class HistoryController extends Controller
                 'kwh' => $totalKwh,
                 'cost' => $totalCost,
                 'real_cost' => $totalRealCost,
-                'gain' => round($totalRealCost - $totalCost, 2),
+                'gain' => round($totalCost - $totalRealCost, 2),
                 'avg_cost_per_kwh' => $totalKwh > 0 ? $totalCost / $totalKwh : null,
                 'sessions_count' => $sessions->count(),
             ],

@@ -245,6 +245,28 @@
 
                 <div class="column is-3">
                     <div class="field">
+                        <label class="label">Coût réel (€)</label>
+                        <div class="field has-addons">
+                            <div class="control is-expanded">
+                                <input class="input" type="number" step="0.01" min="0" name="real_cost" id="real_cost"
+                                    value="{{ old('real_cost', $editing?->real_cost) }}">
+                            </div>
+                            <div class="control">
+                                <button type="button" class="button is-light" id="recompute_real"
+                                    title="Recalculer : quantité × coût unitaire">
+                                    Recalculer
+                                </button>
+                            </div>
+                        </div>
+                        <p class="help">
+                            Ce que la recharge vaut (quantité × coût unitaire).
+                            Vide = identique au coût facturé.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="column is-3">
+                    <div class="field">
                         <label class="label">Coût total facturé (€)</label>
                         <div class="field has-addons">
                             <div class="control is-expanded">
@@ -252,31 +274,15 @@
                                     value="{{ old('total_cost', $editing ? $editing->total_cost : 0) }}">
                             </div>
                             <div class="control">
-                                {{-- Le calcul automatique s'arrete des qu'un total est saisi, ce qui est
-                                     toujours le cas en modification : ce bouton le force. --}}
-                                <button type="button" class="button is-light" id="recompute_total"
-                                    title="Recalculer : quantité × coût unitaire">
-                                    Recalculer
+                                <button type="button" class="button is-light" id="free_charge"
+                                    title="Recharge gratuite ou non débitée : met le facturé à 0">
+                                    Gratuit
                                 </button>
                             </div>
                         </div>
                         <p class="help">
-                            Calculé automatiquement (quantité × coût unitaire) tant qu'il n'a pas été saisi à la main.
-                            En modification, utilisez <strong>Recalculer</strong>.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="column is-3">
-                    <div class="field">
-                        <label class="label">Coût réel (€)</label>
-                        <div class="control">
-                            <input class="input" type="number" step="0.01" min="0" name="real_cost" id="real_cost"
-                                value="{{ old('real_cost', $editing?->real_cost) }}">
-                        </div>
-                        <p class="help">
-                            Ce que la recharge a réellement coûté. Vide = identique au coût facturé ;
-                            mettre <strong>0</strong> si elle était gratuite ou n'a pas été débitée.
+                            Ce qui a été débité. Calculé automatiquement (quantité × coût unitaire)
+                            tant qu'il n'a pas été saisi à la main ; <strong>Gratuit</strong> le met à 0.
                         </p>
                     </div>
                 </div>
