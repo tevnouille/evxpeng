@@ -1,7 +1,23 @@
+// En dessous de ce nombre d'options, la liste deroulante native reste plus
+// pratique qu'un champ de recherche.
+const SEARCHABLE_MIN_OPTIONS = 12;
+
 function makeSearchable(select) {
     if (!select || select.dataset.searchableApplied === 'true') {
         return;
     }
+
+    const realOptions = Array.from(select.options).filter((opt) => !opt.disabled && opt.value !== '');
+
+    // Le champ de recherche s'appuie sur un <datalist>, que le navigateur filtre
+    // sur le texte deja saisi. Sur un formulaire de modification il est
+    // pre-rempli avec la valeur courante ("50 kW"), et la liste se reduit alors
+    // aux options qui la contiennent — on ne voyait plus que 50 et 150 kW. Sur
+    // une liste courte, la liste native evite completement le probleme.
+    if (realOptions.length < SEARCHABLE_MIN_OPTIONS) {
+        return;
+    }
+
     select.dataset.searchableApplied = 'true';
 
     const datalistId = `${select.id}-datalist`;
@@ -36,6 +52,21 @@ function makeSearchable(select) {
     select.insertAdjacentElement('beforebegin', input);
     select.insertAdjacentElement('beforebegin', datalist);
     select.style.display = 'none';
+
+    // Au focus on vide le champ pour que le navigateur propose de nouveau toutes
+    // les entrees ; si l'utilisateur repart sans choisir, on remet la valeur.
+    let valueBeforeFocus = '';
+
+    input.addEventListener('focus', () => {
+        valueBeforeFocus = input.value;
+        input.value = '';
+    });
+
+    input.addEventListener('blur', () => {
+        if (input.value.trim() === '') {
+            input.value = valueBeforeFocus;
+        }
+    });
 
     input.addEventListener('input', () => {
         const matchedValue = valueByLabel.get(input.value.trim());

@@ -21,6 +21,7 @@ class PendingTelemetryCharges
     public function __construct(
         private readonly TelemetrySessionDetector $detector,
         private readonly ChargingCurveRepository $curves,
+        private readonly ChargeContextGuesser $context,
     ) {
     }
 
@@ -59,6 +60,9 @@ class PendingTelemetryCharges
                 }
 
                 $session['vehicle'] = $vehicle;
+                // Lieu, fournisseur et puissance devines depuis la position :
+                // ne reste a saisir que ce que la telemetrie ignore, le cout.
+                $session['context'] = $this->context->guess($session['lat'], $session['lon']);
                 $pending[] = $session;
             }
         }

@@ -111,7 +111,11 @@ class ReferenceDataController extends Controller
 
     public function storeLocation(Request $request): RedirectResponse
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:255', 'unique:locations,name']]);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255', 'unique:locations,name'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+        ]);
 
         Location::create($data);
 
@@ -120,7 +124,11 @@ class ReferenceDataController extends Controller
 
     public function updateLocation(Request $request, Location $location): RedirectResponse
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:255', 'unique:locations,name,' . $location->id]]);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255', 'unique:locations,name,' . $location->id],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+        ]);
 
         $location->update($data);
 

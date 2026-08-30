@@ -33,6 +33,9 @@ class ChargingSessionController extends Controller
             'charge_duration' => $request->query('prefill_duration'),
             'vehicle_id' => $request->query('prefill_vehicle'),
             'telemetry_started_at' => $request->query('prefill_telemetry_start'),
+            'location_id' => $request->query('prefill_location'),
+            'provider_id' => $request->query('prefill_provider'),
+            'power_rating_id' => $request->query('prefill_power'),
         ];
 
         return view('charging_sessions.index', [

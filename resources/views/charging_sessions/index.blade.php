@@ -27,6 +27,7 @@
                         <tr>
                             <th>Début</th>
                             <th>Véhicule</th>
+                            <th>Lieu reconnu</th>
                             <th>Durée</th>
                             <th class="has-text-right">Niveau</th>
                             <th class="has-text-right">Énergie estimée</th>
@@ -38,6 +39,14 @@
                             <tr>
                                 <td>{{ $charge['started_at']->timezone(config('app.timezone'))->format('d/m/Y H:i') }}</td>
                                 <td>{{ $charge['vehicle']->name }}</td>
+                                <td>
+                                    @if (! empty($charge['context']['location_name']))
+                                        {{ $charge['context']['location_name'] }}
+                                        <span class="has-text-grey is-size-7">à {{ $charge['context']['distance_m'] }} m</span>
+                                    @else
+                                        <span class="has-text-grey">—</span>
+                                    @endif
+                                </td>
                                 <td>
                                     {{ intdiv($charge['duration_minutes'], 60) }} h {{ str_pad((string) ($charge['duration_minutes'] % 60), 2, '0', STR_PAD_LEFT) }}
                                     @if ($charge['samples'] < 2)
@@ -60,6 +69,9 @@
                                            'prefill_kwh' => $charge['kwh'],
                                            'prefill_duration' => sprintf('%02d:%02d', intdiv($charge['duration_minutes'], 60), $charge['duration_minutes'] % 60),
                                            'prefill_telemetry_start' => $charge['started_at']->format('Y-m-d H:i:s'),
+                                           'prefill_location' => $charge['context']['location_id'] ?? null,
+                                           'prefill_provider' => $charge['context']['provider_id'] ?? null,
+                                           'prefill_power' => $charge['context']['power_rating_id'] ?? null,
                                        ]) }}#formulaire">
                                         Ajouter
                                     </a>
@@ -117,9 +129,9 @@
                         <div class="control">
                             <div class="select is-fullwidth">
                                 <select name="location_choice" id="location_choice" required data-searchable>
-                                    <option value="" disabled {{ old('location_choice', $editing?->location_id ?? $duplicateFrom?->location_id) ? '' : 'selected' }}>-- choisir --</option>
+                                    <option value="" disabled {{ old('location_choice', $editing?->location_id ?? $duplicateFrom?->location_id ?? ($prefill['location_id'] ?? null)) ? '' : 'selected' }}>-- choisir --</option>
                                     @foreach ($locations as $location)
-                                        <option value="{{ $location->id }}" @selected(old('location_choice', $editing?->location_id ?? $duplicateFrom?->location_id) == $location->id)>{{ $location->name }}</option>
+                                        <option value="{{ $location->id }}" @selected(old('location_choice', $editing?->location_id ?? $duplicateFrom?->location_id ?? ($prefill['location_id'] ?? null)) == $location->id)>{{ $location->name }}</option>
                                     @endforeach
                                     <option value="other" @selected(old('location_choice') === 'other')>Autre…</option>
                                 </select>
@@ -141,9 +153,9 @@
                         <div class="control">
                             <div class="select is-fullwidth">
                                 <select name="provider_choice" id="provider_choice" required data-searchable>
-                                    <option value="" disabled {{ old('provider_choice', $editing?->provider_id ?? $duplicateFrom?->provider_id) ? '' : 'selected' }}>-- choisir --</option>
+                                    <option value="" disabled {{ old('provider_choice', $editing?->provider_id ?? $duplicateFrom?->provider_id ?? ($prefill['provider_id'] ?? null)) ? '' : 'selected' }}>-- choisir --</option>
                                     @foreach ($providers as $provider)
-                                        <option value="{{ $provider->id }}" @selected(old('provider_choice', $editing?->provider_id ?? $duplicateFrom?->provider_id) == $provider->id)>{{ $provider->name }}</option>
+                                        <option value="{{ $provider->id }}" @selected(old('provider_choice', $editing?->provider_id ?? $duplicateFrom?->provider_id ?? ($prefill['provider_id'] ?? null)) == $provider->id)>{{ $provider->name }}</option>
                                     @endforeach
                                     <option value="other" @selected(old('provider_choice') === 'other')>Autre…</option>
                                 </select>
@@ -162,9 +174,9 @@
                         <div class="control">
                             <div class="select is-fullwidth">
                                 <select name="power_rating_id" id="power_rating_id" required data-searchable>
-                                    <option value="" disabled {{ old('power_rating_id', $editing?->power_rating_id ?? $duplicateFrom?->power_rating_id) ? '' : 'selected' }}>-- choisir --</option>
+                                    <option value="" disabled {{ old('power_rating_id', $editing?->power_rating_id ?? $duplicateFrom?->power_rating_id ?? ($prefill['power_rating_id'] ?? null)) ? '' : 'selected' }}>-- choisir --</option>
                                     @foreach ($powerRatings as $powerRating)
-                                        <option value="{{ $powerRating->id }}" @selected(old('power_rating_id', $editing?->power_rating_id ?? $duplicateFrom?->power_rating_id) == $powerRating->id)>{{ rtrim(rtrim($powerRating->kw, '0'), '.') }} kW</option>
+                                        <option value="{{ $powerRating->id }}" @selected(old('power_rating_id', $editing?->power_rating_id ?? $duplicateFrom?->power_rating_id ?? ($prefill['power_rating_id'] ?? null)) == $powerRating->id)>{{ rtrim(rtrim($powerRating->kw, '0'), '.') }} kW</option>
                                     @endforeach
                                 </select>
                             </div>
