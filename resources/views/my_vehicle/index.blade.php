@@ -166,7 +166,7 @@
                              declaree, pas qu'elle emet : il restait a « connectée »
                              dongle debranche. On juge donc sur la fraicheur. --}}
                         <p class="has-text-grey is-size-7">
-                            {{ $link['detail'] }}
+                            {!! $link['detail'] !!}
                         </p>
                     </div>
 
@@ -202,6 +202,89 @@
                 @endif
             </div>
         @endif
+
+        {{-- Une colonne par source : ce qui arrive du cloud constructeur et ce
+             qu'ajoute le dongle OBD ne se distinguaient nulle part, alors que
+             c'est ce qui explique qu'un champ apparaisse puis disparaisse. Les
+             champs listes sont ceux reellement observes, pas une liste ecrite
+             en dur : une source qui se met a en fournir un de plus s'affiche
+             sans modification de code. --}}
+        <div class="box">
+            <h2 class="title is-5">Sources de données</h2>
+            <p class="has-text-grey is-size-7 mb-4">
+                ABRP ne renvoie pas un jeu de champs fixe : il rend ce que la source lui a poussé.
+                Le cloud du constructeur, atteint par <strong>Enode</strong>, se limite au niveau de charge
+                et à la position ; un <strong>dongle OBD</strong> y ajoute le compteur, la santé de la batterie,
+                la puissance et les températures — mais il ne remonte que téléphone présent dans la voiture.
+                Une source cesse d'apparaître ici dès qu'elle n'a plus rien envoyé sur la période affichée
+                ({{ $days }} jours).
+            </p>
+
+            @if (empty($sources))
+                <p class="has-text-grey">Aucun relevé sur la période.</p>
+            @else
+                <div class="columns is-multiline">
+                    @foreach ($sources as $source)
+                        <div class="column is-6">
+                            <div class="box has-background-white-bis">
+                                <div class="level is-mobile mb-2">
+                                    <div class="level-left">
+                                        <div>
+                                            <p class="title is-6 mb-1">{{ $source['label'] }}</p>
+                                            <code>{{ $source['type'] }}</code>
+                                        </div>
+                                    </div>
+                                    <div class="level-right">
+                                        @if ($source['live'])
+                                            <span class="tag is-success">en direct</span>
+                                        @else
+                                            <span class="tag is-light">inactive</span>
+                                        @endif
+                                    </div>
+                                </div>
+
+                                <p class="has-text-grey is-size-7 mb-3">
+                                    {{ $source['count'] }} relevé(s) &middot;
+                                    dernier {{ $source['last_at']->diffForHumans() }}
+                                    ({{ $source['last_at']->timezone(config('app.timezone'))->format('d/m H:i') }})
+                                </p>
+
+                                @if (empty($source['latest']))
+                                    <p class="has-text-grey is-size-7">Aucun champ exploitable remonté.</p>
+                                @else
+                                    <table class="table is-fullwidth is-narrow is-striped mb-0">
+                                        <tbody>
+                                            @foreach ($source['latest'] as $key => $value)
+                                                <tr>
+                                                    <td><code>{{ $key }}</code></td>
+                                                    <td class="has-text-right">
+                                                        @if (is_bool($value))
+                                                            {{ $value ? 'oui' : 'non' }}
+                                                        @elseif (is_array($value))
+                                                            <code>{{ json_encode($value, JSON_UNESCAPED_UNICODE) }}</code>
+                                                        @elseif (is_float($value))
+                                                            {{-- Cinq decimales : la voiture remonte des flottants bruts
+                                                                 — calib_ref_cons en aligne douze — mais moins tronquerait
+                                                                 les coordonnees a une centaine de metres. --}}
+                                                            {{ str_replace('.', ',', rtrim(rtrim(number_format($value, 5, '.', ' '), '0'), '.')) }}
+                                                        @else
+                                                            {{ str_replace('.', ',', (string) $value) }}
+                                                        @endif
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                    <p class="has-text-grey is-size-7 mt-2">
+                                        Dernière valeur connue pour chaque champ, pas forcément du même relevé.
+                                    </p>
+                                @endif
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+        </div>
 
         <div class="box">
             <h2 class="title is-5">Relevé brut</h2>

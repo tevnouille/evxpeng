@@ -127,12 +127,19 @@ class VehicleState
             ? "ABRP ne se prononce pas."
             : ('ABRP déclare la source '.($abrpConnected ? 'connectée' : 'déconnectée').'.');
 
-        $via = $this->sources($latest, $history);
+        // La source n'est nommee dans le libelle que si la donnee est fraiche :
+        // « via obdble » se lit au present, et un releve d'il y a une demi-heure
+        // ne prouve pas qu'un dongle est branche maintenant. Passe ce delai, la
+        // source repasse au petit texte, au passe.
+        // e() : `detail` est rendu sans echappement pour porter la balise, et
+        // telemetry_type vient d'ABRP — c'est de la donnee externe.
+        $last = $latest->telemetry_type;
+        $seen = $last === null ? '' : ' Dernier relevé via <code>'.e($last).'</code>.';
 
         // Dongle OBD actif, les points tombent toutes les quatre a cinq minutes.
         if ($minutes <= self::LINK_LIVE_MINUTES) {
             return [
-                'label' => 'connectée'.$via,
+                'label' => 'connectée'.$this->sources($latest, $history),
                 'tag' => 'is-success',
                 'detail' => "Relevé il y a {$this->humanize($minutes)}. ".$declared,
             ];
@@ -142,44 +149,41 @@ class VehicleState
         // voiture reste jointe, mais plus rien n'arrive en direct.
         if ($minutes <= self::LINK_SLOW_MINUTES) {
             return [
-                'label' => 'au ralenti'.$via,
+                'label' => 'au ralenti',
                 'tag' => 'is-warning is-light',
                 'detail' => "Rien depuis {$this->humanize($minutes)} : cadence du cloud constructeur, "
-                    ."ou dongle OBD débranché. ".$declared,
+                    ."ou dongle OBD débranché.".$seen.' '.$declared,
             ];
         }
 
         return [
-            'label' => 'silencieuse'.$via,
+            'label' => 'silencieuse',
             'tag' => 'is-warning',
-            'detail' => "Rien depuis {$this->humanize($minutes)}. ".$declared,
+            'detail' => "Rien depuis {$this->humanize($minutes)}.".$seen.' '.$declared,
         ];
     }
 
     /**
-     * Par ou la donnee est arrivee recemment, ex. « via obdble » ou
+     * Par ou la donnee arrive *en ce moment*, ex. « via obdble » ou
      * « via enode/obdble ».
      *
      * Nommer la source repond a la question que posait le seul mot
      * « connectée » : connectee a quoi ? Le cloud constructeur passe par Enode
      * et continue de repondre dongle debranche — les deux liaisons sont
-     * distinctes, et peuvent coexister.
+     * distinctes, et peuvent coexister. D'ou la fenetre courte : au-dela, on ne
+     * sait plus qui emet, seulement qui emettait.
      *
      * @param  Collection<int, VehicleTelemetry>  $history
      */
     private function sources(VehicleTelemetry $latest, Collection $history): string
     {
-        $recent = $history
+        $names = $history
             ->filter(fn (VehicleTelemetry $row) => $row->telemetry_type !== null
-                && $row->recorded_at->greaterThanOrEqualTo(now()->subMinutes(self::LINK_SLOW_MINUTES)))
-            ->pluck('telemetry_type');
-
-        // Plus rien de recent : c'est la derniere source connue qui renseigne.
-        if ($recent->isEmpty()) {
-            $recent = collect([$latest->telemetry_type])->filter();
-        }
-
-        $names = $recent->unique()->sort()->values();
+                && $row->recorded_at->greaterThanOrEqualTo(now()->subMinutes(self::LINK_LIVE_MINUTES)))
+            ->pluck('telemetry_type')
+            ->unique()
+            ->sort()
+            ->values();
 
         return $names->isEmpty() ? '' : ' via '.$names->implode('/');
     }

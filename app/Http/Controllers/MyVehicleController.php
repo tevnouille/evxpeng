@@ -7,6 +7,7 @@ use App\Services\ChargingCurveRepository;
 use App\Services\PendingTelemetryCharges;
 use App\Services\DailyVehicleActivity;
 use App\Services\TelemetrySessionDetector;
+use App\Services\TelemetrySources;
 use App\Services\VehicleState;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -21,6 +22,7 @@ class MyVehicleController extends Controller
         private readonly TelemetrySessionDetector $detector,
         private readonly DailyVehicleActivity $activity,
         private readonly VehicleState $state,
+        private readonly TelemetrySources $sources,
     ) {
     }
 
@@ -96,6 +98,9 @@ class MyVehicleController extends Controller
             'availableKwh' => $availableKwh,
             'netCapacity' => $netCapacity,
             'rangeKm' => $rangeKm,
+            // Ce que chaque source remonte reellement : le cloud constructeur
+            // et le dongle OBD ne fournissent pas les memes champs.
+            'sources' => $this->sources->summarize($history),
             'sessions' => $this->detector->detect($history, $netCapacity),
             // Detections ecartees de la page Recharges : elles restent listees
             // ici, marquees, avec de quoi les remettre en proposition.
