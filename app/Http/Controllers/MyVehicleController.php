@@ -89,7 +89,7 @@ class MyVehicleController extends Controller
             'state' => $this->state->describe($telemetry, $history),
             // Fraicheur des releves plutot que le drapeau d'ABRP : celui-ci
             // reste a « connectée » dongle debranche.
-            'link' => $this->state->link($telemetry, isset($raw['is_connected']) ? (bool) $raw['is_connected'] : null),
+            'link' => $this->state->link($telemetry, $history, isset($raw['is_connected']) ? (bool) $raw['is_connected'] : null),
             'curve' => $curve,
             'days' => $days,
             'soc' => $soc,

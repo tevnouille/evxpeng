@@ -167,7 +167,6 @@
                              dongle debranche. On juge donc sur la fraicheur. --}}
                         <p class="has-text-grey is-size-7">
                             {{ $link['detail'] }}
-                            Source <code>{{ $telemetry->telemetry_type ?? 'inconnue' }}</code>.
                         </p>
                     </div>
 
