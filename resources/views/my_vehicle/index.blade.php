@@ -29,6 +29,25 @@
             </div>
         @endif
 
+        {{-- Relancer la collecte sans attendre le planificateur : c'est ce qu'on
+             veut en arrivant sur une borne ou en descendant de voiture. Le
+             compte a rebours, lui, est pilote par resources/js/telemetry.js. --}}
+        <div class="level is-mobile mb-4">
+            <div class="level-left">
+                <form method="POST" action="{{ route('reference-data.sources.refresh', 'telemetrie') }}">
+                    @csrf
+                    <button type="submit" class="button is-link is-light">
+                        Mettre à jour les informations
+                    </button>
+                </form>
+            </div>
+            <div class="level-right">
+                <span class="has-text-grey is-size-7" id="auto-refresh-status" data-auto-refresh="30">
+                    Actualisation automatique dans 30 s
+                </span>
+            </div>
+        </div>
+
         @if (! $telemetry)
             <div class="notification is-info is-light">
                 Aucun relevé pour l'instant. La récupération tourne toutes les 5 minutes ;
@@ -38,8 +57,8 @@
             <div class="box">
                 <h2 class="title is-5">
                     {{ $vehicle->name }}
-                    <span class="tag is-medium {{ $telemetry->is_charging ? 'is-success' : 'is-light' }} ml-2">
-                        {{ $telemetry->is_charging ? 'en charge' : 'stationné' }}
+                    <span class="tag is-medium {{ $state['tag'] }} ml-2" title="{{ $state['detail'] }}">
+                        {{ $state['label'] }}
                     </span>
                 </h2>
 
@@ -373,12 +392,25 @@
                                         {{ $session['started_at']->timezone(config('app.timezone'))->format('d/m/Y H:i') }}
                                         @if ($session['in_progress'])
                                             <span class="tag is-success is-light ml-1">en cours</span>
+                                        @elseif ($session['inferred'])
+                                            <span class="tag is-warning is-light ml-1"
+                                                  title="Aucun relevé pendant la charge : elle est déduite d'un niveau qui a monté alors que le compteur kilométrique n'avait pas bougé.">déduite</span>
                                         @endif
                                     </td>
                                     <td>
-                                        {{ intdiv($session['duration_minutes'], 60) }} h {{ str_pad((string) ($session['duration_minutes'] % 60), 2, '0', STR_PAD_LEFT) }}
-                                        @if ($session['samples'] < 2)
-                                            <span class="tag is-warning is-light ml-1" title="Un seul relevé pendant la charge : les bornes sont approximatives">1 relevé</span>
+                                        @if ($session['inferred'])
+                                            {{-- Ce n'est pas la duree du branchement mais celle du trou de
+                                                 mesure : la charge s'est produite quelque part dedans. --}}
+                                            <span class="has-text-grey"
+                                                  title="Durée inconnue : la charge a eu lieu entre ces deux relevés.">
+                                                entre {{ $session['started_at']->timezone(config('app.timezone'))->format('H:i') }}
+                                                et {{ $session['ended_at']->timezone(config('app.timezone'))->format('H:i') }}
+                                            </span>
+                                        @else
+                                            {{ intdiv($session['duration_minutes'], 60) }} h {{ str_pad((string) ($session['duration_minutes'] % 60), 2, '0', STR_PAD_LEFT) }}
+                                            @if ($session['samples'] < 2)
+                                                <span class="tag is-warning is-light ml-1" title="Un seul relevé pendant la charge : les bornes sont approximatives">1 relevé</span>
+                                            @endif
                                         @endif
                                     </td>
                                     <td class="has-text-right">
@@ -396,7 +428,7 @@
                                                    'prefill_vehicle' => $vehicle->id,
                                                    'prefill_date' => $session['started_at']->timezone(config('app.timezone'))->format('Y-m-d'),
                                                    'prefill_kwh' => $session['kwh'],
-                                                   'prefill_duration' => sprintf('%02d:%02d', intdiv($session['duration_minutes'], 60), $session['duration_minutes'] % 60),
+                                                   'prefill_duration' => $session['inferred'] ? null : sprintf('%02d:%02d', intdiv($session['duration_minutes'], 60), $session['duration_minutes'] % 60),
                                                    'prefill_telemetry_start' => $session['started_at']->format('Y-m-d H:i:s'),
                                                    'prefill_lat' => $session['lat'],
                                                    'prefill_lon' => $session['lon'],

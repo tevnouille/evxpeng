@@ -6,6 +6,7 @@ use App\Models\Vehicle;
 use App\Services\ChargingCurveRepository;
 use App\Services\DailyVehicleActivity;
 use App\Services\TelemetrySessionDetector;
+use App\Services\VehicleState;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -18,6 +19,7 @@ class MyVehicleController extends Controller
         private readonly ChargingCurveRepository $curves,
         private readonly TelemetrySessionDetector $detector,
         private readonly DailyVehicleActivity $activity,
+        private readonly VehicleState $state,
     ) {
     }
 
@@ -81,6 +83,9 @@ class MyVehicleController extends Controller
             'vehicles' => $vehicles,
             'vehicle' => $vehicle,
             'telemetry' => $telemetry,
+            // Etat reconstruit : `is_charging` seul ne distingue pas le roulage
+            // du stationnement, et `is_parked` n'est jamais renseigne.
+            'state' => $this->state->describe($telemetry, $history),
             'curve' => $curve,
             'days' => $days,
             'soc' => $soc,

@@ -109,5 +109,72 @@ function setUpMapToggle() {
     });
 }
 
+// La telemetrie arrive en continu : sans rechargement, la page vieillit sous les
+// yeux et le « dernier releve » ment. Trois situations suspendent le compte a
+// rebours, faute de quoi le rafraichissement se ferait contre l'utilisateur :
+// onglet en arriere-plan (recharger une page que personne ne regarde ne fait
+// qu'interroger le serveur), saisie en cours dans un champ, et carte ouverte —
+// elle disparaitrait au rechargement, et avec elle la position affichee.
+function setUpAutoRefresh() {
+    const status = document.getElementById('auto-refresh-status');
+
+    if (!status) {
+        return;
+    }
+
+    const period = parseInt(status.dataset.autoRefresh, 10);
+
+    if (!Number.isFinite(period) || period < 5) {
+        return;
+    }
+
+    let remaining = period;
+
+    const holdReason = () => {
+        if (document.hidden) {
+            return 'onglet en arrière-plan';
+        }
+
+        const map = document.getElementById('map-container');
+
+        if (map && map.childElementCount > 0) {
+            return 'carte ouverte';
+        }
+
+        const active = document.activeElement;
+
+        if (active && ['INPUT', 'SELECT', 'TEXTAREA'].includes(active.tagName)) {
+            return 'saisie en cours';
+        }
+
+        return null;
+    };
+
+    window.setInterval(() => {
+        const reason = holdReason();
+
+        if (reason !== null) {
+            // Le compte a rebours repart de zero : on ne veut pas d'un
+            // rechargement immediat des que la pause cesse.
+            remaining = period;
+            status.textContent = `Actualisation en pause (${reason})`;
+
+            return;
+        }
+
+        remaining -= 1;
+
+        if (remaining <= 0) {
+            status.textContent = 'Actualisation…';
+            window.location.reload();
+
+            return;
+        }
+
+        status.textContent = `Actualisation dans ${remaining} s`;
+    }, 1000);
+}
+
 renderSocChart();
 setUpMapToggle();
+setUpAutoRefresh();

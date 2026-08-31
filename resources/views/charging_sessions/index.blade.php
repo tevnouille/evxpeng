@@ -19,6 +19,10 @@
                 batterie</strong> : elle est inférieure à celle facturée à la borne, qui inclut les pertes de charge.
                 « Ajouter » pré-remplit le formulaire ci-dessous avec la date, la durée et cette estimation —
                 à vous de corriger la quantité facturée et de compléter le fournisseur et le coût.
+                Les recharges marquées <span class="tag is-warning is-light">déduite</span> n'ont été vues
+                par aucun relevé — réseau coupé, dongle OBD débranché : elles se lisent à un niveau de batterie
+                qui a monté sans que le compteur kilométrique bouge. Leur durée reste inconnue et n'est donc
+                pas pré-remplie.
             </p>
 
             <div class="table-container">
@@ -37,7 +41,13 @@
                     <tbody>
                         @foreach ($pendingCharges as $charge)
                             <tr>
-                                <td>{{ $charge['started_at']->timezone(config('app.timezone'))->format('d/m/Y H:i') }}</td>
+                                <td>
+                                    {{ $charge['started_at']->timezone(config('app.timezone'))->format('d/m/Y H:i') }}
+                                    @if ($charge['inferred'])
+                                        <span class="tag is-warning is-light ml-1"
+                                              title="Aucun relevé pendant la charge : elle est déduite d'un niveau qui a monté alors que le compteur kilométrique n'avait pas bougé.">déduite</span>
+                                    @endif
+                                </td>
                                 <td>{{ $charge['vehicle']->name }}</td>
                                 <td>
                                     @if (! empty($charge['context']['location_name']))
@@ -51,9 +61,19 @@
                                     @endif
                                 </td>
                                 <td>
-                                    {{ intdiv($charge['duration_minutes'], 60) }} h {{ str_pad((string) ($charge['duration_minutes'] % 60), 2, '0', STR_PAD_LEFT) }}
-                                    @if ($charge['samples'] < 2)
-                                        <span class="tag is-warning is-light ml-1" title="Un seul relevé pendant la charge : les bornes sont approximatives">1 relevé</span>
+                                    @if ($charge['inferred'])
+                                        {{-- Trou de mesure, pas duree de branchement : la pre-remplir
+                                             ferait entrer une valeur fausse dans les statistiques. --}}
+                                        <span class="has-text-grey"
+                                              title="Durée inconnue : la charge a eu lieu entre ces deux relevés.">
+                                            entre {{ $charge['started_at']->timezone(config('app.timezone'))->format('H:i') }}
+                                            et {{ $charge['ended_at']->timezone(config('app.timezone'))->format('H:i') }}
+                                        </span>
+                                    @else
+                                        {{ intdiv($charge['duration_minutes'], 60) }} h {{ str_pad((string) ($charge['duration_minutes'] % 60), 2, '0', STR_PAD_LEFT) }}
+                                        @if ($charge['samples'] < 2)
+                                            <span class="tag is-warning is-light ml-1" title="Un seul relevé pendant la charge : les bornes sont approximatives">1 relevé</span>
+                                        @endif
                                     @endif
                                 </td>
                                 <td class="has-text-right">
@@ -70,7 +90,7 @@
                                            'prefill_vehicle' => $charge['vehicle']->id,
                                            'prefill_date' => $charge['started_at']->timezone(config('app.timezone'))->format('Y-m-d'),
                                            'prefill_kwh' => $charge['kwh'],
-                                           'prefill_duration' => sprintf('%02d:%02d', intdiv($charge['duration_minutes'], 60), $charge['duration_minutes'] % 60),
+                                           'prefill_duration' => $charge['inferred'] ? null : sprintf('%02d:%02d', intdiv($charge['duration_minutes'], 60), $charge['duration_minutes'] % 60),
                                            'prefill_telemetry_start' => $charge['started_at']->format('Y-m-d H:i:s'),
                                            'prefill_location' => $charge['context']['location_id'] ?? null,
                                            'prefill_provider' => $charge['context']['provider_id'] ?? null,

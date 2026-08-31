@@ -2,29 +2,35 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
-use App\Models\VehicleTelemetry;
+use App\Services\VehicleState;
 use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// ABRP ne rafraichit la donnee qu'environ une fois par heure a l'arret, mais
-// bien plus souvent en charge. On echantillonne donc aux cinq minutes : c'est
-// ce qui permet d'encadrer une charge rapide de 25 min sans la manquer. Les
-// releves redondants sont ecartes par la contrainte d'unicite sur l'horodatage.
-Schedule::command('telemetry:poll')
-    ->everyFiveMinutes()
-    ->withoutOverlapping();
+// Cadence adaptative : la voiture ne raconte quelque chose que quand elle roule
+// ou qu'elle charge. Le reste du temps elle ne remonte qu'un point par heure, et
+// interroger l'API plus vite ne ferait que redemander la meme mesure — les
+// releves redondants sont d'ailleurs ecartes par la contrainte d'unicite sur
+// l'horodatage.
+//
+// L'etat vient de VehicleState : `is_charging` seul laisserait le roulage a la
+// cadence lente, alors que c'est la ou la donnee bouge le plus.
+$active = fn () => app(VehicleState::class)->anyActive();
 
-// En charge, la voiture remonte des points bien plus souvent : on suit alors au
-// plus pres, sans pour autant interroger l'API toutes les minutes a l'annee.
+Schedule::command('telemetry:poll')
+    ->everyFifteenSeconds()
+    ->withoutOverlapping()
+    ->when($active);
+
+// A l'arret, une fois par minute. `skip` plutot qu'une condition inverse : sans
+// lui, la minute pleine ferait doublon avec le passage a 0 s de la cadence
+// rapide.
 Schedule::command('telemetry:poll')
     ->everyMinute()
     ->withoutOverlapping()
-    ->when(fn () => VehicleTelemetry::where('is_charging', true)
-        ->where('recorded_at', '>=', now()->subMinutes(20))
-        ->exists());
+    ->skip($active);
 
 // La base IRVE bouge de quelques centaines de stations par semaine : un import
 // hebdomadaire suffit largement, et il dure plusieurs minutes.

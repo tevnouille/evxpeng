@@ -41,6 +41,16 @@ class Changelog
 
     private const DATA = [
         [
+            'date' => '2026-08-31',
+            'entries' => [
+                ['type' => 'correction', 'text' => "« Ma voiture » affichait « stationné » même en plein trajet : la seule information dont disposait la page était « en charge / pas en charge », et le champ que fournirait ABRP pour distinguer l'arrêt du roulage n'est jamais renseigné. L'état est désormais reconstruit à partir du compteur kilométrique, qui seul prouve que la voiture a bougé. Trois états s'ajoutent à « en charge » : « en route », « stationné » et « sans relevé récent », ce dernier quand la voiture n'a rien remonté depuis trois quarts d'heure."],
+                ['type' => 'nouveaute', 'text' => "Bouton « Mettre à jour les informations » sur « Ma voiture » : il interroge ABRP immédiatement, sans attendre la collecte automatique."],
+                ['type' => 'nouveaute', 'text' => "« Ma voiture » se rafraîchit toute seule toutes les 30 secondes. Le compte à rebours se met en pause si l'onglet passe en arrière-plan, si vous êtes en train de saisir quelque chose, ou si la carte est ouverte — elle disparaîtrait au rechargement."],
+                ['type' => 'amelioration', 'text' => "La télémétrie est relevée toutes les 15 secondes quand la voiture roule ou charge, et une fois par minute à l'arrêt. Auparavant, le roulage restait à la cadence lente alors que c'est là que la donnée bouge le plus."],
+                ['type' => 'nouveaute', 'text' => "Les recharges dont aucun relevé n'a été témoin sont désormais détectées : réseau coupé, dongle OBD débranché, la charge se lit à un niveau de batterie qui a monté alors que le compteur kilométrique n'avait pas bougé. Elles apparaissent marquées « déduite » dans les recharges détectées. Leur durée reste inconnue et n'est pas pré-remplie — seules la date, l'énergie et la position le sont."],
+            ],
+        ],
+        [
             'date' => '2026-08-30',
             'entries' => [
                 ['type' => 'nouveaute', 'text' => "Administration → Information serveurs : caractéristiques de la machine, versions des briques logicielles, et l'inventaire complet des paquets système, Composer et npm — version installée, version disponible, licence, et si la mise à jour est compatible ou représente un changement de version majeure. Un bouton « Vérifier les mises à jour » relance le relevé, et chaque paquet npm ou système dont la montée est compatible peut être mis à jour d'un clic — avec retour arrière automatique si la construction échoue."],
