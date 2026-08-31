@@ -19,6 +19,10 @@
                 batterie</strong> : elle est inférieure à celle facturée à la borne, qui inclut les pertes de charge.
                 « Ajouter » pré-remplit le formulaire ci-dessous avec la date, la durée et cette estimation —
                 à vous de corriger la quantité facturée et de compléter le fournisseur et le coût.
+                <strong>Écarter</strong> retire une détection de cette liste — pour une recharge déjà
+                saisie à la main, que le rapprochement automatique ne peut pas reconnaître. Elle reste
+                consultable sur <a href="{{ route('my-vehicle.index') }}">Ma voiture</a>, d'où elle peut
+                être rétablie.
                 Les recharges marquées <span class="tag is-warning is-light">déduite</span> n'ont été vues
                 par aucun relevé — réseau coupé, dongle OBD débranché : elles se lisent à un niveau de batterie
                 qui a monté sans que le compteur kilométrique bouge. Leur durée reste inconnue et n'est donc
@@ -100,6 +104,17 @@
                                        ]) }}#formulaire">
                                         Ajouter
                                     </a>
+                                    {{-- Une recharge saisie a la main ne porte aucun marqueur de
+                                         detection : sans ce bouton, elle resterait proposee sans fin. --}}
+                                    <form method="POST" action="{{ route('detected-charges.ignore') }}" class="is-inline">
+                                        @csrf
+                                        <input type="hidden" name="vehicle_id" value="{{ $charge['vehicle']->id }}">
+                                        <input type="hidden" name="started_at" value="{{ $charge['started_at']->format('Y-m-d H:i:s') }}">
+                                        <button type="submit" class="button is-small is-light"
+                                                title="Déjà saisie, ou sans intérêt : ne plus la proposer ici. Elle reste listée sur Ma voiture.">
+                                            Écarter
+                                        </button>
+                                    </form>
                                 </td>
                             </tr>
                         @endforeach
@@ -293,17 +308,20 @@
                     </div>
                 </div>
 
-                {{-- Champ d'appoint : rien n'est enregistre, il ne sert qu'a composer
-                     le total facture. D'ou l'absence de name=. --}}
+                {{-- Volontairement pas repris a la duplication, a la difference du
+                     cout unitaire : un frais de stationnement ou une penalite est
+                     circonstanciel, le reconduire d'office fausserait la recharge
+                     suivante. --}}
                 <div class="column is-3">
                     <div class="field">
                         <label class="label">Coût additionnel (€)</label>
                         <div class="control">
-                            <input class="input" type="number" step="0.01" min="0" id="extra_cost" autocomplete="off">
+                            <input class="input" type="number" step="0.01" min="0" name="extra_cost" id="extra_cost"
+                                autocomplete="off" value="{{ old('extra_cost', $editing?->extra_cost) }}">
                         </div>
                         <p class="help">
                             Stationnement, frais de connexion, pénalité… S'ajoute au coût réel
-                            pour donner le total facturé. <strong>N'est pas enregistré.</strong>
+                            pour donner le total facturé.
                         </p>
                     </div>
                 </div>

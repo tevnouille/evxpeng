@@ -6,6 +6,7 @@ use App\Http\Controllers\ChargingCurveController;
 use App\Http\Controllers\ChangelogController;
 use App\Http\Controllers\ChargingSessionController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DetectedChargeController;
 use App\Http\Controllers\DataSourceController;
 use App\Http\Controllers\FavoriteRouteController;
 use App\Http\Controllers\FuelPriceController;
@@ -30,6 +31,11 @@ Route::get('/recharges/bornes-proches', [ChargerLookupController::class, 'nearby
 Route::get('/recharges/{chargingSession}/edit', [ChargingSessionController::class, 'edit'])->name('charging-sessions.edit');
 Route::put('/recharges/{chargingSession}', [ChargingSessionController::class, 'update'])->name('charging-sessions.update');
 Route::delete('/recharges/{chargingSession}', [ChargingSessionController::class, 'destroy'])->name('charging-sessions.destroy');
+
+// Detections de recharge ecartees des propositions : le rapprochement
+// automatique ne voit pas les recharges saisies a la main.
+Route::post('/recharges-detectees/ignorer', [DetectedChargeController::class, 'ignore'])->name('detected-charges.ignore');
+Route::post('/recharges-detectees/retablir', [DetectedChargeController::class, 'restore'])->name('detected-charges.restore');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 Route::get('/dashboard/data', [DashboardController::class, 'data'])->name('dashboard.data');

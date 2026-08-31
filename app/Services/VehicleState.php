@@ -47,6 +47,12 @@ class VehicleState
      */
     private const OFFLINE_MINUTES = 45;
 
+    /** En dessous, la donnee arrive assez vite pour etre dite « en direct ». */
+    private const LINK_LIVE_MINUTES = 15;
+
+    /** Au-dela, plus rien n'explique le silence, pas meme la cadence du cloud. */
+    private const LINK_SLOW_MINUTES = 90;
+
     /**
      * @param  Collection<int, VehicleTelemetry>  $history  Tries par recorded_at croissant.
      * @return array{state: string, label: string, tag: string, detail: string}|null
@@ -98,6 +104,54 @@ class VehicleState
     public function isActive(?array $described): bool
     {
         return in_array($described['state'] ?? null, [self::CHARGING, self::DRIVING], true);
+    }
+
+    /**
+     * Etat de la liaison, juge sur la fraicheur des releves.
+     *
+     * `is_connected` d'ABRP ne dit pas ce qu'on croit : il repond « une source
+     * est declaree pour ce vehicule », pas « elle emet ». Il reste donc a
+     * « connectée » dongle debranche, ce qui est le contraire de ce que la page
+     * doit montrer. Seule la date du dernier releve repond vraiment.
+     *
+     * @return array{label: string, tag: string, detail: string}|null
+     */
+    public function link(?VehicleTelemetry $latest, ?bool $abrpConnected): ?array
+    {
+        if ($latest === null) {
+            return null;
+        }
+
+        $minutes = (int) $latest->recorded_at->diffInMinutes(now());
+        $declared = $abrpConnected === null
+            ? "ABRP ne se prononce pas."
+            : ('ABRP déclare la source '.($abrpConnected ? 'connectée' : 'déconnectée').'.');
+
+        // Dongle OBD actif, les points tombent toutes les quatre a cinq minutes.
+        if ($minutes <= self::LINK_LIVE_MINUTES) {
+            return [
+                'label' => 'active',
+                'tag' => 'is-success',
+                'detail' => "Relevé il y a {$this->humanize($minutes)}. ".$declared,
+            ];
+        }
+
+        // Cadence du cloud constructeur seul : environ un point par heure. La
+        // voiture reste jointe, mais plus rien n'arrive en direct.
+        if ($minutes <= self::LINK_SLOW_MINUTES) {
+            return [
+                'label' => 'au ralenti',
+                'tag' => 'is-warning is-light',
+                'detail' => "Rien depuis {$this->humanize($minutes)} : cadence du cloud constructeur, "
+                    ."ou dongle OBD débranché. ".$declared,
+            ];
+        }
+
+        return [
+            'label' => 'silencieuse',
+            'tag' => 'is-warning',
+            'detail' => "Rien depuis {$this->humanize($minutes)}. ".$declared,
+        ];
     }
 
     /**

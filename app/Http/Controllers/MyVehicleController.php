@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Vehicle;
 use App\Services\ChargingCurveRepository;
+use App\Services\PendingTelemetryCharges;
 use App\Services\DailyVehicleActivity;
 use App\Services\TelemetrySessionDetector;
 use App\Services\VehicleState;
@@ -86,6 +87,9 @@ class MyVehicleController extends Controller
             // Etat reconstruit : `is_charging` seul ne distingue pas le roulage
             // du stationnement, et `is_parked` n'est jamais renseigne.
             'state' => $this->state->describe($telemetry, $history),
+            // Fraicheur des releves plutot que le drapeau d'ABRP : celui-ci
+            // reste a « connectée » dongle debranche.
+            'link' => $this->state->link($telemetry, isset($raw['is_connected']) ? (bool) $raw['is_connected'] : null),
             'curve' => $curve,
             'days' => $days,
             'soc' => $soc,
@@ -93,6 +97,9 @@ class MyVehicleController extends Controller
             'netCapacity' => $netCapacity,
             'rangeKm' => $rangeKm,
             'sessions' => $this->detector->detect($history, $netCapacity),
+            // Detections ecartees de la page Recharges : elles restent listees
+            // ici, marquees, avec de quoi les remettre en proposition.
+            'ignoredCharges' => $vehicle ? PendingTelemetryCharges::ignoredKeys([$vehicle->id]) : [],
             'chartLabels' => $history->map(fn ($row) => $row->recorded_at->timezone(config('app.timezone'))->format('d/m H:i'))->values(),
             'chartSoc' => $history->pluck('soc')->map(fn ($v) => $v === null ? null : (float) $v)->values(),
             'chartCharging' => $history->pluck('is_charging')->map(fn ($v) => (bool) $v)->values(),

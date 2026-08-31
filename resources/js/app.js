@@ -557,9 +557,32 @@ document.addEventListener('DOMContentLoaded', () => {
     if (quantity && unitCost && totalCost && realCost) {
         // Deux calculs en chaine : le cout reel vaut quantite x cout unitaire,
         // le total facture vaut ce cout reel plus les frais annexes. Chaque
-        // champ decroche du calcul des qu'il est saisi a la main — toujours le
-        // cas d'entree en modification, ou les valeurs sont deja remplies.
-        let totalManuallyEdited = totalCost.value !== '' && parseFloat(totalCost.value) !== 0;
+        // champ decroche du calcul des qu'il est saisi a la main.
+
+        // Le total rouvert est repute calcule tant qu'il vaut exactement cout
+        // reel + cout additionnel. C'est ce qui permet, en modification, de
+        // reporter une correction du cout reel sur le total — sans cela le
+        // total garderait la valeur d'avant, et d'autant plus visiblement que
+        // le cout additionnel est desormais reaffiche.
+        const derivedTotal = () => {
+            const total = parseFloat(totalCost.value);
+            const real = parseFloat(realCost.value);
+
+            if (isNaN(total) || isNaN(real)) {
+                return false;
+            }
+
+            const extra = extraCost ? parseFloat(extraCost.value) : NaN;
+
+            return Math.abs(total - (real + (isNaN(extra) ? 0 : extra))) < 0.005;
+        };
+
+        // Un total a zero en face d'un cout reel non nul, c'est « Gratuit » :
+        // une decision, pas un champ vide. Le recalculer effacerait l'info.
+        const freeCharge = () => parseFloat(totalCost.value) === 0 && parseFloat(realCost.value) > 0;
+
+        let totalManuallyEdited = totalCost.value !== ''
+            && (freeCharge() || (parseFloat(totalCost.value) !== 0 && !derivedTotal()));
         let realManuallyEdited = realCost.value !== '' && parseFloat(realCost.value) !== 0;
 
         const recomputeTotal = () => {

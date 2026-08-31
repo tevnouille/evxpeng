@@ -160,14 +160,14 @@
                     <div class="column is-3">
                         <p class="heading">Liaison</p>
                         <p class="title is-4">
-                            @if ($isConnected)
-                                <span class="tag is-success is-medium">connectée</span>
-                            @else
-                                <span class="tag is-warning is-medium">déconnectée</span>
-                            @endif
+                            <span class="tag {{ $link['tag'] }} is-medium">{{ $link['label'] }}</span>
                         </p>
+                        {{-- Le drapeau is_connected d'ABRP signale qu'une source est
+                             declaree, pas qu'elle emet : il restait a « connectée »
+                             dongle debranche. On juge donc sur la fraicheur. --}}
                         <p class="has-text-grey is-size-7">
-                            source <code>{{ $telemetry->telemetry_type ?? 'inconnue' }}</code>
+                            {{ $link['detail'] }}
+                            Source <code>{{ $telemetry->telemetry_type ?? 'inconnue' }}</code>.
                         </p>
                     </div>
 
@@ -387,7 +387,10 @@
                         </thead>
                         <tbody>
                             @foreach ($sessions as $session)
-                                <tr>
+                                @php
+                                    $ignoredHere = isset($ignoredCharges[$vehicle->id.'|'.$session['started_at']->format('Y-m-d H:i:s')]);
+                                @endphp
+                                <tr class="{{ $ignoredHere ? 'has-text-grey-light' : '' }}">
                                     <td>
                                         {{ $session['started_at']->timezone(config('app.timezone'))->format('d/m/Y H:i') }}
                                         @if ($session['in_progress'])
@@ -395,6 +398,10 @@
                                         @elseif ($session['inferred'])
                                             <span class="tag is-warning is-light ml-1"
                                                   title="Aucun relevé pendant la charge : elle est déduite d'un niveau qui a monté alors que le compteur kilométrique n'avait pas bougé.">déduite</span>
+                                        @endif
+                                        @if ($ignoredHere)
+                                            <span class="tag is-light ml-1"
+                                                  title="Écartée des propositions de saisie sur la page Recharges.">écartée</span>
                                         @endif
                                     </td>
                                     <td>
@@ -435,6 +442,19 @@
                                                ]) }}">
                                                 Pré-remplir
                                             </a>
+                                        @endif
+                                        @if (! $session['in_progress'])
+                                            <form method="POST"
+                                                  action="{{ $ignoredHere ? route('detected-charges.restore') : route('detected-charges.ignore') }}"
+                                                  class="is-inline">
+                                                @csrf
+                                                <input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}">
+                                                <input type="hidden" name="started_at" value="{{ $session['started_at']->format('Y-m-d H:i:s') }}">
+                                                <button type="submit" class="button is-small is-light"
+                                                        title="{{ $ignoredHere ? 'La reproposer à la saisie sur la page Recharges.' : 'Ne plus la proposer à la saisie sur la page Recharges.' }}">
+                                                    {{ $ignoredHere ? 'Rétablir' : 'Écarter' }}
+                                                </button>
+                                            </form>
                                         @endif
                                     </td>
                                 </tr>

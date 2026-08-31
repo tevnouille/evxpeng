@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ChargingSession;
+use App\Models\IgnoredTelemetryCharge;
 use App\Models\Vehicle;
 
 /**
@@ -26,6 +27,22 @@ class PendingTelemetryCharges
     }
 
     /**
+     * Detections ecartees, indexees « vehicule|debut » pour un test direct.
+     *
+     * @param  array<int, int>  $vehicleIds
+     * @return array<string, true>
+     */
+    public static function ignoredKeys(array $vehicleIds): array
+    {
+        return IgnoredTelemetryCharge::whereIn('vehicle_id', $vehicleIds)
+            ->get()
+            ->mapWithKeys(fn (IgnoredTelemetryCharge $row) => [
+                $row->vehicle_id.'|'.$row->started_at->format('Y-m-d H:i:s') => true,
+            ])
+            ->all();
+    }
+
+    /**
      * @return array<int, array<string, mixed>>  Les plus recentes d'abord.
      */
     public function all(int $days = self::DEFAULT_DAYS): array
@@ -40,6 +57,10 @@ class PendingTelemetryCharges
         $pending = [];
 
         $vehicles = Vehicle::whereNotNull('abrp_token')->orderBy('name')->get();
+
+        // Ecartees a la main : deja saisies autrement, ou sans interet. Elles
+        // restent visibles sur Ma voiture, ou l'on peut les retablir.
+        $ignored = self::ignoredKeys($vehicles->modelKeys());
 
         foreach ($vehicles as $vehicle) {
             $curve = $vehicle->charging_curve ? $this->curves->find($vehicle->charging_curve) : null;
@@ -56,6 +77,10 @@ class PendingTelemetryCharges
                 }
 
                 if (isset($recorded[$session['started_at']->format('Y-m-d H:i:s')])) {
+                    continue;
+                }
+
+                if (isset($ignored[$vehicle->id.'|'.$session['started_at']->format('Y-m-d H:i:s')])) {
                     continue;
                 }
 
