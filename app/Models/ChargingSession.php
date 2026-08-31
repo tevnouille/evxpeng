@@ -26,6 +26,7 @@ class ChargingSession extends Model
         'total_cost',
         'real_cost',
         'extra_cost',
+        'discount',
         'comment',
     ];
 
@@ -37,6 +38,7 @@ class ChargingSession extends Model
         'total_cost' => 'decimal:2',
         'real_cost' => 'decimal:2',
         'extra_cost' => 'decimal:2',
+        'discount' => 'decimal:2',
         'latitude' => 'float',
         'longitude' => 'float',
         'charge_duration' => 'datetime:H:i',

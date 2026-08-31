@@ -159,6 +159,7 @@ class ChargingSessionController extends Controller
             'total_cost' => ['nullable', 'numeric', 'min:0'],
             'real_cost' => ['nullable', 'numeric', 'min:0'],
             'extra_cost' => ['nullable', 'numeric', 'min:0'],
+            'discount' => ['nullable', 'numeric', 'min:0'],
             'comment' => ['nullable', 'string'],
         ]);
 

@@ -276,7 +276,7 @@
                     </div>
                 </div>
 
-                <div class="column is-3">
+                <div class="column is-2">
                     <div class="field">
                         <label class="label">Coût unitaire (€/kWh)</label>
                         <div class="control">
@@ -308,11 +308,28 @@
                     </div>
                 </div>
 
+                {{-- Deduite du total, et non retranchee du cout reel : la recharge
+                     vaut toujours son prix plein, c'est le montant debite qui baisse.
+                     C'est ce qui fait apparaitre la remise en gain dans l'historique. --}}
+                <div class="column is-2">
+                    <div class="field">
+                        <label class="label">Remise (€)</label>
+                        <div class="control">
+                            <input class="input" type="number" step="0.01" min="0" name="discount" id="discount"
+                                autocomplete="off" value="{{ old('discount', $editing?->discount) }}">
+                        </div>
+                        <p class="help">
+                            Déduite du total facturé. Utile quand la remise est plafonnée&nbsp;—
+                            une heure de recharge remisée, le reste au tarif plein.
+                        </p>
+                    </div>
+                </div>
+
                 {{-- Volontairement pas repris a la duplication, a la difference du
                      cout unitaire : un frais de stationnement ou une penalite est
                      circonstanciel, le reconduire d'office fausserait la recharge
                      suivante. --}}
-                <div class="column is-3">
+                <div class="column is-2">
                     <div class="field">
                         <label class="label">Coût additionnel (€)</label>
                         <div class="control">
@@ -342,8 +359,8 @@
                             </div>
                         </div>
                         <p class="help">
-                            Ce qui a été débité&nbsp;: coût réel + coût additionnel, tant qu'il n'a pas
-                            été saisi à la main ; <strong>Gratuit</strong> le met à 0.
+                            Ce qui a été débité&nbsp;: coût réel + coût additionnel &minus; remise,
+                            tant qu'il n'a pas été saisi à la main ; <strong>Gratuit</strong> le met à 0.
                         </p>
                     </div>
                 </div>

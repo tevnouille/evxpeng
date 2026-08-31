@@ -553,6 +553,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalCost = document.getElementById('total_cost');
     const realCost = document.getElementById('real_cost');
     const extraCost = document.getElementById('extra_cost');
+    const discount = document.getElementById('discount');
 
     if (quantity && unitCost && totalCost && realCost) {
         // Deux calculs en chaine : le cout reel vaut quantite x cout unitaire,
@@ -564,17 +565,29 @@ document.addEventListener('DOMContentLoaded', () => {
         // reporter une correction du cout reel sur le total — sans cela le
         // total garderait la valeur d'avant, et d'autant plus visiblement que
         // le cout additionnel est desormais reaffiche.
-        const derivedTotal = () => {
-            const total = parseFloat(totalCost.value);
+        const amount = (field) => {
+            const value = field ? parseFloat(field.value) : NaN;
+
+            return isNaN(value) ? 0 : value;
+        };
+
+        // Ce que le total vaudrait si personne n'y avait touche. Une remise ne
+        // peut pas rendre le debit negatif, d'ou le plancher a zero.
+        const expectedTotal = () => {
             const real = parseFloat(realCost.value);
 
-            if (isNaN(total) || isNaN(real)) {
+            return isNaN(real) ? null : Math.max(0, real + amount(extraCost) - amount(discount));
+        };
+
+        const derivedTotal = () => {
+            const total = parseFloat(totalCost.value);
+            const expected = expectedTotal();
+
+            if (isNaN(total) || expected === null) {
                 return false;
             }
 
-            const extra = extraCost ? parseFloat(extraCost.value) : NaN;
-
-            return Math.abs(total - (real + (isNaN(extra) ? 0 : extra))) < 0.005;
+            return Math.abs(total - expected) < 0.005;
         };
 
         // Un total a zero en face d'un cout reel non nul, c'est « Gratuit » :
@@ -589,12 +602,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (totalManuallyEdited) {
                 return;
             }
-            const base = parseFloat(realCost.value);
-            if (isNaN(base)) {
+            const expected = expectedTotal();
+            if (expected === null) {
                 return;
             }
-            const extra = extraCost ? parseFloat(extraCost.value) : NaN;
-            totalCost.value = (base + (isNaN(extra) ? 0 : extra)).toFixed(2);
+            totalCost.value = expected.toFixed(2);
         };
 
         const recompute = () => {
@@ -614,15 +626,20 @@ document.addEventListener('DOMContentLoaded', () => {
             recomputeTotal();
         });
 
-        // Saisir des frais annexes, c'est demander explicitement le calcul du
-        // total : cela reprend la main meme apres une saisie manuelle ou un
-        // clic sur Gratuit. A l'inverse, cliquer Gratuit ensuite remet zero.
-        if (extraCost) {
-            extraCost.addEventListener('input', () => {
+        // Saisir des frais annexes ou une remise, c'est demander explicitement
+        // le calcul du total : cela reprend la main meme apres une saisie
+        // manuelle ou un clic sur Gratuit. A l'inverse, cliquer Gratuit ensuite
+        // remet zero.
+        [extraCost, discount].forEach((field) => {
+            if (!field) {
+                return;
+            }
+            field.addEventListener('input', () => {
                 totalManuallyEdited = false;
                 recomputeTotal();
             });
-        }
+        });
+
 
         quantity.addEventListener('input', recompute);
         unitCost.addEventListener('input', recompute);
