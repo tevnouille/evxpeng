@@ -85,8 +85,16 @@ class VehicleState
             return $this->state(self::DRIVING, 'en route', 'is-info', 'Le compteur kilométrique progresse.');
         }
 
-        if ($this->isFast($latest->speed)) {
-            return $this->state(self::DRIVING, 'en route', 'is-info', 'Vitesse remontée par la voiture.');
+        // La vitesse ne sert que faute d'odometre, et jamais sur un releve
+        // vieilli. ABRP reemet la derniere mesure connue sous un horodatage
+        // neuf : on a vu 24,6 km/h rejoues trois heures apres l'arret, avec le
+        // meme kilometrage. Des lors que le compteur repond, il tranche seul —
+        // s'en remettre a la vitesse revenait a laisser un instantane perime
+        // contredire la seule mesure qui prouve un deplacement.
+        if (! $this->hasOdometer($history)
+            && $ageMinutes <= self::MOVEMENT_WINDOW_MINUTES
+            && $this->isFast($latest->speed)) {
+            return $this->state(self::DRIVING, 'en route', 'is-info', 'Vitesse remontée par la voiture, faute de compteur kilométrique.');
         }
 
         if ($latest->is_parked === true) {
@@ -228,6 +236,16 @@ class VehicleState
 
         // Un seul point ne prouve rien : il faut deux kilometrages a comparer.
         return $window->count() >= 2 && $window->max() > $window->min();
+    }
+
+    /**
+     * La source fournit-elle un odometre sur la periode observee ?
+     *
+     * @param  Collection<int, VehicleTelemetry>  $history
+     */
+    private function hasOdometer(Collection $history): bool
+    {
+        return $history->contains(fn (VehicleTelemetry $row) => $row->odometer !== null);
     }
 
     private function isFast(mixed $speed): bool
