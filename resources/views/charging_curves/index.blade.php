@@ -213,11 +213,39 @@
             </div>
         @endif
 
+        @php($mesures = $curve['measured'] ?? null)
+
+        @if ($mesures && $mesures['sessions'] > 0)
+            <div class="notification {{ $mesures['applied'] ? 'is-primary' : 'is-info' }} is-light">
+                @if ($mesures['applied'])
+                    <strong>Courbe relevée sur votre voiture.</strong>
+                    {{ $mesures['buckets'] }} paliers entre {{ $mesures['min_soc'] }} et {{ $mesures['max_soc'] }} %
+                    proviennent de {{ $mesures['sessions'] }} charge(s) rapide(s) réellement mesurées par le boîtier OBD ;
+                    ils remplacent la référence constructeur, rappelée en gris dans le tableau.
+                    Les autres paliers restent théoriques.
+                @else
+                    <strong>Mesures en cours d'accumulation.</strong>
+                    {{ $mesures['sessions'] }} charge(s) rapide(s) relevée(s), {{ $mesures['buckets'] }} palier(s) couvert(s) —
+                    il en faut au moins dix avant de remplacer la référence, faute de quoi des mesures éparses
+                    créeraient des ruptures dans le calcul des durées.
+                @endif
+            </div>
+        @else
+            <div class="notification is-info is-light">
+                <strong>Courbe de référence.</strong> Elle décrit un exemplaire du modèle, pas votre voiture.
+                Elle sera remplacée palier par palier au fur et à mesure de vos <strong>charges rapides</strong>
+                relevées par le boîtier OBD. Les charges en courant alternatif sont volontairement ignorées :
+                leur puissance est imposée par la borne et le chargeur embarqué, elle ne dit rien de ce que la
+                batterie accepte.
+            </div>
+        @endif
+
         <div class="box">
             <h2 class="title is-5">Puissance de charge selon le niveau de batterie</h2>
             <canvas id="curve-power-chart"
                 data-labels='@json(collect($curve['points'])->pluck('soc'))'
                 data-values='@json(collect($curve['points'])->pluck('kw_effective'))'
+                data-reference='@json(($mesures['applied'] ?? false) ? collect($curve['points'])->pluck('kw_reference_effective') : [])'
                 data-current-soc="{{ $currentSoc ?? '' }}"
                 data-current-kw="{{ $currentPoint['kw_effective'] ?? '' }}"
                 data-charging="{{ $telemetry && $telemetry->is_charging ? '1' : '0' }}"></canvas>
@@ -241,7 +269,13 @@
                         @foreach ($curve['points'] as $point)
                             <tr data-soc="{{ $point['soc'] }}" @class(['is-selected' => $currentSoc === $point['soc']])>
                                 <td>{{ $point['soc'] }} %</td>
-                                <td class="has-text-right">{{ str_replace('.', ',', (string) $point['kw_effective']) }} kW</td>
+                                <td class="has-text-right">
+                                    {{ str_replace('.', ',', (string) $point['kw_effective']) }} kW
+                                    @if ($point['measured'] ?? false)
+                                        <span class="tag is-primary is-light is-small ml-1"
+                                              title="Relevé sur votre voiture. Référence constructeur : {{ str_replace('.', ',', (string) $point['kw_reference']) }} kW">mesuré</span>
+                                    @endif
+                                </td>
                                 <td class="has-text-right">{{ str_replace('.', ',', (string) $point['battery_gross_kwh']) }} kWh</td>
                                 <td class="has-text-right">{{ $point['time'] }}</td>
                                 <td class="has-text-right">{{ str_replace('.', ',', (string) $point['kwh']) }} kWh</td>

@@ -49,7 +49,7 @@ class MyVehicleController extends Controller
             : collect();
 
         $telemetry = $vehicle?->latestTelemetry;
-        $curve = $vehicle?->charging_curve ? $this->curves->find($vehicle->charging_curve) : null;
+        $curve = $this->curves->forVehicle($vehicle);
         $netCapacity = $curve['battery_net_kwh'] ?? null;
 
         $soc = $telemetry?->soc !== null ? (float) $telemetry->soc : null;

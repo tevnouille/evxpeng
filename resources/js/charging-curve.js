@@ -89,6 +89,10 @@ function renderPowerChart(canvas) {
     const labels = readData(canvas, 'labels');
     const values = readData(canvas, 'values');
 
+    // Reference constructeur, tracee en pointille sous la mesure : sans elle on
+    // verrait la courbe de la voiture sans savoir de combien elle s'en ecarte.
+    const reference = readData(canvas, 'reference');
+
     const datasets = [
         {
             label: 'Puissance de charge',
@@ -102,6 +106,20 @@ function renderPowerChart(canvas) {
             pointHitRadius: 12,
         },
     ];
+
+    if (Array.isArray(reference) && reference.some((v) => v !== null && v !== undefined)) {
+        datasets.push({
+            label: 'Référence constructeur',
+            data: reference,
+            borderColor: '#b5b5b5',
+            borderWidth: 1.5,
+            borderDash: [5, 4],
+            fill: false,
+            tension: 0.3,
+            pointRadius: 0,
+            pointHitRadius: 8,
+        });
+    }
 
     const current = currentPositionDataset(canvas, labels);
 

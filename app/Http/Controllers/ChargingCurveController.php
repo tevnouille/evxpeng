@@ -39,7 +39,7 @@ class ChargingCurveController extends Controller
         // le place en tete).
         $vehicle = $vehicles->firstWhere('id', (int) $requested) ?? $vehicles->first();
 
-        $curve = $vehicle ? $this->curves->find($vehicle->charging_curve) : null;
+        $curve = $this->curves->forVehicle($vehicle);
 
         // Sans choix explicite, on deduit la borne de la puissance reellement
         // mesuree pendant la charge. `has` et non `filled` : choisir "sans
@@ -104,7 +104,7 @@ class ChargingCurveController extends Controller
             return response()->json(['available' => false]);
         }
 
-        $curve = $vehicle->charging_curve ? $this->curves->find($vehicle->charging_curve) : null;
+        $curve = $this->curves->forVehicle($vehicle);
 
         if ($curve) {
             $curve = $this->withDerivedColumns($curve, $this->requestedCap($request), $vehicle->kwh_per_100km);
@@ -282,6 +282,14 @@ class ChargingCurveController extends Controller
         foreach ($points as $index => $point) {
             $kw = (float) $point['kw'];
             $points[$index]['kw_effective'] = round($cap !== null ? min($cap, $kw) : $kw, 1);
+
+            // La reference constructeur subit le meme bridage, sans quoi le
+            // graphique opposerait une puissance plafonnee a une puissance libre
+            // et l'ecart afficherait la borne plutot que la batterie.
+            if (isset($point['kw_reference'])) {
+                $reference = (float) $point['kw_reference'];
+                $points[$index]['kw_reference_effective'] = round($cap !== null ? min($cap, $reference) : $reference, 1);
+            }
 
             $points[$index]['seconds'] = $seconds[$index];
             $points[$index]['time'] = $this->formatDuration($seconds[$index]);

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Vehicle;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
 
@@ -37,6 +38,34 @@ class ChargingCurveRepository
             ->filter()
             ->sortBy('name')
             ->values();
+    }
+
+    public function __construct(private readonly MeasuredChargingCurve $measured)
+    {
+    }
+
+    /**
+     * Courbe du vehicule, paliers mesures substitues quand la couverture le
+     * permet.
+     *
+     * C'est ce point d'entree, et non find(), que doivent utiliser la page et le
+     * simulateur : la courbe de reference decrit un exemplaire du modele, celle
+     * du vehicule decrit la voiture qui est dans le garage.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function forVehicle(?Vehicle $vehicle): ?array
+    {
+        $curve = $this->find($vehicle?->charging_curve);
+
+        if ($curve === null || $vehicle === null) {
+            return $curve;
+        }
+
+        return $this->measured->apply(
+            $curve,
+            $this->measured->forVehicle($vehicle, $curve['max_power_kw'] ?? null)
+        );
     }
 
     /** @return array<string, mixed>|null */
