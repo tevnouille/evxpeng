@@ -36,11 +36,20 @@
                         </div>
                     </div>
                 </div>
-                <div class="column is-3">
+                <div class="column is-2">
                     <div class="field">
                         <label class="label is-small">Token ABRP</label>
                         <div class="control">
                             <input class="input" type="text" name="abrp_token" placeholder="token télémétrie">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="column is-1">
+                    <div class="field">
+                        <label class="label is-small">Ident. MQTT</label>
+                        <div class="control">
+                            <input class="input" type="text" name="mqtt_client_id" placeholder="ex. xpengG6">
                         </div>
                     </div>
                 </div>
@@ -149,11 +158,23 @@
                             </div>
                         </div>
                     </div>
-                    <div class="column is-3">
+                    <div class="column is-2">
                         <div class="field">
                             <label class="label is-small">Token ABRP</label>
                             <div class="control">
                                 <input class="input" type="text" name="abrp_token" value="{{ $vehicle->abrp_token }}" placeholder="token télémétrie">
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Identifiant que le boitier publie dans ses topics MQTT
+                         (vehicles/{ident}/data) : sans lui ses messages ne se
+                         rattachent a aucune voiture. --}}
+                    <div class="column is-1">
+                        <div class="field">
+                            <label class="label is-small">Ident. MQTT</label>
+                            <div class="control">
+                                <input class="input" type="text" name="mqtt_client_id" value="{{ $vehicle->mqtt_client_id }}" placeholder="ex. xpengG6">
                             </div>
                         </div>
                     </div>

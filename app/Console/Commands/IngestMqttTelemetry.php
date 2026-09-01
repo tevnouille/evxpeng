@@ -1,0 +1,458 @@
+<?php
+
+namespace App\Console\Commands;
+
+use App\Models\TelemetryChargingSession;
+use App\Models\Vehicle;
+use App\Models\VehicleTelemetry;
+use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
+
+/**
+ * Consomme ce que le boitier OBD publie sur MQTT, via un fichier tampon.
+ *
+ * Pourquoi un fichier et non un client MQTT en PHP : `vendor/` n'est pas monte
+ * en bind dans le conteneur, une dependance Composer imposerait donc de
+ * reconstruire l'image — l'operation qui a coupe le site le 2026-08-30. Un
+ * conteneur mosquitto_sub ecrit les messages dans storage/app/system, le meme
+ * canal hote/conteneur que le releve serveur, et cette commande les relit.
+ *
+ * La lecture se fait a partir d'un decalage en octets, conserve d'un passage a
+ * l'autre : le producteur ecrit en continu, le consommateur ne relit jamais ce
+ * qu'il a deja traite et ne tronque rien sous les pieds de l'ecrivain.
+ */
+class IngestMqttTelemetry extends Command
+{
+    protected $signature = 'telemetry:ingest-mqtt
+        {--reset : Repartir du debut du fichier}
+        {--dry-run : Analyser sans rien ecrire}';
+
+    protected $description = 'Ingere la telemetrie et les recharges publiees par le boitier OBD sur MQTT';
+
+    /**
+     * Chemins construits avec storage_path() et non le disque « local » :
+     * depuis Laravel 11 celui-ci pointe sur storage/app/private, alors que le
+     * canal partage avec l'hote est storage/app/system — c'est deja ainsi que
+     * le releve serveur y accede.
+     */
+    private const INBOX = 'app/system/mqtt-inbox.jsonl';
+
+    private const STATE = 'app/system/mqtt-inbox-state.json';
+
+    /**
+     * Duree pendant laquelle une valeur absente du message courant reste
+     * reputee valable.
+     *
+     * XPCarData interroge les PID par rotation : un message ne porte que ce qui
+     * vient d'etre rafraichi, et sur douze messages l'odometre n'apparaissait
+     * qu'une fois. Sans report, chaque ligne serait a moitie vide ; avec un
+     * report illimite, un odometre fige ferait croire a une voiture a l'arret
+     * — exactement le bug que VehicleState vient de corriger. D'ou une fenetre
+     * bornee, un peu plus large que le cycle lent de l'application (~1 min).
+     */
+    private const CARRY_SECONDS = 300;
+
+    /**
+     * Cadence maximale d'ecriture. XPCarData publie toutes les dix a vingt
+     * secondes ; en conserver autant remplirait la table sans rien apprendre,
+     * la courbe fine d'une charge etant de toute facon fournie a part.
+     */
+    private const MIN_ROW_INTERVAL = 60;
+
+    /**
+     * Taille au-dela de laquelle le tampon est vide, une fois entierement lu.
+     * A dix a vingt messages la minute, il grossit de plusieurs megaoctets par
+     * jour et personne ne le relira jamais.
+     */
+    private const TRUNCATE_BYTES = 33554432;
+
+    /** Correspondance directe entre champs XPCarData et colonnes. */
+    private const FIELDS = [
+        'stateOfCharge' => 'soc',
+        'stateOfHealth' => 'soh',
+        'batteryTemperature' => 'batt_temp',
+        'speed' => 'speed',
+        'odometer' => 'odometer',
+        'latitude' => 'lat',
+        'longitude' => 'lon',
+    ];
+
+    public function handle(): int
+    {
+        $path = storage_path(self::INBOX);
+
+        if (! is_readable($path)) {
+            $this->warn('Aucun tampon MQTT : le conteneur mqtt-ingest tourne-t-il ?');
+
+            return self::SUCCESS;
+        }
+
+        $state = $this->option('reset') ? [] : $this->readState();
+        clearstatcache(true, $path);
+        $size = filesize($path);
+        $offset = (int) ($state['offset'] ?? 0);
+
+        // Fichier reduit : il a ete tourne ou vide, tout relire depuis le debut
+        // vaut mieux que de lire au milieu d'une ligne.
+        if ($size < $offset) {
+            $this->line('Tampon reinitialise : relecture depuis le debut.');
+            $offset = 0;
+        }
+
+        if ($size === $offset) {
+            $this->info('Rien de nouveau.');
+
+            return self::SUCCESS;
+        }
+
+        [$lines, $offset] = $this->readFrom($path, $offset, $size);
+
+        $vehicles = $this->vehiclesByClientId();
+        $counts = ['data' => 0, 'charging' => 0, 'ignores' => 0];
+        $carried = $state['vehicles'] ?? [];
+
+        foreach ($lines as $line) {
+            [$topic, $payload] = $this->split($line);
+
+            if ($payload === null) {
+                $counts['ignores']++;
+
+                continue;
+            }
+
+            $parts = explode('/', $topic);
+            $clientId = $parts[1] ?? null;
+            $kind = $parts[2] ?? null;
+            $vehicle = $vehicles[$clientId] ?? null;
+
+            if ($vehicle === null) {
+                $counts['ignores']++;
+
+                continue;
+            }
+
+            if ($kind === 'data') {
+                $carried[$clientId] = $this->handleData($vehicle, $payload, $carried[$clientId] ?? [], $counts);
+            } elseif ($kind === 'charging') {
+                $this->handleCharging($vehicle, $payload, $counts);
+            }
+        }
+
+        if (! $this->option('dry-run')) {
+            $offset = $this->truncateIfConsumed($path, $offset);
+            $this->writeState(['offset' => $offset, 'vehicles' => $carried]);
+        }
+
+        $this->info(sprintf(
+            '%d releve(s) ecrit(s), %d recharge(s) mesuree(s), %d message(s) ignore(s).',
+            $counts['data'],
+            $counts['charging'],
+            $counts['ignores']
+        ));
+
+        return self::SUCCESS;
+    }
+
+    /**
+     * Fusionne le message avec les valeurs encore fraiches, puis enregistre.
+     *
+     * @param  array<string, array{value: mixed, at: string}>  $carried
+     * @return array<string, array{value: mixed, at: string}>
+     */
+    private function handleData(Vehicle $vehicle, array $payload, array $carried, array &$counts): array
+    {
+        $recordedAt = $this->timestamp($payload['timestamp'] ?? null);
+
+        if ($recordedAt === null) {
+            $counts['ignores']++;
+
+            return $carried;
+        }
+
+        // `stateOfCharge` est souvent nul alors que le PID brut du calculateur,
+        // lui, repond : on preferera toujours la valeur officielle, mais on ne
+        // se prive pas de la seconde quand elle est seule.
+        if (($payload['stateOfCharge'] ?? null) === null && isset($payload['VCU_SOC'])) {
+            $payload['stateOfCharge'] = $payload['VCU_SOC'];
+        }
+
+        foreach ($payload as $key => $value) {
+            if ($value === null || $key === 'rawBytes') {
+                continue;
+            }
+
+            $carried[$key] = ['value' => $value, 'at' => $recordedAt->toIso8601String()];
+        }
+
+        $fresh = $this->fresh($carried, $recordedAt);
+
+        $last = $this->lastRow($vehicle);
+        $chargingChanged = $last !== null
+            && (bool) $last->is_charging !== (bool) ($payload['isCharging'] ?? false);
+
+        // Une ecriture par minute suffit, sauf a la bascule charge/pas charge :
+        // c'est elle qui borne une session, la manquer decalerait le debut.
+        if (! $chargingChanged
+            && $last !== null
+            && $last->recorded_at->diffInSeconds($recordedAt) < self::MIN_ROW_INTERVAL) {
+            return $carried;
+        }
+
+        if ($this->option('dry-run')) {
+            $counts['data']++;
+
+            return $carried;
+        }
+
+        $attributes = [
+            'is_charging' => (bool) ($payload['isCharging'] ?? false),
+            'is_connected' => true,
+            'telemetry_type' => 'xpcardata',
+            'power_kw' => $this->power($fresh),
+            // Tout ce qui n'a pas de colonne dediee reste accessible : c'est ce
+            // qui alimente « Relevé brut » et « Sources de données » sans qu'une
+            // migration soit necessaire a chaque champ nouveau.
+            'raw' => [
+                'telemetry' => $fresh,
+                'telemetry_type' => 'xpcardata',
+                'timestamp' => $recordedAt->toIso8601String(),
+                'is_connected' => true,
+                'source' => 'mqtt',
+            ],
+        ];
+
+        foreach (self::FIELDS as $key => $column) {
+            $attributes[$column] = $fresh[$key] ?? null;
+        }
+
+        VehicleTelemetry::updateOrCreate(
+            ['vehicle_id' => $vehicle->id, 'recorded_at' => $recordedAt],
+            $attributes
+        );
+
+        $counts['data']++;
+
+        return $carried;
+    }
+
+    /**
+     * Puissance, ramenee a la convention d'ABRP : negatif = energie entrante.
+     *
+     * XPCarData publie une magnitude, sans signe exploitable au repos. Le sens
+     * vient donc de l'etat de charge, faute de quoi une recharge s'afficherait
+     * comme une consommation sur la fiche du vehicule.
+     *
+     * @param  array<string, mixed>  $fresh
+     */
+    private function power(array $fresh): ?float
+    {
+        $power = $fresh['power'] ?? null;
+
+        if ($power === null) {
+            return null;
+        }
+
+        $magnitude = abs((float) $power);
+
+        return ($fresh['isCharging'] ?? false) ? -$magnitude : $magnitude;
+    }
+
+    /**
+     * Valeurs encore dans la fenetre de report, a l'instant du message.
+     *
+     * @param  array<string, array{value: mixed, at: string}>  $carried
+     * @return array<string, mixed>
+     */
+    private function fresh(array $carried, Carbon $at): array
+    {
+        $fresh = [];
+
+        foreach ($carried as $key => $entry) {
+            if (! isset($entry['at'], $entry['value'])) {
+                continue;
+            }
+
+            if (Carbon::parse($entry['at'])->diffInSeconds($at) <= self::CARRY_SECONDS) {
+                $fresh[$key] = $entry['value'];
+            }
+        }
+
+        return $fresh;
+    }
+
+    private function handleCharging(Vehicle $vehicle, array $payload, array &$counts): void
+    {
+        $externalId = $payload['id'] ?? null;
+        $startedAt = $this->timestamp($payload['startTime'] ?? null);
+
+        if ($externalId === null || $startedAt === null) {
+            $counts['ignores']++;
+
+            return;
+        }
+
+        // Une session encore en cours n'a ni energie ni duree definitives : on
+        // attend qu'elle se termine plutot que de proposer un chiffre provisoire.
+        if (($payload['isActive'] ?? false) === true) {
+            return;
+        }
+
+        if ($this->option('dry-run')) {
+            $counts['charging']++;
+
+            return;
+        }
+
+        TelemetryChargingSession::updateOrCreate(
+            ['vehicle_id' => $vehicle->id, 'external_id' => $externalId],
+            [
+                'started_at' => $startedAt,
+                'ended_at' => $this->timestamp($payload['endTime'] ?? null),
+                'duration_seconds' => $payload['durationSeconds'] ?? null,
+                'soc_start' => $payload['startSoc'] ?? null,
+                'soc_end' => $payload['endSoc'] ?? null,
+                'energy_kwh' => $payload['energyAddedKwh'] ?? null,
+                'energy_ah' => $payload['energyAddedAh'] ?? null,
+                'odometer_start' => $payload['startOdometer'] ?? null,
+                'odometer_end' => $payload['endOdometer'] ?? null,
+                'charging_type' => $payload['chargingType'] ?? null,
+                'max_power_kw' => $payload['maxPowerKw'] ?? null,
+                'lat' => $payload['latitude'] ?? null,
+                'lon' => $payload['longitude'] ?? null,
+                'curve' => $payload['chargingCurve'] ?? null,
+                'raw' => array_diff_key($payload, ['chargingCurve' => null]),
+            ]
+        );
+
+        $counts['charging']++;
+    }
+
+    /**
+     * @return array<string, Vehicle>
+     */
+    private function vehiclesByClientId(): array
+    {
+        return Vehicle::whereNotNull('mqtt_client_id')
+            ->get()
+            ->keyBy('mqtt_client_id')
+            ->all();
+    }
+
+    private function lastRow(Vehicle $vehicle): ?VehicleTelemetry
+    {
+        return VehicleTelemetry::where('vehicle_id', $vehicle->id)
+            ->orderByDesc('recorded_at')
+            ->first();
+    }
+
+    /**
+     * @return array{0: string, 1: array<string, mixed>|null}
+     */
+    private function split(string $line): array
+    {
+        $space = strpos($line, ' ');
+
+        if ($space === false) {
+            return ['', null];
+        }
+
+        $decoded = json_decode(substr($line, $space + 1), true);
+
+        return [substr($line, 0, $space), is_array($decoded) ? $decoded : null];
+    }
+
+    /**
+     * Lit les lignes completes a partir du decalage, et rend le decalage
+     * atteint. Une derniere ligne tronquee — le producteur ecrivait pendant la
+     * lecture — est laissee pour le passage suivant.
+     *
+     * @return array{0: array<int, string>, 1: int}
+     */
+    private function readFrom(string $path, int $offset, int $size): array
+    {
+        $handle = fopen($path, 'rb');
+        fseek($handle, $offset);
+        $chunk = (string) fread($handle, $size - $offset);
+        fclose($handle);
+
+        $lastBreak = strrpos($chunk, "\n");
+
+        if ($lastBreak === false) {
+            return [[], $offset];
+        }
+
+        $complete = substr($chunk, 0, $lastBreak);
+        $lines = array_values(array_filter(explode("\n", $complete), fn ($l) => trim($l) !== ''));
+
+        return [$lines, $offset + $lastBreak + 1];
+    }
+
+    /**
+     * Vide le tampon quand il est entierement lu et devenu gros.
+     *
+     * Le producteur ecrit en mode append : apres troncature ses ecritures
+     * repartent de zero, sans rien corrompre. On revalide la taille juste avant
+     * de tronquer — dans le pire des cas on perd les quelques messages arrives
+     * dans l'intervalle, jamais une ligne coupee en deux.
+     */
+    private function truncateIfConsumed(string $path, int $offset): int
+    {
+        clearstatcache(true, $path);
+
+        if ($offset < self::TRUNCATE_BYTES || filesize($path) !== $offset) {
+            return $offset;
+        }
+
+        $handle = fopen($path, 'r+b');
+
+        if ($handle === false) {
+            return $offset;
+        }
+
+        ftruncate($handle, 0);
+        fclose($handle);
+
+        $this->line('Tampon vide apres lecture complete.');
+
+        return 0;
+    }
+
+    private function timestamp(?string $value): ?Carbon
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        try {
+            // XPCarData date en heure locale du telephone, sans fuseau : la lire
+            // dans celui de l'application evite un decalage de deux heures.
+            return Carbon::parse($value, config('app.timezone'))->setTimezone(config('app.timezone'));
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function readState(): array
+    {
+        $path = storage_path(self::STATE);
+
+        if (! is_readable($path)) {
+            return [];
+        }
+
+        $decoded = json_decode((string) file_get_contents($path), true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     */
+    private function writeState(array $state): void
+    {
+        file_put_contents(storage_path(self::STATE), json_encode($state, JSON_UNESCAPED_SLASHES));
+    }
+}

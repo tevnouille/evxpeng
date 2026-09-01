@@ -41,6 +41,15 @@ class Changelog
 
     private const DATA = [
         [
+            'date' => '2026-09-01',
+            'entries' => [
+                ['type' => 'nouveaute', 'text' => "Les recharges relevées par le boîtier OBD arrivent désormais directement dans l'application, sans passer par A Better Routeplanner. Elles apparaissent marquées « mesurée » : leur énergie vient du compteur de la batterie, pas d'un calcul. L'écart n'est pas anecdotique — sur une même recharge, 3,831 kWh mesurés là où l'estimation par niveau de charge donnait 2,98, soit 29 % de moins. Le type de prise (AC ou DC) et la puissance maximale atteinte sont repris au passage, et une recharge vue des deux côtés n'est plus proposée deux fois."],
+                ['type' => 'nouveaute', 'text' => "La télémétrie du boîtier alimente aussi « Ma voiture » avec ce qu'A Better Routeplanner ne transmettait pas : tension de la batterie, batterie 12 V, températures moteur et refroidissement, compteurs d'énergie depuis la mise en service, altitude. Une nouvelle carte apparaît d'elle-même dans « Sources de données »."],
+                ['type' => 'amelioration', 'text' => "Le boîtier n'envoie pas tous les capteurs à chaque fois : il les interroge à tour de rôle, si bien qu'un message isolé ne porte qu'une poignée de valeurs. L'application recompose donc chaque relevé à partir des dernières valeurs connues, en n'en reprenant aucune de plus de cinq minutes — au-delà, un kilométrage figé laisserait croire que la voiture est à l'arrêt."],
+                ['type' => 'amelioration', 'text' => "Administration → Véhicules : nouveau champ « Identifiant MQTT », celui que le boîtier utilise pour publier. Sans lui, ses messages ne peuvent être rattachés à aucune voiture."],
+            ],
+        ],
+        [
             'date' => '2026-08-31',
             'entries' => [
                                 ['type' => 'nouveaute', 'text' => "Nouveau champ « Remise (€) » après le coût réel, pour les remises plafonnées — une heure de recharge remisée, le reste au tarif plein. Elle est déduite du total facturé et non retranchée du coût réel : la recharge vaut toujours son prix plein, c'est le montant débité qui baisse, et l'écart apparaît donc en gain dans l'historique. Une remise supérieure au coût ne rend pas le débit négatif."],

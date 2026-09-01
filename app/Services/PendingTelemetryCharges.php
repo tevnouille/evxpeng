@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ChargingSession;
 use App\Models\IgnoredTelemetryCharge;
+use App\Models\TelemetryChargingSession;
 use App\Models\Vehicle;
 
 /**
@@ -23,6 +24,7 @@ class PendingTelemetryCharges
         private readonly TelemetrySessionDetector $detector,
         private readonly ChargingCurveRepository $curves,
         private readonly ChargeContextGuesser $context,
+        private readonly MeasuredChargingSessions $measured,
     ) {
     }
 
@@ -65,12 +67,33 @@ class PendingTelemetryCharges
         foreach ($vehicles as $vehicle) {
             $curve = $vehicle->charging_curve ? $this->curves->find($vehicle->charging_curve) : null;
 
+            // Le boitier OBD publie des sessions completes, energie mesuree au
+            // compteur du BMS. Elles priment sur tout ce qu'on reconstitue :
+            // l'estimation par SoC x capacite s'est revelee 29 % sous le compte.
+            $measured = $this->measured->forVehicle($vehicle, $days);
+
+            foreach ($measured as $row) {
+                $key = $row->started_at->format('Y-m-d H:i:s');
+
+                if (isset($recorded[$key]) || isset($ignored[$vehicle->id.'|'.$key])) {
+                    continue;
+                }
+
+                $pending[] = $this->measured->toArray($row, $vehicle);
+            }
+
             $rows = $vehicle->telemetries()
                 ->where('recorded_at', '>=', now()->subDays($days))
                 ->orderBy('recorded_at')
                 ->get();
 
             foreach ($this->detector->detect($rows, $curve['battery_net_kwh'] ?? null) as $session) {
+                // La meme recharge vue deux fois — une fois mesuree, une fois
+                // reconstituee depuis les relevés — ne doit etre proposee qu'une.
+                if ($this->measured->overlaps($measured, $session)) {
+                    continue;
+                }
+
                 // Une charge en cours n'a pas encore de duree ni d'energie finales.
                 if ($session['in_progress']) {
                     continue;
@@ -84,6 +107,7 @@ class PendingTelemetryCharges
                     continue;
                 }
 
+                $session = $this->measured->normalise($session);
                 $session['vehicle'] = $vehicle;
                 // Lieu, fournisseur et puissance devines depuis la position :
                 // ne reste a saisir que ce que la telemetrie ignore, le cout.

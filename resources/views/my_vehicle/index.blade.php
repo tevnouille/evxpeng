@@ -448,8 +448,10 @@
             <h2 class="title is-5">Recharges détectées</h2>
             <p class="has-text-grey is-size-7 mb-4">
                 Reconstituées à partir des relevés : ABRP ne fournit pas de sessions.
-                L'énergie indiquée est celle <strong>entrée dans la batterie</strong>, calculée depuis
-                l'écart de niveau de charge. Elle est inférieure à l'énergie <strong>facturée à la borne</strong>,
+                Les sessions <span class="tag is-primary is-light">mesurée</span> viennent du boîtier OBD :
+                l'énergie y est relevée au compteur de la batterie. Les autres sont reconstituées, et leur
+                énergie est <strong>calculée depuis l'écart de niveau de charge</strong> — sur une même
+                recharge, ce calcul s'est révélé <strong>29 % sous la valeur mesurée</strong>. Elle est inférieure à l'énergie <strong>facturée à la borne</strong>,
                 qui inclut les pertes de charge — d'où le bouton de pré-remplissage plutôt qu'un enregistrement direct.
             </p>
 
@@ -477,6 +479,9 @@
                                         {{ $session['started_at']->timezone(config('app.timezone'))->format('d/m/Y H:i') }}
                                         @if ($session['in_progress'])
                                             <span class="tag is-success is-light ml-1">en cours</span>
+                                        @elseif ($session['measured'])
+                                            <span class="tag is-primary is-light ml-1"
+                                                  title="Session publiée par le boîtier OBD : énergie relevée au compteur de la batterie, pas déduite du niveau de charge.">mesurée</span>
                                         @elseif ($session['inferred'])
                                             <span class="tag is-warning is-light ml-1"
                                                   title="Aucun relevé pendant la charge : elle est déduite d'un niveau qui a monté alors que le compteur kilométrique n'avait pas bougé.">déduite</span>
@@ -497,7 +502,12 @@
                                             </span>
                                         @else
                                             {{ intdiv($session['duration_minutes'], 60) }} h {{ str_pad((string) ($session['duration_minutes'] % 60), 2, '0', STR_PAD_LEFT) }}
-                                            @if ($session['samples'] < 2)
+                                            @if ($session['measured'] && $session['max_power_kw'])
+                                                <span class="has-text-grey is-size-7">
+                                                    {{ strtoupper($session['charging_type'] ?? '') }}
+                                                    {{ str_replace('.', ',', (string) round($session['max_power_kw'], 1)) }} kW max
+                                                </span>
+                                            @elseif ($session['samples'] < 2)
                                                 <span class="tag is-warning is-light ml-1" title="Un seul relevé pendant la charge : les bornes sont approximatives">1 relevé</span>
                                             @endif
                                         @endif

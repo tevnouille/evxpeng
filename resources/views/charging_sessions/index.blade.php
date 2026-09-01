@@ -15,8 +15,12 @@
                 <span class="tag is-warning is-medium ml-2">{{ count($pendingCharges) }}</span>
             </h2>
             <p class="has-text-grey is-size-7 mb-4">
-                Repérées par la télémétrie du véhicule. L'énergie indiquée est celle <strong>entrée dans la
-                batterie</strong> : elle est inférieure à celle facturée à la borne, qui inclut les pertes de charge.
+                Repérées par la télémétrie du véhicule. Les sessions
+                <span class="tag is-primary is-light">mesurée</span> viennent du boîtier OBD, qui relève l'énergie
+                au compteur de la batterie ; les autres sont reconstituées depuis l'écart de niveau de charge, un
+                calcul qui s'est révélé <strong>29 % sous la valeur mesurée</strong>. Dans les deux cas l'énergie
+                est celle <strong>entrée dans la batterie</strong> : elle reste inférieure à celle facturée à la
+                borne, qui inclut les pertes de charge.
                 « Ajouter » pré-remplit le formulaire ci-dessous avec la date, la durée et cette estimation —
                 à vous de corriger la quantité facturée et de compléter le fournisseur et le coût.
                 <strong>Écarter</strong> retire une détection de cette liste — pour une recharge déjà
@@ -47,7 +51,10 @@
                             <tr>
                                 <td>
                                     {{ $charge['started_at']->timezone(config('app.timezone'))->format('d/m/Y H:i') }}
-                                    @if ($charge['inferred'])
+                                    @if ($charge['measured'])
+                                        <span class="tag is-primary is-light ml-1"
+                                              title="Session publiée par le boîtier OBD : énergie relevée au compteur de la batterie.">mesurée</span>
+                                    @elseif ($charge['inferred'])
                                         <span class="tag is-warning is-light ml-1"
                                               title="Aucun relevé pendant la charge : elle est déduite d'un niveau qui a monté alors que le compteur kilométrique n'avait pas bougé.">déduite</span>
                                     @endif
@@ -75,7 +82,12 @@
                                         </span>
                                     @else
                                         {{ intdiv($charge['duration_minutes'], 60) }} h {{ str_pad((string) ($charge['duration_minutes'] % 60), 2, '0', STR_PAD_LEFT) }}
-                                        @if ($charge['samples'] < 2)
+                                        @if ($charge['measured'] && $charge['max_power_kw'])
+                                            <span class="has-text-grey is-size-7">
+                                                {{ strtoupper($charge['charging_type'] ?? '') }}
+                                                {{ str_replace('.', ',', (string) round($charge['max_power_kw'], 1)) }} kW max
+                                            </span>
+                                        @elseif ($charge['samples'] < 2)
                                             <span class="tag is-warning is-light ml-1" title="Un seul relevé pendant la charge : les bornes sont approximatives">1 relevé</span>
                                         @endif
                                     @endif

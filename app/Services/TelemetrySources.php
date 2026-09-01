@@ -31,6 +31,7 @@ class TelemetrySources
      */
     private const LABELS = [
         'obdble' => 'Dongle OBD Bluetooth',
+        'xpcardata' => 'Boîtier OBD via XPCarData (MQTT)',
         'api' => 'Cloud constructeur (Enode)',
         'enode' => 'Cloud constructeur (Enode)',
         'car' => 'Cloud constructeur',

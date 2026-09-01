@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Vehicle;
 use App\Services\ChargingCurveRepository;
+use App\Services\MeasuredChargingSessions;
 use App\Services\PendingTelemetryCharges;
 use App\Services\DailyVehicleActivity;
 use App\Services\TelemetrySessionDetector;
@@ -23,6 +24,7 @@ class MyVehicleController extends Controller
         private readonly DailyVehicleActivity $activity,
         private readonly VehicleState $state,
         private readonly TelemetrySources $sources,
+        private readonly MeasuredChargingSessions $measured,
     ) {
     }
 
@@ -101,7 +103,7 @@ class MyVehicleController extends Controller
             // Ce que chaque source remonte reellement : le cloud constructeur
             // et le dongle OBD ne fournissent pas les memes champs.
             'sources' => $this->sources->summarize($history),
-            'sessions' => $this->detector->detect($history, $netCapacity),
+            'sessions' => $vehicle ? $this->sessions($vehicle, $history, $netCapacity, $days) : [],
             // Detections ecartees de la page Recharges : elles restent listees
             // ici, marquees, avec de quoi les remettre en proposition.
             'ignoredCharges' => $vehicle ? PendingTelemetryCharges::ignoredKeys([$vehicle->id]) : [],
@@ -110,6 +112,37 @@ class MyVehicleController extends Controller
             'chartCharging' => $history->pluck('is_charging')->map(fn ($v) => (bool) $v)->values(),
             'pointCount' => $history->count(),
         ]);
+    }
+
+    /**
+     * Recharges mesurees par le boitier et recharges reconstituees, en une
+     * seule liste antichronologique.
+     *
+     * Une meme recharge peut etre vue des deux cotes : la mesuree fait foi, son
+     * energie venant du compteur du BMS et non d'un produit SoC x capacite.
+     *
+     * @param  \Illuminate\Support\Collection<int, \App\Models\VehicleTelemetry>  $history
+     * @return array<int, array<string, mixed>>
+     */
+    private function sessions($vehicle, $history, ?float $netCapacity, int $days): array
+    {
+        $measured = $this->measured->forVehicle($vehicle, $days);
+
+        // Pas de reconnaissance de lieu ici : la page ne l'affiche pas, et
+        // chaque appel interroge la base des bornes.
+        $sessions = $measured->map(fn ($row) => $this->measured->toArray($row, $vehicle, false))->all();
+
+        foreach ($this->detector->detect($history, $netCapacity) as $session) {
+            if ($this->measured->overlaps($measured, $session)) {
+                continue;
+            }
+
+            $sessions[] = $this->measured->normalise($session);
+        }
+
+        usort($sessions, fn ($a, $b) => $b['started_at'] <=> $a['started_at']);
+
+        return $sessions;
     }
 
     /**

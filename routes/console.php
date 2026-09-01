@@ -32,6 +32,15 @@ Schedule::command('telemetry:poll')
     ->withoutOverlapping()
     ->skip($active);
 
+// Le boitier OBD publie sur MQTT bien plus que ce qu'ABRP laisse passer, et
+// surtout des sessions de recharge deja mesurees. Un conteneur mosquitto_sub
+// depose les messages dans storage/app/system ; cette commande les relit a
+// partir du dernier decalage traite. A la minute : la commande consolide
+// elle-meme la rotation des champs, inutile de la lancer plus souvent.
+Schedule::command('telemetry:ingest-mqtt')
+    ->everyMinute()
+    ->withoutOverlapping();
+
 // La base IRVE bouge de quelques centaines de stations par semaine : un import
 // hebdomadaire suffit largement, et il dure plusieurs minutes.
 Schedule::command('irve:import')->weeklyOn(1, '04:30')->withoutOverlapping();
