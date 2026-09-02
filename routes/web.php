@@ -12,6 +12,7 @@ use App\Http\Controllers\FavoriteRouteController;
 use App\Http\Controllers\FuelPriceController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\MyVehicleController;
+use App\Http\Controllers\ObdStatsController;
 use App\Http\Controllers\ReferenceDataController;
 use App\Http\Controllers\UserAdminController;
 use App\Http\Controllers\RoutePlannerController;
@@ -45,6 +46,10 @@ Route::get('/carburants', [FuelPriceController::class, 'index'])->name('fuel-pri
 Route::get('/ma-voiture', [MyVehicleController::class, 'index'])
     ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
     ->name('my-vehicle.index');
+
+Route::get('/ma-voiture/statistiques-obd', [ObdStatsController::class, 'index'])
+    ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
+    ->name('my-vehicle.obd');
 
 Route::get('/deplacements', [TripMapController::class, 'index'])
     ->middleware(\App\Http\Middleware\RequiresTelemetry::class)

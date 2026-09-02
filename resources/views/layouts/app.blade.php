@@ -42,9 +42,20 @@
                     </div>
                 </div>
                 @if (\App\Support\CurrentUser::get()?->hasTelemetry())
-                    <a class="navbar-item {{ request()->routeIs('my-vehicle.*') ? 'is-active' : '' }}" href="{{ route('my-vehicle.index') }}">
-                        @include('layouts._icon', ['name' => 'voiture'])Ma voiture
-                    </a>
+                    <div class="navbar-item has-dropdown is-hoverable">
+                        <a class="navbar-link {{ request()->routeIs('my-vehicle.*') ? 'is-active' : '' }}"
+                           href="{{ route('my-vehicle.index') }}">
+                            @include('layouts._icon', ['name' => 'voiture'])Ma voiture
+                        </a>
+                        <div class="navbar-dropdown">
+                            <a class="navbar-item {{ request()->routeIs('my-vehicle.index') ? 'is-active' : '' }}" href="{{ route('my-vehicle.index') }}">
+                                Vue d'ensemble
+                            </a>
+                            <a class="navbar-item {{ request()->routeIs('my-vehicle.obd') ? 'is-active' : '' }}" href="{{ route('my-vehicle.obd') }}">
+                                Statistiques OBD
+                            </a>
+                        </div>
+                    </div>
                 @endif
                 <a class="navbar-item {{ request()->routeIs('charging-curves.*') ? 'is-active' : '' }}" href="{{ route('charging-curves.index') }}">
                     @include('layouts._icon', ['name' => 'courbe'])Courbe de recharge
