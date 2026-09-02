@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\TelemetryChargingSession;
 use App\Models\Vehicle;
 use App\Models\VehicleTelemetry;
+use App\Services\ChargeThresholdNotifier;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 
@@ -53,11 +54,23 @@ class IngestMqttTelemetry extends Command
     private const CARRY_SECONDS = 300;
 
     /**
-     * Cadence maximale d'ecriture. XPCarData publie toutes les dix a vingt
-     * secondes ; en conserver autant remplirait la table sans rien apprendre,
-     * la courbe fine d'une charge etant de toute facon fournie a part.
+     * Pas d'ecriture quand il se passe quelque chose — charge ou roulage.
+     *
+     * Le broker est a la maison : plus aucun quota ne bride la collecte, seule
+     * compte la taille de la table. A ce rythme un trajet d'une heure coute
+     * 240 lignes, ce qui reste sans commune mesure avec ce qu'apporte la
+     * finesse sur un trajet ou une charge.
      */
-    private const MIN_ROW_INTERVAL = 60;
+    private const ACTIVE_ROW_INTERVAL = 15;
+
+    /**
+     * Pas d'ecriture a l'arret. Une voiture immobile ne raconte rien de plus
+     * en quinze secondes qu'en une minute, et la table servira des annees.
+     */
+    private const IDLE_ROW_INTERVAL = 60;
+
+    /** Vitesse a partir de laquelle on considere que la voiture roule, en km/h. */
+    private const MOVING_KMH = 3.0;
 
     /**
      * Taille au-dela de laquelle le tampon est vide, une fois entierement lu.
@@ -77,7 +90,7 @@ class IngestMqttTelemetry extends Command
         'longitude' => 'lon',
     ];
 
-    public function handle(): int
+    public function handle(ChargeThresholdNotifier $notifier): int
     {
         $path = storage_path(self::INBOX);
 
@@ -132,7 +145,7 @@ class IngestMqttTelemetry extends Command
             }
 
             if ($kind === 'data') {
-                $carried[$clientId] = $this->handleData($vehicle, $payload, $carried[$clientId] ?? [], $counts);
+                $carried[$clientId] = $this->handleData($vehicle, $payload, $carried[$clientId] ?? [], $counts, $notifier);
             } elseif ($kind === 'charging') {
                 $this->handleCharging($vehicle, $payload, $counts);
             }
@@ -159,8 +172,13 @@ class IngestMqttTelemetry extends Command
      * @param  array<string, array{value: mixed, at: string}>  $carried
      * @return array<string, array{value: mixed, at: string}>
      */
-    private function handleData(Vehicle $vehicle, array $payload, array $carried, array &$counts): array
-    {
+    private function handleData(
+        Vehicle $vehicle,
+        array $payload,
+        array $carried,
+        array &$counts,
+        ChargeThresholdNotifier $notifier
+    ): array {
         $recordedAt = $this->timestamp($payload['timestamp'] ?? null);
 
         if ($recordedAt === null) {
@@ -190,11 +208,16 @@ class IngestMqttTelemetry extends Command
         $chargingChanged = $last !== null
             && (bool) $last->is_charging !== (bool) ($payload['isCharging'] ?? false);
 
-        // Une ecriture par minute suffit, sauf a la bascule charge/pas charge :
-        // c'est elle qui borne une session, la manquer decalerait le debut.
+        // Le pas depend de ce que fait la voiture, et la bascule charge/pas
+        // charge passe toujours : c'est elle qui borne une session, la manquer
+        // decalerait le debut.
+        $interval = $this->isActive($payload, $fresh, $last)
+            ? self::ACTIVE_ROW_INTERVAL
+            : self::IDLE_ROW_INTERVAL;
+
         if (! $chargingChanged
             && $last !== null
-            && $last->recorded_at->diffInSeconds($recordedAt) < self::MIN_ROW_INTERVAL) {
+            && $last->recorded_at->diffInSeconds($recordedAt) < $interval) {
             return $carried;
         }
 
@@ -225,10 +248,18 @@ class IngestMqttTelemetry extends Command
             $attributes[$column] = $fresh[$key] ?? null;
         }
 
-        VehicleTelemetry::updateOrCreate(
+        $row = VehicleTelemetry::updateOrCreate(
             ['vehicle_id' => $vehicle->id, 'recorded_at' => $recordedAt],
             $attributes
         );
+
+        // Les alertes de seuil vivaient dans la commande de collecte ABRP :
+        // sans ce rappel, retirer ABRP les aurait supprimees en silence. Le
+        // notifieur compare les paliers dus a ceux delivres, il supporte donc
+        // d'etre appele sur un releve deja connu.
+        foreach ($notifier->notify($vehicle, $row) as $threshold) {
+            $this->info("SMS envoye : {$threshold} % atteint.");
+        }
 
         $counts['data']++;
 
@@ -236,11 +267,42 @@ class IngestMqttTelemetry extends Command
     }
 
     /**
-     * Puissance, ramenee a la convention d'ABRP : negatif = energie entrante.
+     * La voiture est-elle en train de charger ou de rouler ?
+     *
+     * L'odometre compare au dernier releve est le seul signal certain d'un
+     * deplacement ; la vitesse ne sert qu'a reagir des le premier metre, avant
+     * que le kilometrage n'ait eu le temps de changer. Se tromper ici ne coute
+     * qu'une ligne de plus ou de moins, jamais une donnee fausse.
+     *
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $fresh
+     */
+    private function isActive(array $payload, array $fresh, ?VehicleTelemetry $last): bool
+    {
+        if ($payload['isCharging'] ?? false) {
+            return true;
+        }
+
+        $speed = $fresh['speed'] ?? null;
+
+        if ($speed !== null && (float) $speed >= self::MOVING_KMH) {
+            return true;
+        }
+
+        $odometer = $fresh['odometer'] ?? null;
+
+        return $odometer !== null
+            && $last?->odometer !== null
+            && (float) $odometer !== (float) $last->odometer;
+    }
+
+    /**
+     * Puissance, convention retenue : negatif = energie entrante.
      *
      * XPCarData publie une magnitude, sans signe exploitable au repos. Le sens
      * vient donc de l'etat de charge, faute de quoi une recharge s'afficherait
-     * comme une consommation sur la fiche du vehicule.
+     * comme une consommation sur la fiche du vehicule. La convention est celle
+     * des releves historiques, conservee pour que l'affichage reste homogene.
      *
      * @param  array<string, mixed>  $fresh
      */

@@ -2,43 +2,22 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
-use App\Services\VehicleState;
 use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// Cadence adaptative : la voiture ne raconte quelque chose que quand elle roule
-// ou qu'elle charge. Le reste du temps elle ne remonte qu'un point par heure, et
-// interroger l'API plus vite ne ferait que redemander la meme mesure — les
-// releves redondants sont d'ailleurs ecartes par la contrainte d'unicite sur
-// l'horodatage.
+// Le boitier OBD pousse en continu vers le broker de la maison. Rien ne bride
+// plus la cadence : ni quota d'API, ni traitement par lots chez un tiers, et le
+// tampon est un fichier local. On vide donc aux quinze secondes, de quoi tenir
+// le rafraichissement de trente secondes de la page « Ma voiture ».
 //
-// L'etat vient de VehicleState : `is_charging` seul laisserait le roulage a la
-// cadence lente, alors que c'est la ou la donnee bouge le plus.
-$active = fn () => app(VehicleState::class)->anyActive();
-
-Schedule::command('telemetry:poll')
-    ->everyFifteenSeconds()
-    ->withoutOverlapping()
-    ->when($active);
-
-// A l'arret, une fois par minute. `skip` plutot qu'une condition inverse : sans
-// lui, la minute pleine ferait doublon avec le passage a 0 s de la cadence
-// rapide.
-Schedule::command('telemetry:poll')
-    ->everyMinute()
-    ->withoutOverlapping()
-    ->skip($active);
-
-// Le boitier OBD publie sur MQTT bien plus que ce qu'ABRP laisse passer, et
-// surtout des sessions de recharge deja mesurees. Un conteneur mosquitto_sub
-// depose les messages dans storage/app/system ; cette commande les relit a
-// partir du dernier decalage traite. A la minute : la commande consolide
-// elle-meme la rotation des champs, inutile de la lancer plus souvent.
+// La commande decide elle-meme du pas d'ecriture en base — quinze secondes en
+// charge ou en roulage, une minute a l'arret : la vider plus souvent ne remplit
+// pas la table pour autant.
 Schedule::command('telemetry:ingest-mqtt')
-    ->everyMinute()
+    ->everyFifteenSeconds()
     ->withoutOverlapping();
 
 // La base IRVE bouge de quelques centaines de stations par semaine : un import

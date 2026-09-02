@@ -64,7 +64,6 @@ class ReferenceDataController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255', $this->uniqueForUser('vehicles', 'name')],
             'charging_curve' => ['nullable', 'string', Rule::in($curves->slugs())],
-            'abrp_token' => ['nullable', 'string', 'max:255'],
             'mqtt_client_id' => ['nullable', 'string', 'max:255'],
             'kwh_per_100km' => ['nullable', 'numeric', 'min:0'],
             'essence_l_per_100km' => ['nullable', 'numeric', 'min:0'],
@@ -85,7 +84,6 @@ class ReferenceDataController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255', $this->uniqueForUser('vehicles', 'name', $vehicle->id)],
             'charging_curve' => ['nullable', 'string', Rule::in($curves->slugs())],
-            'abrp_token' => ['nullable', 'string', 'max:255'],
             'mqtt_client_id' => ['nullable', 'string', 'max:255'],
             'kwh_per_100km' => ['nullable', 'numeric', 'min:0'],
             'essence_l_per_100km' => ['nullable', 'numeric', 'min:0'],

@@ -20,6 +20,27 @@ class PendingTelemetryCharges
 {
     private const DEFAULT_DAYS = 30;
 
+    /**
+     * Energie en dessous de laquelle une recharge n'est plus proposee a la saisie.
+     *
+     * Depuis que les releves arrivent au quart de minute, le detecteur voit
+     * chaque scintillement de `isCharging` en roulage — de la regeneration au
+     * freinage, pas une recharge : sessions d'une minute, zero kWh, niveau qui
+     * baisse. Le seuil les ecarte sans les effacer, la page laissant toujours
+     * de quoi les reafficher.
+     */
+    public const MIN_KWH = 5.0;
+
+    /**
+     * Une proposition merite-t-elle d'etre saisie ?
+     *
+     * @param  array<string, mixed>  $charge
+     */
+    public static function isSignificant(array $charge): bool
+    {
+        return (float) ($charge['kwh'] ?? 0) >= self::MIN_KWH;
+    }
+
     public function __construct(
         private readonly TelemetrySessionDetector $detector,
         private readonly ChargingCurveRepository $curves,
@@ -58,7 +79,7 @@ class PendingTelemetryCharges
 
         $pending = [];
 
-        $vehicles = Vehicle::whereNotNull('abrp_token')->orderBy('name')->get();
+        $vehicles = Vehicle::whereNotNull('mqtt_client_id')->orderBy('name')->get();
 
         // Ecartees a la main : deja saisies autrement, ou sans interet. Elles
         // restent visibles sur Ma voiture, ou l'on peut les retablir.

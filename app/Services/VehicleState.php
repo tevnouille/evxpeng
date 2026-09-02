@@ -117,23 +117,20 @@ class VehicleState
     /**
      * Etat de la liaison, juge sur la fraicheur des releves.
      *
-     * `is_connected` d'ABRP ne dit pas ce qu'on croit : il repond « une source
-     * est declaree pour ce vehicule », pas « elle emet ». Il reste donc a
-     * « connectée » dongle debranche, ce qui est le contraire de ce que la page
-     * doit montrer. Seule la date du dernier releve repond vraiment.
+     * Aucun drapeau ne repond a cette question. Celui d'ABRP, `is_connected`,
+     * disait « une source est declaree pour ce vehicule », pas « elle emet » :
+     * il restait a « connectée » dongle debranche. Seule la date du dernier
+     * releve repond vraiment, d'ou ce jugement sur la seule fraicheur.
      *
      * @return array{label: string, tag: string, detail: string}|null
      */
-    public function link(?VehicleTelemetry $latest, Collection $history, ?bool $abrpConnected): ?array
+    public function link(?VehicleTelemetry $latest, Collection $history): ?array
     {
         if ($latest === null) {
             return null;
         }
 
         $minutes = (int) $latest->recorded_at->diffInMinutes(now());
-        $declared = $abrpConnected === null
-            ? "ABRP ne se prononce pas."
-            : ('ABRP déclare la source '.($abrpConnected ? 'connectée' : 'déconnectée').'.');
 
         // La source n'est nommee dans le libelle que si la donnee est fraiche :
         // « via obdble » se lit au present, et un releve d'il y a une demi-heure
@@ -149,25 +146,25 @@ class VehicleState
             return [
                 'label' => 'connectée'.$this->sources($latest, $history),
                 'tag' => 'is-success',
-                'detail' => "Relevé il y a {$this->humanize($minutes)}. ".$declared,
+                'detail' => "Relevé il y a {$this->humanize($minutes)}.",
             ];
         }
 
-        // Cadence du cloud constructeur seul : environ un point par heure. La
-        // voiture reste jointe, mais plus rien n'arrive en direct.
+        // Le boitier n'emet que telephone present dans la voiture : un silence
+        // de quelques dizaines de minutes est banal, il ne signale pas une panne.
         if ($minutes <= self::LINK_SLOW_MINUTES) {
             return [
                 'label' => 'au ralenti',
                 'tag' => 'is-warning is-light',
-                'detail' => "Rien depuis {$this->humanize($minutes)} : cadence du cloud constructeur, "
-                    ."ou dongle OBD débranché.".$seen.' '.$declared,
+                'detail' => "Rien depuis {$this->humanize($minutes)} : téléphone absent de la voiture, "
+                    ."XPCarData arrêté, ou dongle débranché.".$seen,
             ];
         }
 
         return [
             'label' => 'silencieuse',
             'tag' => 'is-warning',
-            'detail' => "Rien depuis {$this->humanize($minutes)}.".$seen.' '.$declared,
+            'detail' => "Rien depuis {$this->humanize($minutes)}.".$seen,
         ];
     }
 

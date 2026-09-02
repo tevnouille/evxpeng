@@ -10,7 +10,7 @@ class TripMapController extends Controller
 {
     public function index(Request $request): View
     {
-        $vehicles = Vehicle::whereNotNull('abrp_token')
+        $vehicles = Vehicle::whereNotNull('mqtt_client_id')
             ->orderByDesc('is_default')
             ->orderBy('name')
             ->get();

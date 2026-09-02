@@ -30,12 +30,20 @@ class TelemetrySources
      * vaut un intitule brut qu'une etiquette inventee.
      */
     private const LABELS = [
-        'obdble' => 'Dongle OBD Bluetooth',
         'xpcardata' => 'Boîtier OBD via XPCarData (MQTT)',
-        'api' => 'Cloud constructeur (Enode)',
-        'enode' => 'Cloud constructeur (Enode)',
-        'car' => 'Cloud constructeur',
     ];
+
+    /**
+     * Sources qui ne peuvent plus rien remonter, et qu'il serait trompeur de
+     * presenter comme des sources.
+     *
+     * Toutes passaient par A Better Routeplanner, retire du projet : leurs
+     * releves restent en base et continuent d'alimenter les graphiques, mais
+     * plus aucun chemin ne les alimente. Les laisser ici afficherait une source
+     * « inactive » pendant les deux semaines de la fenetre, sans que rien ne
+     * puisse jamais la reactiver.
+     */
+    private const RETIRED = ['obdble', 'api', 'enode', 'car'];
 
     /**
      * Cles de l'enveloppe : elles decrivent l'appel, pas la voiture.
@@ -52,6 +60,11 @@ class TelemetrySources
 
         foreach ($history as $row) {
             $type = $row->telemetry_type ?? 'inconnue';
+
+            if (in_array($type, self::RETIRED, true)) {
+                continue;
+            }
+
             $telemetry = ($row->raw['telemetry'] ?? null);
 
             if (! isset($sources[$type])) {

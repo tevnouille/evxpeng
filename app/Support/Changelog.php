@@ -41,6 +41,15 @@ class Changelog
 
     private const DATA = [
         [
+            'date' => '2026-09-02',
+            'entries' => [
+                ['type' => 'amelioration', 'text' => "A Better Routeplanner est retiré du projet. Il n'a jamais été une source de données mais un relais : tous les relevés reçus venaient déjà du boîtier OBD, au prix d'un détour par un cloud tiers qui les appauvrissait — ni tension de batterie, ni batterie 12 V, ni températures moteur, ni compteurs d'énergie — et les traitait par lots. Le boîtier publie désormais en direct. Le champ « Token ABRP » disparaît de la fiche véhicule au profit de l'« Identifiant MQTT ». Les relevés déjà collectés sont conservés et continuent d'alimenter les graphiques."],
+                ['type' => 'amelioration', 'text' => "La télémétrie est ingérée toutes les 15 secondes au lieu d'une fois par minute, et un relevé est enregistré toutes les 15 secondes quand la voiture roule ou charge, une fois par minute à l'arrêt. Plus rien ne bride la cadence : le broker est à la maison, il n'y a ni quota d'API ni traitement différé chez un tiers."],
+                ['type' => 'correction', 'text' => "Les recharges détectées de moins de 5 kWh ne sont plus proposées à la saisie. En passant à un relevé toutes les 15 secondes, le détecteur voyait chaque bref passage en charge pendant la conduite — de la récupération au freinage — et en faisait des recharges d'une minute à zéro kWh, parfois avec un niveau qui baissait. Un lien « Tout afficher » les fait revenir : rien n'est supprimé."],
+                ['type' => 'amelioration', 'text' => "L'état de la liaison ne mentionne plus ce qu'annonçait A Better Routeplanner, et la source « Dongle OBD Bluetooth » disparaît du bloc « Sources de données » : elle passait par ce relais, plus rien ne l'alimente."],
+            ],
+        ],
+        [
             'date' => '2026-09-01',
             'entries' => [
                 ['type' => 'nouveaute', 'text' => "La courbe de recharge se remplace peu à peu par celle relevée sur votre propre voiture. Les courbes de référence viennent d'evkx.net : un exemplaire, un jour, sur une borne donnée. Le boîtier OBD, lui, relève la puissance seconde par seconde à chaque charge rapide. Chaque palier de niveau couvert par vos mesures remplace le palier théorique, la référence restant affichée en pointillé sur le graphique et rappelée au survol dans le tableau. Deux garde-fous : les charges en courant alternatif sont ignorées — leur puissance est imposée par la borne, pas par la batterie — et il faut au moins dix paliers couverts avant toute substitution, sinon des mesures éparses créeraient des ruptures dans le calcul des durées."],

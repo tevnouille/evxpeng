@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * demanderait de le retirer explicitement.
  *
  * Hors requete web, `CurrentUser::id()` vaut null et le scope ne s'applique
- * pas : `telemetry:poll` et `irve:import` doivent voir toute la base.
+ * pas : `telemetry:ingest-mqtt` et `irve:import` doivent voir toute la base.
  */
 trait BelongsToUser
 {

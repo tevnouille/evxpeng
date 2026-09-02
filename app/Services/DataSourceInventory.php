@@ -114,7 +114,7 @@ class DataSourceInventory
         // Le scope global limite deja les vehicules au compte courant : les
         // chiffres montres sont ceux de l'utilisateur, pas ceux de tout le monde.
         $vehicleIds = Vehicle::pluck('id');
-        $connected = Vehicle::whereNotNull('abrp_token')->count();
+        $connected = Vehicle::whereNotNull('mqtt_client_id')->count();
 
         $query = VehicleTelemetry::whereIn('vehicle_id', $vehicleIds);
 
@@ -125,14 +125,14 @@ class DataSourceInventory
             'key' => 'telemetrie',
             'icon' => '&#128663;',
             'label' => 'Télémétrie du véhicule',
-            'description' => "Niveau de charge, position et compteur relevés auprès d'A Better Routeplanner pour vos véhicules.",
-            'origin' => 'api.iternio.com',
+            'description' => "Niveau de charge, position, compteur, santé de la batterie et températures, publiés par le boîtier OBD sur le broker MQTT de la maison.",
+            'origin' => 'mqtt (broker local)',
             'volume' => $count > 0 ? number_format($count, 0, ',', ' ').' relevés' : 'aucun relevé',
             'detail' => $connected > 0
-                ? $connected.' véhicule(s) relié(s) à ABRP'
-                : 'aucun véhicule relié : renseignez un token ABRP',
+                ? $connected.' véhicule(s) relié(s) au boîtier'
+                : "aucun véhicule relié : renseignez un identifiant MQTT",
             'updated_at' => $recordedAt ? Carbon::parse($recordedAt) : null,
-            'schedule' => 'toutes les 5 minutes, chaque minute en charge',
+            'schedule' => 'en continu, ingéré toutes les 15 secondes',
             'expected_hours' => 2,
             'shared' => false,
             'background' => false,

@@ -8,11 +8,13 @@
         <p class="notification is-info is-light">Localisation, fournisseur, puissance, coût unitaire et commentaire repris de la recharge du {{ $duplicateFrom->session_date->format('d/m/Y') }}.</p>
     @endif
 
-    @if (! $editing && count($pendingCharges) > 0)
+    @if (! $editing && (count($pendingCharges) > 0 || $hiddenCharges > 0))
         <div class="box">
             <h2 class="title is-5">
                 Recharges détectées non enregistrées
-                <span class="tag is-warning is-medium ml-2">{{ count($pendingCharges) }}</span>
+                @if (count($pendingCharges) > 0)
+                    <span class="tag is-warning is-medium ml-2">{{ count($pendingCharges) }}</span>
+                @endif
             </h2>
             <p class="has-text-grey is-size-7 mb-4">
                 Repérées par la télémétrie du véhicule. Les sessions
@@ -21,6 +23,9 @@
                 calcul qui s'est révélé <strong>29 % sous la valeur mesurée</strong>. Dans les deux cas l'énergie
                 est celle <strong>entrée dans la batterie</strong> : elle reste inférieure à celle facturée à la
                 borne, qui inclut les pertes de charge.
+                Seules les recharges d'au moins {{ (int) \App\Services\PendingTelemetryCharges::MIN_KWH }} kWh
+                sont proposées : en dessous, il s'agit presque toujours de récupération au freinage prise pour
+                une charge, pas d'une recharge à saisir.
                 « Ajouter » pré-remplit le formulaire ci-dessous avec la date, la durée et cette estimation —
                 à vous de corriger la quantité facturée et de compléter le fournisseur et le coût.
                 <strong>Écarter</strong> retire une détection de cette liste — pour une recharge déjà
@@ -33,6 +38,27 @@
                 pas pré-remplie.
             </p>
 
+            @if (count($pendingCharges) === 0)
+                <p class="has-text-grey">
+                    Rien à saisir : les {{ $hiddenCharges }} détection(s) de la période sont toutes
+                    sous le seuil.
+                </p>
+            @endif
+
+            @if ($hiddenCharges > 0 || $showingAllCharges)
+                <p class="has-text-grey is-size-7 mb-4">
+                    @if ($showingAllCharges)
+                        Toutes les détections sont affichées, seuil compris.
+                        <a href="{{ route('charging-sessions.index') }}">Masquer les plus petites</a>
+                    @else
+                        {{ $hiddenCharges }} détection(s) sous
+                        {{ (int) \App\Services\PendingTelemetryCharges::MIN_KWH }} kWh masquée(s).
+                        <a href="{{ route('charging-sessions.index', ['toutes' => 1]) }}">Tout afficher</a>
+                    @endif
+                </p>
+            @endif
+
+            @if (count($pendingCharges) > 0)
             <div class="table-container">
                 <table class="table is-fullwidth is-striped is-hoverable">
                     <thead>
@@ -133,6 +159,7 @@
                     </tbody>
                 </table>
             </div>
+            @endif
         </div>
     @endif
 

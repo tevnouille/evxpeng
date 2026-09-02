@@ -31,7 +31,7 @@ class MyVehicleController extends Controller
     public function index(Request $request): View
     {
         // Seuls les vehicules relies a ABRP ont quelque chose a montrer ici.
-        $vehicles = Vehicle::whereNotNull('abrp_token')
+        $vehicles = Vehicle::whereNotNull('mqtt_client_id')
             ->with('latestTelemetry')
             ->orderByDesc('is_default')
             ->orderBy('name')
@@ -74,6 +74,10 @@ class MyVehicleController extends Controller
             ? $this->activity->forMonth($vehicle, $month, $netCapacity)
             : ['days' => [], 'totals' => []];
 
+        $sessions = $vehicle
+            ? $this->sessions($vehicle, $history, $netCapacity, $days, $request->boolean('toutes'))
+            : ['visibles' => [], 'masquees' => 0];
+
         return view('my_vehicle.index', [
             'months' => $months,
             'month' => $month,
@@ -91,9 +95,9 @@ class MyVehicleController extends Controller
             // Etat reconstruit : `is_charging` seul ne distingue pas le roulage
             // du stationnement, et `is_parked` n'est jamais renseigne.
             'state' => $this->state->describe($telemetry, $history),
-            // Fraicheur des releves plutot que le drapeau d'ABRP : celui-ci
-            // reste a « connectée » dongle debranche.
-            'link' => $this->state->link($telemetry, $history, isset($raw['is_connected']) ? (bool) $raw['is_connected'] : null),
+            // Juge sur la seule fraicheur des releves : aucun drapeau de source ne
+            // dit si la donnee arrive encore.
+            'link' => $this->state->link($telemetry, $history),
             'curve' => $curve,
             'days' => $days,
             'soc' => $soc,
@@ -103,7 +107,9 @@ class MyVehicleController extends Controller
             // Ce que chaque source remonte reellement : le cloud constructeur
             // et le dongle OBD ne fournissent pas les memes champs.
             'sources' => $this->sources->summarize($history),
-            'sessions' => $vehicle ? $this->sessions($vehicle, $history, $netCapacity, $days) : [],
+            'sessions' => $sessions['visibles'],
+            'hiddenSessions' => $sessions['masquees'],
+            'showingAllSessions' => $request->boolean('toutes'),
             // Detections ecartees de la page Recharges : elles restent listees
             // ici, marquees, avec de quoi les remettre en proposition.
             'ignoredCharges' => $vehicle ? PendingTelemetryCharges::ignoredKeys([$vehicle->id]) : [],
@@ -124,7 +130,7 @@ class MyVehicleController extends Controller
      * @param  \Illuminate\Support\Collection<int, \App\Models\VehicleTelemetry>  $history
      * @return array<int, array<string, mixed>>
      */
-    private function sessions($vehicle, $history, ?float $netCapacity, int $days): array
+    private function sessions($vehicle, $history, ?float $netCapacity, int $days, bool $toutes): array
     {
         $measured = $this->measured->forVehicle($vehicle, $days);
 
@@ -142,7 +148,14 @@ class MyVehicleController extends Controller
 
         usort($sessions, fn ($a, $b) => $b['started_at'] <=> $a['started_at']);
 
-        return $sessions;
+        // Meme seuil que la page Recharges : depuis que les releves arrivent au
+        // quart de minute, le detecteur prend chaque scintillement de charge en
+        // roulage pour une session. Rien n'est perdu, seulement replie.
+        $visibles = $toutes
+            ? $sessions
+            : array_values(array_filter($sessions, PendingTelemetryCharges::isSignificant(...)));
+
+        return ['visibles' => $visibles, 'masquees' => count($sessions) - count($visibles)];
     }
 
     /**

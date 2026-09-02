@@ -193,7 +193,7 @@
                 <p class="has-text-grey is-size-7">
                     Relevé <span id="tlm-recorded">{{ $telemetry->recorded_at->diffForHumans() }}
                     ({{ $telemetry->recorded_at->timezone(config('app.timezone'))->format('d/m/Y H:i:s') }})</span>
-                    via A Better Routeplanner.
+                    par le boîtier OBD.
                     <span id="tlm-refreshed"></span>
                     @if ($telemetry->lat && $telemetry->lon)
                         &middot;

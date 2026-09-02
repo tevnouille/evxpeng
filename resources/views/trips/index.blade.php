@@ -7,8 +7,8 @@
 
     @if (! $vehicle)
         <div class="notification is-warning is-light">
-            Aucun véhicule n'est relié à A Better Routeplanner.
-            Renseignez un token ABRP depuis
+            Aucun véhicule n'est relié au boîtier OBD.
+            Renseignez un identifiant MQTT depuis
             <a href="{{ route('reference-data.vehicles.index') }}">Administration &rarr; Véhicules</a>.
         </div>
     @elseif ($days->isEmpty())

@@ -62,7 +62,7 @@ class User extends Authenticatable
     {
         return $this->hasTelemetry ??= Vehicle::withoutGlobalScope('user')
             ->where('user_id', $this->id)
-            ->whereNotNull('abrp_token')
+            ->whereNotNull('mqtt_client_id')
             ->exists();
     }
 

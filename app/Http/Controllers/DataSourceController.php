@@ -89,27 +89,25 @@ class DataSourceController extends Controller
 
     private function refreshTelemetry(): RedirectResponse
     {
-        $vehicles = Vehicle::whereNotNull('abrp_token')->get();
+        $vehicles = Vehicle::whereNotNull('mqtt_client_id')->get();
 
         if ($vehicles->isEmpty()) {
-            return back()->with('error', 'Aucun véhicule relié à ABRP : renseignez un token sur la fiche du véhicule.');
+            return back()->with('error', "Aucun véhicule relié au boîtier : renseignez un identifiant MQTT sur la fiche du véhicule.");
         }
 
         $before = VehicleTelemetry::whereIn('vehicle_id', $vehicles->pluck('id'))->max('recorded_at');
 
-        // Vehicule par vehicule : la commande, lancee sans argument, traiterait
-        // aussi ceux des autres comptes (le scope par utilisateur est neutralise
-        // en console pour que la collecte planifiee les voie tous).
-        foreach ($vehicles as $vehicle) {
-            Artisan::call('telemetry:poll', ['--vehicle' => $vehicle->id]);
-        }
+        // Plus d'appel a un service distant : le boitier pousse en continu vers
+        // le broker, et la commande ne fait que vider le tampon. Le bouton sert
+        // donc a ne pas attendre le prochain passage du planificateur.
+        Artisan::call('telemetry:ingest-mqtt');
 
         $after = VehicleTelemetry::whereIn('vehicle_id', $vehicles->pluck('id'))->max('recorded_at');
 
         // Dire si l'appel a rapporte quelque chose : sans cela, le bouton donne
         // le meme message qu'il ait ramene un point ou rien du tout.
         if ($after === $before) {
-            return back()->with('success', "ABRP a répondu, mais sans relevé plus récent : la voiture n'en a pas remonté de nouveau depuis le dernier.");
+            return back()->with('success', "Rien de nouveau : le boîtier n'a rien publié depuis le dernier relevé. Il n'émet que téléphone présent dans la voiture.");
         }
 
         return back()->with('success', 'Nouveau relevé récupéré : '

@@ -18,6 +18,8 @@ class ChargingSessionController extends Controller
 {
     public function index(Request $request, PendingTelemetryCharges $pending): View
     {
+        $detected = $pending->all();
+
         $duplicateFrom = null;
 
         if ($request->filled('duplicate')) {
@@ -50,7 +52,9 @@ class ChargingSessionController extends Controller
             'editing' => null,
             'duplicateFrom' => $duplicateFrom,
             'prefill' => $prefill,
-            'pendingCharges' => $pending->all(),
+            'pendingCharges' => $this->visibleCharges($detected, $request),
+            'hiddenCharges' => count($detected) - count($this->visibleCharges($detected, $request)),
+            'showingAllCharges' => $request->boolean('toutes'),
         ]);
     }
 
@@ -67,6 +71,8 @@ class ChargingSessionController extends Controller
             'duplicateFrom' => null,
             'prefill' => [],
             'pendingCharges' => [],
+            'hiddenCharges' => 0,
+            'showingAllCharges' => false,
         ]);
     }
 
@@ -177,6 +183,24 @@ class ChargingSessionController extends Controller
         $validated['provider_id'] = $provider->id;
 
         return $validated;
+    }
+
+    /**
+     * Propositions reellement affichees.
+     *
+     * Rien n'est supprime : « toutes » les fait revenir, car un appoint sous le
+     * seuil peut tout de meme avoir ete facture.
+     *
+     * @param  array<int, array<string, mixed>>  $detected
+     * @return array<int, array<string, mixed>>
+     */
+    private function visibleCharges(array $detected, Request $request): array
+    {
+        if ($request->boolean('toutes')) {
+            return $detected;
+        }
+
+        return array_values(array_filter($detected, PendingTelemetryCharges::isSignificant(...)));
     }
 
     /**

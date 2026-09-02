@@ -36,18 +36,9 @@
                         </div>
                     </div>
                 </div>
-                <div class="column is-2">
+                <div class="column is-3">
                     <div class="field">
-                        <label class="label is-small">Token ABRP</label>
-                        <div class="control">
-                            <input class="input" type="text" name="abrp_token" placeholder="token télémétrie">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="column is-1">
-                    <div class="field">
-                        <label class="label is-small">Ident. MQTT</label>
+                        <label class="label is-small">Identifiant MQTT</label>
                         <div class="control">
                             <input class="input" type="text" name="mqtt_client_id" placeholder="ex. xpengG6">
                         </div>
@@ -99,9 +90,9 @@
         un véhicule laissé sans consommation renseignée n'aura simplement pas d'équivalent calculé pour ses recharges.
         La courbe de recharge associée alimente la page
         <a href="{{ route('charging-curves.index') }}">Courbe de recharge</a> ; le véhicule par défaut y est affiché en premier.
-        Le <strong>token ABRP</strong> est facultatif : renseigné, il permet de récupérer automatiquement le niveau de charge
-        du véhicule (Réglages &rarr; Car model &rarr; le véhicule &rarr; Live data &rarr; Generic dans A Better Routeplanner).
-        Il faut aussi que la clé <code>ABRP_API_KEY</code> soit présente dans le <code>.env</code>.
+        L'<strong>identifiant MQTT</strong> est celui que le boîtier OBD utilise pour publier ses relevés
+        (topics <code>vehicles/{identifiant}/…</code>, réglable dans XPCarData). Sans lui, ses messages ne peuvent
+        être rattachés à aucune voiture, et les pages « Ma voiture » et « Déplacements » restent inaccessibles.
     </p>
 
     {{-- Une boite par vehicule plutot qu'un tableau : chaque ligne portait deja
@@ -116,7 +107,7 @@
                         @if ($vehicle->is_default)
                             <span class="tag is-info is-light ml-2">par défaut</span>
                         @endif
-                        @if ($vehicle->abrp_token)
+                        @if ($vehicle->mqtt_client_id)
                             <span class="tag is-success is-light ml-1">télémétrie active</span>
                         @endif
                     </h2>
@@ -158,21 +149,12 @@
                             </div>
                         </div>
                     </div>
-                    <div class="column is-2">
-                        <div class="field">
-                            <label class="label is-small">Token ABRP</label>
-                            <div class="control">
-                                <input class="input" type="text" name="abrp_token" value="{{ $vehicle->abrp_token }}" placeholder="token télémétrie">
-                            </div>
-                        </div>
-                    </div>
-
                     {{-- Identifiant que le boitier publie dans ses topics MQTT
                          (vehicles/{ident}/data) : sans lui ses messages ne se
                          rattachent a aucune voiture. --}}
-                    <div class="column is-1">
+                    <div class="column is-3">
                         <div class="field">
-                            <label class="label is-small">Ident. MQTT</label>
+                            <label class="label is-small">Identifiant MQTT</label>
                             <div class="control">
                                 <input class="input" type="text" name="mqtt_client_id" value="{{ $vehicle->mqtt_client_id }}" placeholder="ex. xpengG6">
                             </div>

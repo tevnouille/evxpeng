@@ -7,8 +7,8 @@
 
     @if (! $vehicle)
         <div class="notification is-warning is-light">
-            Aucun véhicule n'est relié à A Better Routeplanner.
-            Renseignez un token ABRP depuis
+            Aucun véhicule n'est relié au boîtier OBD.
+            Renseignez un identifiant MQTT depuis
             <a href="{{ route('reference-data.vehicles.index') }}">Administration &rarr; Véhicules</a>.
         </div>
     @else
@@ -50,8 +50,8 @@
 
         @if (! $telemetry)
             <div class="notification is-info is-light">
-                Aucun relevé pour l'instant. La récupération tourne toutes les 5 minutes ;
-                lancez <code>php artisan telemetry:poll</code> pour forcer un premier appel.
+                Aucun relevé pour l'instant. Le boîtier publie en continu et l'application vide sa
+                file toutes les 15 secondes ; vérifiez que XPCarData est connecté au dongle et au broker.
             </div>
         @else
             <div class="box">
@@ -125,7 +125,7 @@
                         <div class="column is-3">
                             <p class="heading">Puissance instantanée</p>
                             <p class="title is-3">{{ str_replace('.', ',', (string) round(abs((float) $telemetry->power_kw), 1)) }} kW</p>
-                            {{-- Convention ABRP : negatif = energie entrante (charge ou regeneration). --}}
+                            {{-- Convention du projet : negatif = energie entrante (charge ou regeneration). --}}
                             <p class="has-text-grey is-size-7">
                                 {{ (float) $telemetry->power_kw < 0 ? 'entrante (charge ou régénération)' : 'consommée' }}
                             </p>
@@ -162,9 +162,9 @@
                         <p class="title is-4">
                             <span class="tag {{ $link['tag'] }} is-medium">{{ $link['label'] }}</span>
                         </p>
-                        {{-- Le drapeau is_connected d'ABRP signale qu'une source est
-                             declaree, pas qu'elle emet : il restait a « connectée »
-                             dongle debranche. On juge donc sur la fraicheur. --}}
+                        {{-- L'etat se juge sur la fraicheur des releves. Un drapeau
+                             « source declaree » ne prouve rien : celui d'ABRP restait
+                             a « connectée » dongle debranche, d'ou son abandon. --}}
                         <p class="has-text-grey is-size-7">
                             {!! $link['detail'] !!}
                         </p>
@@ -212,12 +212,13 @@
         <div class="box">
             <h2 class="title is-5">Sources de données</h2>
             <p class="has-text-grey is-size-7 mb-4">
-                ABRP ne renvoie pas un jeu de champs fixe : il rend ce que la source lui a poussé.
-                Le cloud du constructeur, atteint par <strong>Enode</strong>, se limite au niveau de charge
-                et à la position ; un <strong>dongle OBD</strong> y ajoute le compteur, la santé de la batterie,
-                la puissance et les températures — mais il ne remonte que téléphone présent dans la voiture.
-                Une source cesse d'apparaître ici dès qu'elle n'a plus rien envoyé sur la période affichée
-                ({{ $days }} jours).
+                Le boîtier n'interroge pas tous les capteurs en même temps : il les sollicite à tour de
+                rôle, si bien qu'un relevé isolé ne porte qu'une partie des champs. Les valeurs ci-dessous
+                sont donc les <strong>dernières connues</strong> de chaque source, pas forcément du même
+                instant. Une source cesse d'apparaître dès qu'elle n'a plus rien envoyé sur la période
+                affichée ({{ $days }} jours). Les relevés collectés autrefois via A Better Routeplanner
+                restent en base et alimentent toujours les graphiques, mais ce chemin n'existe plus : il
+                n'apparaît donc pas ici.
             </p>
 
             @if (empty($sources))
@@ -289,13 +290,12 @@
         <div class="box">
             <h2 class="title is-5">Relevé brut</h2>
             <p class="has-text-grey is-size-7 mb-4">
-                Réponse complète d'ABRP pour le dernier relevé, sans filtre.
-                Ce que renvoie l'API dépend de la source : le cloud du constructeur seul ne fournit que
-                le niveau de charge et la position, le dongle OBD y ajoute le compteur, la santé de la
-                batterie, la puissance et les températures. Tout champ que la voiture se mettrait à
-                remonter apparaîtra ici automatiquement.
+                Dernier relevé complet, sans filtre. Ce que le boîtier remonte dépend des capteurs
+                qu'il a réussi à interroger : il les sollicite à tour de rôle, si bien qu'un relevé isolé
+                ne porte qu'une partie des champs. Tout champ que la voiture se mettrait à remonter
+                apparaîtra ici automatiquement.
                 @if ($typecode)
-                    Modèle déclaré à ABRP : <code>{{ $typecode }}</code>.
+                    Modèle déclaré : <code>{{ $typecode }}</code>.
                 @endif
             </p>
 
@@ -447,13 +447,27 @@
         <div class="box">
             <h2 class="title is-5">Recharges détectées</h2>
             <p class="has-text-grey is-size-7 mb-4">
-                Reconstituées à partir des relevés : ABRP ne fournit pas de sessions.
+                Publiées par le boîtier, ou reconstituées à partir des relevés quand il n'était pas là.
                 Les sessions <span class="tag is-primary is-light">mesurée</span> viennent du boîtier OBD :
                 l'énergie y est relevée au compteur de la batterie. Les autres sont reconstituées, et leur
                 énergie est <strong>calculée depuis l'écart de niveau de charge</strong> — sur une même
                 recharge, ce calcul s'est révélé <strong>29 % sous la valeur mesurée</strong>. Elle est inférieure à l'énergie <strong>facturée à la borne</strong>,
                 qui inclut les pertes de charge — d'où le bouton de pré-remplissage plutôt qu'un enregistrement direct.
             </p>
+
+            @if ($hiddenSessions > 0 || $showingAllSessions)
+                <p class="has-text-grey is-size-7 mb-4">
+                    @if ($showingAllSessions)
+                        Toutes les détections sont affichées, seuil compris.
+                        <a href="{{ route('my-vehicle.index', ['vehicule' => $vehicle->id, 'jours' => $days]) }}">Masquer les plus petites</a>
+                    @else
+                        {{ $hiddenSessions }} détection(s) sous
+                        {{ (int) \App\Services\PendingTelemetryCharges::MIN_KWH }} kWh masquée(s) —
+                        presque toujours de la récupération au freinage prise pour une charge.
+                        <a href="{{ route('my-vehicle.index', ['vehicule' => $vehicle->id, 'jours' => $days, 'toutes' => 1]) }}">Tout afficher</a>
+                    @endif
+                </p>
+            @endif
 
             @if (empty($sessions))
                 <p class="has-text-grey">Aucune recharge détectée sur les {{ $days }} derniers jours.</p>
@@ -558,9 +572,9 @@
         </div>
 
         <p class="has-text-grey is-size-7">
-            Données fournies par A Better Routeplanner, qui les obtient du cloud du constructeur.
-            Rafraîchissement d'environ une heure véhicule à l'arrêt, plus fréquent en charge :
-            ce n'est pas du temps réel.
+            Données publiées par le boîtier OBD sur le broker MQTT de la maison, sans intermédiaire.
+            Elles n'arrivent que téléphone présent dans la voiture et XPCarData en marche : hors de ces
+            moments, la page montre le dernier état connu, pas l'état actuel.
         </p>
     @endif
 @endsection
