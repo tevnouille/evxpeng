@@ -41,6 +41,12 @@ class Changelog
 
     private const DATA = [
         [
+            'date' => '2026-09-04',
+            'entries' => [
+                ['type' => 'correction', 'text' => "Le bouton « Mettre à jour les informations » de « Ma voiture » renvoyait par moments une erreur 500. La collecte automatique et ce bouton lancent le même traitement, mais sous deux identités différentes : le planificateur écrit son fichier de position de lecture en tant qu'administrateur, le bouton en tant que serveur web. Le premier créait le fichier sans laisser au second le droit de l'écrire. Les droits sont désormais posés à chaque écriture, et si le fichier reste inaccessible le traitement se contente d'un avertissement au lieu d'échouer — aucun relevé n'était perdu dans l'affaire."],
+            ],
+        ],
+        [
             'date' => '2026-09-02',
             'entries' => [
                 ['type' => 'nouveaute', 'text' => "Nouvelle page « Statistiques OBD », dans le menu « Ma voiture ». Un calendrier mensuel colore les journées qui portent des relevés — plus la teinte est soutenue, plus ils sont nombreux — et une case vide reste une information : le boîtier n'émet que téléphone présent dans la voiture. En choisissant une journée, chaque indicateur remonté par le boîtier s'affiche : une courbe pour ce qui se mesure, une liste de changements pour ce qui se lit, comme l'état de charge. Rien n'est écrit en dur — un capteur que le boîtier se mettrait à remonter apparaîtrait de lui-même."],

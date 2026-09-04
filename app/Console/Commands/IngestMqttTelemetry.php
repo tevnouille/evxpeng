@@ -432,7 +432,12 @@ class IngestMqttTelemetry extends Command
      */
     private function readFrom(string $path, int $offset, int $size): array
     {
-        $handle = fopen($path, 'rb');
+        $handle = @fopen($path, 'rb');
+
+        if ($handle === false) {
+            return [[], $offset];
+        }
+
         fseek($handle, $offset);
         $chunk = (string) fread($handle, $size - $offset);
         fclose($handle);
@@ -465,9 +470,14 @@ class IngestMqttTelemetry extends Command
             return $offset;
         }
 
-        $handle = fopen($path, 'r+b');
+        // @ : un echec d'ouverture est ici une possibilite normale — le fichier
+        // appartient a qui l'a cree — et Laravel transforme l'avertissement en
+        // exception, donc en erreur 500 si l'appel vient du web.
+        $handle = @fopen($path, 'r+b');
 
         if ($handle === false) {
+            $this->warn('Tampon non vide : '.$path.' n\'est pas accessible en ecriture.');
+
             return $offset;
         }
 
@@ -515,6 +525,24 @@ class IngestMqttTelemetry extends Command
      */
     private function writeState(array $state): void
     {
-        file_put_contents(storage_path(self::STATE), json_encode($state, JSON_UNESCAPED_SLASHES));
+        $path = storage_path(self::STATE);
+
+        // Deux utilisateurs ecrivent ce fichier : root quand le planificateur
+        // passe par `docker exec`, l'uid 82 de php-fpm quand l'utilisateur
+        // clique « Mettre à jour les informations ». Celui qui cree le fichier
+        // le laisse en 0644, et l'autre se heurte alors a une permission
+        // refusee — cote web, cela donnait une erreur 500.
+        if (@file_put_contents($path, json_encode($state, JSON_UNESCAPED_SLASHES)) === false) {
+            // Ne pas interrompre : les releves de ce passage sont deja
+            // enregistres. Seul le decalage n'avance pas, et le passage suivant
+            // relira ce qui l'a deja ete — les ecritures sont idempotentes.
+            $this->warn('Decalage non conserve : '.$path.' n\'est pas accessible en ecriture.');
+
+            return;
+        }
+
+        // Le groupe est celui du repertoire (setgid) : lui ouvrir l'ecriture
+        // suffit pour que les deux utilisateurs se relaient.
+        @chmod($path, 0664);
     }
 }
