@@ -29,10 +29,11 @@
             background: #fff; color: #1a1a1a;
         }
         header {
-            display: flex; align-items: baseline; justify-content: space-between;
-            gap: 1rem; margin-bottom: .8vh; flex: 0 0 auto;
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 2vw; margin-bottom: .8vh; flex: 0 0 auto;
         }
         h1 { font-size: clamp(.9rem, 4vh, 1.8rem); margin: 0; }
+        .droite { display: flex; align-items: center; gap: 1.5vw; }
         .etat {
             font-size: clamp(.7rem, 2.4vh, 1rem); font-weight: 600;
             padding: .25em .8em; border-radius: 999px; white-space: nowrap;
@@ -41,7 +42,20 @@
         .etat.route    { background: #d9ecfb; color: #14568a; }
         .etat.arret    { background: #ececec; color: #4a4a4a; }
         .etat.silence  { background: #fdf0d5; color: #7a5200; }
-        /* Le tableau occupe la hauteur restante et y repartit ses lignes. */
+        /* Cibles tactiles : on les vise d'un doigt, en conduisant si besoin. */
+        .onglets { display: flex; gap: 1vw; }
+        .onglets button {
+            font: inherit; font-size: clamp(.75rem, 2.6vh, 1.05rem); font-weight: 600;
+            padding: .5em 1.4em; border: 1px solid #d0d0d0; border-radius: 999px;
+            background: #f4f4f4; color: #4a4a4a; cursor: pointer;
+        }
+        .onglets button[aria-current="page"] { background: #2ea36b; border-color: #2ea36b; color: #fff; }
+        .fraicheur {
+            flex: 0 0 auto; margin: 0 0 2vh;
+            font-size: clamp(.55rem, 1.8vh, .85rem); color: #6b6b6b;
+        }
+        .vue { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+        .vue[hidden] { display: none; }
         /*
          * Trois colonnes plutot qu'un `auto-fit` : sur un ecran large, celui-ci
          * alignait six tuiles sur une seule rangee et en laissait une seule sur
@@ -67,14 +81,27 @@
             background: #e6e6e6; overflow: hidden; margin-top: .5vh;
         }
         .jauge span { display: block; height: 100%; background: #2ea36b; }
-        .fraicheur {
-            flex: 0 0 auto; margin: 0 0 2vh;
-            font-size: clamp(.55rem, 1.8vh, .85rem); color: #6b6b6b;
+        /* Le tableau occupe la hauteur libre et y repartit ses lignes. */
+        table { flex: 1 1 auto; width: 100%; border-collapse: collapse; }
+        th, td { text-align: right; padding: .3em .5em; }
+        th:first-child, td:first-child { text-align: left; }
+        thead th {
+            font-size: clamp(.55rem, 1.8vh, .85rem); text-transform: uppercase;
+            letter-spacing: .06em; color: #6b6b6b; font-weight: 600;
+            border-bottom: 1px solid #dcdcdc;
         }
+        tbody td { font-size: clamp(.85rem, 3.6vh, 1.5rem); font-weight: 600; }
+        tbody td:first-child { font-weight: 700; }
+        tbody tr + tr td { border-top: 1px solid #efefef; }
+        .atteint { color: #2ea36b; font-weight: 600; }
+        .inconnu { color: #9a9a9a; font-weight: 400; }
         @media (prefers-color-scheme: dark) {
             body { background: #16181c; color: #f0f0f0; }
-            .titre, .note, .fraicheur, .valeur .unite { color: #a0a4ab; }
+            .titre, .note, .fraicheur, .valeur .unite, thead th { color: #a0a4ab; }
             .jauge { background: #2c3037; }
+            .onglets button { background: #24272d; border-color: #3a3f47; color: #d5d8dd; }
+            thead th { border-bottom-color: #3a3f47; }
+            tbody tr + tr td { border-top-color: #24272d; }
         }
     </style>
 </head>
@@ -85,10 +112,23 @@
 @else
     @php
         $classes = ['charging' => 'charge', 'driving' => 'route', 'parked' => 'arret', 'offline' => 'silence'];
+        $duree = function (?int $secondes): string {
+            if ($secondes === null) { return ''; }
+            $minutes = (int) round($secondes / 60);
+            return $minutes < 60
+                ? $minutes . ' min'
+                : intdiv($minutes, 60) . ' h ' . str_pad((string) ($minutes % 60), 2, '0', STR_PAD_LEFT);
+        };
     @endphp
     <header>
         <h1>{{ $vehicle->name }}</h1>
-        <span class="etat {{ $classes[$state['state']] ?? 'arret' }}">{{ $state['label'] }}</span>
+        <div class="droite">
+            <span class="etat {{ $classes[$state['state']] ?? 'arret' }}">{{ $state['label'] }}</span>
+            <div class="onglets">
+                <button type="button" data-vue="info" aria-current="page">Info</button>
+                <button type="button" data-vue="recharge">Recharge</button>
+            </div>
+        </div>
     </header>
 
     {{-- Sous le titre et non en pied de page : sur un ecran qu'on ne peut ni
@@ -100,55 +140,123 @@
         &middot; page réactualisée toutes les {{ $refreshSeconds }} s
     </p>
 
-    <div class="grille">
-        <div>
-            <p class="titre">Batterie</p>
-            <p class="valeur">
-                {{ $soc !== null ? rtrim(rtrim(number_format($soc, 1, ',', ' '), '0'), ',') : '—' }}<span class="unite"> %</span>
-            </p>
-            <div class="jauge"><span style="width: {{ max(0, min(100, (int) round($soc ?? 0))) }}%"></span></div>
-        </div>
+    <div class="vue" id="vue-info">
+        <div class="grille">
+            <div>
+                <p class="titre">Batterie</p>
+                <p class="valeur">
+                    {{ $soc !== null ? rtrim(rtrim(number_format($soc, 1, ',', ' '), '0'), ',') : '—' }}<span class="unite"> %</span>
+                </p>
+                <div class="jauge"><span style="width: {{ max(0, min(100, (int) round($soc ?? 0))) }}%"></span></div>
+            </div>
 
-        <div>
-            <p class="titre">Autonomie estimée</p>
-            <p class="valeur">{{ $rangeKm !== null ? $rangeKm : '—' }}<span class="unite"> km</span></p>
-            @if ($availableKwh !== null)
-                <p class="note">{{ str_replace('.', ',', (string) $availableKwh) }} kWh disponibles</p>
+            <div>
+                <p class="titre">Autonomie estimée</p>
+                <p class="valeur">{{ $rangeKm !== null ? $rangeKm : '—' }}<span class="unite"> km</span></p>
+                @if ($availableKwh !== null)
+                    <p class="note">{{ str_replace('.', ',', (string) $availableKwh) }} kWh disponibles</p>
+                @endif
+            </div>
+
+            @if ($telemetry->odometer !== null)
+                <div>
+                    <p class="titre">Compteur</p>
+                    <p class="moyenne">{{ number_format($telemetry->odometer, 0, ',', ' ') }} km</p>
+                </div>
+            @endif
+
+            @if ($telemetry->soh !== null)
+                <div>
+                    <p class="titre">Santé batterie</p>
+                    <p class="moyenne">{{ str_replace('.', ',', rtrim(rtrim((string) $telemetry->soh, '0'), '.')) }} %</p>
+                </div>
+            @endif
+
+            @if ($telemetry->power_kw !== null)
+                <div>
+                    <p class="titre">Puissance</p>
+                    <p class="moyenne">{{ str_replace('.', ',', (string) round(abs((float) $telemetry->power_kw), 1)) }} kW</p>
+                    <p class="note">{{ (float) $telemetry->power_kw < 0 ? 'entrante' : 'consommée' }}</p>
+                </div>
+            @endif
+
+            @if ($telemetry->batt_temp !== null)
+                <div>
+                    <p class="titre">Température batterie</p>
+                    <p class="moyenne">{{ str_replace('.', ',', rtrim(rtrim((string) $telemetry->batt_temp, '0'), '.')) }} °C</p>
+                </div>
             @endif
         </div>
+    </div>
 
-        @if ($telemetry->odometer !== null)
-            <div>
-                <p class="titre">Compteur</p>
-                <p class="moyenne">{{ number_format($telemetry->odometer, 0, ',', ' ') }} km</p>
-            </div>
-        @endif
-
-        @if ($telemetry->soh !== null)
-            <div>
-                <p class="titre">Santé batterie</p>
-                <p class="moyenne">{{ str_replace('.', ',', rtrim(rtrim((string) $telemetry->soh, '0'), '.')) }} %</p>
-            </div>
-        @endif
-
-        @if ($telemetry->power_kw !== null)
-            <div>
-                <p class="titre">Puissance</p>
-                <p class="moyenne">{{ str_replace('.', ',', (string) round(abs((float) $telemetry->power_kw), 1)) }} kW</p>
-                <p class="note">{{ (float) $telemetry->power_kw < 0 ? 'entrante' : 'consommée' }}</p>
-            </div>
-        @endif
-
-        @if ($telemetry->batt_temp !== null)
-            <div>
-                <p class="titre">Température batterie</p>
-                <p class="moyenne">{{ str_replace('.', ',', rtrim(rtrim((string) $telemetry->batt_temp, '0'), '.')) }} °C</p>
-            </div>
+    <div class="vue" id="vue-recharge" hidden>
+        @if (empty($recharges))
+            <p class="note">Temps de charge indisponible : aucune courbe de recharge associée au véhicule.</p>
+        @else
+            <table>
+                <thead>
+                    <tr>
+                        <th>Borne</th>
+                        @foreach ($cibles as $cible)
+                            <th>→ {{ $cible }} %</th>
+                        @endforeach
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($recharges as $ligne)
+                        <tr>
+                            <td>{{ str_replace('.', ',', rtrim(rtrim(number_format($ligne['puissance'], 1, '.', ''), '0'), '.')) }} kW</td>
+                            @foreach ($cibles as $cible)
+                                @php($secondes = $ligne['durees'][$cible] ?? null)
+                                <td>
+                                    @if ($soc !== null && $soc >= $cible)
+                                        <span class="atteint">atteint</span>
+                                    @elseif ($secondes === null)
+                                        <span class="inconnu">—</span>
+                                    @else
+                                        {{ $duree($secondes) }}
+                                    @endif
+                                </td>
+                            @endforeach
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+            <p class="note">
+                Depuis {{ $soc !== null ? rtrim(rtrim(number_format($soc, 1, ',', ' '), '0'), ',') : '—' }} %,
+                courbe du véhicule bridée à la puissance de la borne. Estimation : la puissance réelle dépend
+                aussi de la température de la batterie.
+            </p>
         @endif
     </div>
 @endif
 
 <script>
+    // Les deux vues sont rendues d'avance et permutees ici : sur un reseau
+    // mobile, un aller-retour serveur pour changer d'onglet se sentirait.
+    (function () {
+        var boutons = document.querySelectorAll('.onglets button');
+
+        function afficher(nom) {
+            for (var i = 0; i < boutons.length; i++) {
+                var actif = boutons[i].dataset.vue === nom;
+                boutons[i].setAttribute('aria-current', actif ? 'page' : 'false');
+                var vue = document.getElementById('vue-' + boutons[i].dataset.vue);
+                if (vue) { vue.hidden = !actif; }
+            }
+            // L'ancre survit au rechargement automatique : rester sur l'onglet
+            // Recharge pendant qu'on branche la voiture n'aurait aucun sens
+            // sinon.
+            if (window.location.hash !== '#' + nom) { window.location.hash = nom; }
+        }
+
+        for (var i = 0; i < boutons.length; i++) {
+            boutons[i].addEventListener('click', function (e) { afficher(e.currentTarget.dataset.vue); });
+        }
+
+        afficher(window.location.hash === '#recharge' ? 'recharge' : 'info');
+    })();
+
     setTimeout(function () { window.location.reload(); }, {{ $refreshSeconds }} * 1000);
 </script>
 </body>

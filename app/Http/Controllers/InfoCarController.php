@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Vehicle;
+use App\Services\ChargeCurveSimulator;
 use App\Services\ChargingCurveRepository;
 use App\Services\VehicleState;
 use Illuminate\View\View;
@@ -24,7 +25,49 @@ class InfoCarController extends Controller
     public function __construct(
         private readonly VehicleState $state,
         private readonly ChargingCurveRepository $curves,
+        private readonly ChargeCurveSimulator $simulator,
     ) {
+    }
+
+    /** Puissances de borne proposees, en kW. */
+    private const PUISSANCES = [3.6, 7.4, 11.0, 150.0, 300.0];
+
+    /** Niveaux vises. */
+    private const CIBLES = [80, 90, 100];
+
+    /**
+     * Temps de charge depuis le niveau actuel, par puissance de borne.
+     *
+     * Le calcul est celui du planificateur et de la page « Courbe de recharge »
+     * — un seul modele de bridage dans l'application, sans quoi deux formules
+     * finiraient par diverger.
+     *
+     * @param  array<string, mixed>|null  $courbe
+     * @return array<int, array<string, mixed>>
+     */
+    private function recharges(?array $courbe, ?float $soc): array
+    {
+        if ($courbe === null || $soc === null) {
+            return [];
+        }
+
+        $lignes = [];
+
+        foreach (self::PUISSANCES as $puissance) {
+            $durees = [];
+
+            foreach (self::CIBLES as $cible) {
+                // Un niveau deja atteint ne se recharge pas : on le dit plutot
+                // que d'afficher un zero qui se lirait comme « instantane ».
+                $durees[$cible] = $soc >= $cible
+                    ? null
+                    : $this->simulator->duration($courbe, $soc, (float) $cible, $puissance);
+            }
+
+            $lignes[] = ['puissance' => $puissance, 'durees' => $durees];
+        }
+
+        return $lignes;
     }
 
     public function show(): View
@@ -57,6 +100,10 @@ class InfoCarController extends Controller
 
         $state = $this->state->describe($telemetry, $history);
 
+        // La courbe passe par forVehicle() : les paliers releves sur cette
+        // voiture priment sur la reference du modele quand ils existent.
+        $courbe = $this->curves->forVehicle($vehicle);
+
         return view('info_car', [
             'vehicle' => $vehicle,
             'telemetry' => $telemetry,
@@ -67,6 +114,8 @@ class InfoCarController extends Controller
             'rangeKm' => $rangeKm,
             'refreshSeconds' => VehicleState::REFRESH_SECONDS[$state['state'] ?? VehicleState::PARKED]
                 ?? VehicleState::REFRESH_SECONDS[VehicleState::PARKED],
+            'cibles' => self::CIBLES,
+            'recharges' => $this->recharges($courbe, $soc),
         ]);
     }
 }
