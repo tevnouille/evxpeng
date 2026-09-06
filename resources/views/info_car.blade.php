@@ -80,9 +80,30 @@
             width: 100%; height: clamp(.25rem, 1vh, .5rem); border-radius: 999px;
             background: #e6e6e6; overflow: hidden; margin-top: .5vh;
         }
-        .jauge span { display: block; height: 100%; background: #2ea36b; }
-        /* Rayures defilantes pendant la charge seulement : l'energie qui
-           rentre, pas un decor permanent qui distrairait a l'arret. */
+        /* Degrade qui traverse la barre en continu, meme a valeur fixe : elle
+           reste vivante sans rien affirmer de faux. Un simple deplacement de
+           background-position, ce que tout moteur sait faire depuis longtemps —
+           le navigateur embarque de la voiture n'a pas a etre recent. */
+        .jauge span {
+            display: block; height: 100%;
+            background-color: #2ea36b;
+            background-image: linear-gradient(
+                100deg,
+                #2ea36b 0%, #2ea36b 38%,
+                #7ee2b0 50%,
+                #2ea36b 62%, #2ea36b 100%
+            );
+            background-size: 300% 100%;
+            background-repeat: no-repeat;
+            animation: jauge-flux 3.2s linear infinite;
+        }
+        @keyframes jauge-flux {
+            from { background-position: 200% 0; }
+            to   { background-position: -100% 0; }
+        }
+        /* En charge, les rayures remplacent le degrade : elles vont plus vite et
+           portent une information de plus — l'energie entre. Elles ecrasent les
+           trois proprietes du degrade, aucune superposition a gerer. */
         .jauge span.charge {
             background-image: linear-gradient(
                 135deg,
@@ -98,7 +119,7 @@
             to   { background-position: 1.1em 0; }
         }
         @media (prefers-reduced-motion: reduce) {
-            .jauge span.charge { animation: none; }
+            .jauge span, .jauge span.charge { animation: none; }
         }
         /* Le tableau occupe la hauteur libre et y repartit ses lignes. */
         table { flex: 1 1 auto; width: 100%; border-collapse: collapse; }

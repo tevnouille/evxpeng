@@ -200,3 +200,52 @@ body {
 .curve-compare {
     max-height: 260px;
 }
+
+
+/*
+ * Jauge de batterie : degrade qui traverse la partie remplie.
+ *
+ * L'element reste un <progress> — c'est lui qui porte le sens et l'accessibilite ;
+ * seule la partie remplie est repeinte. Le degrade fait deux fois la largeur de
+ * la barre et se deplace, ce qui donne un flux continu sans que la valeur bouge.
+ *
+ * Les deux pseudo-elements sont ecrits separement, et c est indispensable : un
+ * navigateur qui ne connait pas l un des deux selecteurs jette la regle entiere
+ * s ils sont groupes, et l animation disparaitrait ailleurs que chez lui.
+ */
+@keyframes batterie-flux {
+    from { background-position: 200% 0; }
+    to   { background-position: -100% 0; }
+}
+
+.progress.batterie::-webkit-progress-value {
+    background-image: linear-gradient(
+        100deg,
+        #2ea36b 0%, #2ea36b 38%,
+        #7ee2b0 50%,
+        #2ea36b 62%, #2ea36b 100%
+    );
+    background-size: 300% 100%;
+    background-repeat: no-repeat;
+    animation: batterie-flux 3.2s linear infinite;
+}
+
+.progress.batterie::-moz-progress-bar {
+    background-image: linear-gradient(
+        100deg,
+        #2ea36b 0%, #2ea36b 38%,
+        #7ee2b0 50%,
+        #2ea36b 62%, #2ea36b 100%
+    );
+    background-size: 300% 100%;
+    background-repeat: no-repeat;
+    animation: batterie-flux 3.2s linear infinite;
+}
+
+/* Une barre trop fine ne laisse rien voir du degrade. */
+.progress.batterie { height: .85rem; }
+
+@media (prefers-reduced-motion: reduce) {
+    .progress.batterie::-webkit-progress-value { animation: none; }
+    .progress.batterie::-moz-progress-bar { animation: none; }
+}

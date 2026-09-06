@@ -67,7 +67,7 @@
                     <div class="column is-3">
                         <p class="heading">Batterie</p>
                         <p class="title is-1">{{ $soc !== null ? rtrim(rtrim(number_format($soc, 1, ',', ' '), '0'), ',') . ' %' : '—' }}</p>
-                        <progress class="progress is-primary" value="{{ $soc ?? 0 }}" max="100"></progress>
+                        <progress class="progress is-primary batterie" value="{{ $soc ?? 0 }}" max="100"></progress>
                     </div>
 
                     <div class="column is-3">
