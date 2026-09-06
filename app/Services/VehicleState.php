@@ -38,6 +38,22 @@ class VehicleState
      */
     private const MOVEMENT_WINDOW_MINUTES = 10;
 
+    /**
+     * Cadence de rafraichissement de la page « Ma voiture », en secondes.
+     *
+     * On regarde la page pour des raisons differentes selon l'etat : suivre une
+     * charge se fait au rythme ou la puissance evolue, un trajet au rythme ou
+     * les kilometres tombent, et une voiture a l'arret n'a rien a raconter.
+     * Recharger plus vite que la collecte n'apporterait rien : la cadence de
+     * `telemetry:ingest-mqtt` suit la meme regle.
+     */
+    public const REFRESH_SECONDS = [
+        self::CHARGING => 5,
+        self::DRIVING => 20,
+        self::PARKED => 60,
+        self::OFFLINE => 60,
+    ];
+
     /** Vitesse au-dela de laquelle la voiture roule, en km/h. */
     private const MOVING_KMH = 3.0;
 
@@ -46,6 +62,9 @@ class VehicleState
      * present : une voiture a l'arret peut rester des heures sans emettre.
      */
     private const OFFLINE_MINUTES = 45;
+
+    /** Duree pendant laquelle une charge reste reputee en cours. */
+    private const CHARGING_WINDOW_MINUTES = 20;
 
     /** En dessous, la donnee arrive assez vite pour etre dite « en direct ». */
     private const LINK_LIVE_MINUTES = 15;
@@ -199,15 +218,18 @@ class VehicleState
      * Sert a cadencer la collecte : la question se pose toutes les 15 s, elle
      * reste donc une requete d'agregat et ne charge aucun releve.
      */
+    public function anyCharging(): bool
+    {
+        return VehicleTelemetry::where('is_charging', true)
+            ->where('recorded_at', '>=', now()->subMinutes(self::CHARGING_WINDOW_MINUTES))
+            ->exists();
+    }
+
     public function anyActive(): bool
     {
         // Une charge reste vraie meme si le dernier point date de quelques
         // minutes : la voiture n'emet pas a chaque seconde.
-        $charging = VehicleTelemetry::where('is_charging', true)
-            ->where('recorded_at', '>=', now()->subMinutes(20))
-            ->exists();
-
-        if ($charging) {
+        if ($this->anyCharging()) {
             return true;
         }
 

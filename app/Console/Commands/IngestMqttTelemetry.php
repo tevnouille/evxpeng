@@ -6,6 +6,7 @@ use App\Models\TelemetryChargingSession;
 use App\Models\Vehicle;
 use App\Models\VehicleTelemetry;
 use App\Services\ChargeThresholdNotifier;
+use App\Services\ChargingCurveRepository;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 
@@ -54,14 +55,20 @@ class IngestMqttTelemetry extends Command
     private const CARRY_SECONDS = 300;
 
     /**
-     * Pas d'ecriture quand il se passe quelque chose — charge ou roulage.
+     * Pas d'ecriture en roulage.
      *
      * Le broker est a la maison : plus aucun quota ne bride la collecte, seule
      * compte la taille de la table. A ce rythme un trajet d'une heure coute
      * 240 lignes, ce qui reste sans commune mesure avec ce qu'apporte la
      * finesse sur un trajet ou une charge.
      */
-    private const ACTIVE_ROW_INTERVAL = 15;
+    private const DRIVING_ROW_INTERVAL = 15;
+
+    /**
+     * En charge, la puissance evolue vite et c'est precisement ce qu'on
+     * regarde : le pas suit celui du rechargement de la page.
+     */
+    private const CHARGING_ROW_INTERVAL = 5;
 
     /**
      * Pas d'ecriture a l'arret. Une voiture immobile ne raconte rien de plus
@@ -80,6 +87,23 @@ class IngestMqttTelemetry extends Command
     private const TRUNCATE_BYTES = 33554432;
 
     /** Correspondance directe entre champs XPCarData et colonnes. */
+    /**
+     * Marge acceptee entre l'energie annoncee par le compteur du BMS et celle
+     * que le gain de niveau permet.
+     *
+     * Le facteur est genereux — le compteur voit ce que le calcul par SoC
+     * ignore, et un petit gain de niveau se mesure mal — mais il ecarte les
+     * lectures franchement fausses : une session a 17 124 kWh pour 1,2 point de
+     * batterie a ete observee, le PID `cumulativeCharge` ayant renvoye une
+     * valeur absurde.
+     */
+    private const ENERGY_PLAUSIBILITY_FACTOR = 2.0;
+
+    /** Tolerance absolue, pour les gains de niveau trop faibles pour borner. */
+    private const ENERGY_PLAUSIBILITY_SLACK = 3.0;
+
+    private ?ChargingCurveRepository $curves = null;
+
     private const FIELDS = [
         'stateOfCharge' => 'soc',
         'stateOfHealth' => 'soh',
@@ -90,8 +114,10 @@ class IngestMqttTelemetry extends Command
         'longitude' => 'lon',
     ];
 
-    public function handle(ChargeThresholdNotifier $notifier): int
+    public function handle(ChargeThresholdNotifier $notifier, ChargingCurveRepository $curves): int
     {
+        $this->curves = $curves;
+
         $path = storage_path(self::INBOX);
 
         if (! is_readable($path)) {
@@ -211,9 +237,13 @@ class IngestMqttTelemetry extends Command
         // Le pas depend de ce que fait la voiture, et la bascule charge/pas
         // charge passe toujours : c'est elle qui borne une session, la manquer
         // decalerait le debut.
-        $interval = $this->isActive($payload, $fresh, $last)
-            ? self::ACTIVE_ROW_INTERVAL
-            : self::IDLE_ROW_INTERVAL;
+        if ($payload['isCharging'] ?? false) {
+            $interval = self::CHARGING_ROW_INTERVAL;
+        } elseif ($this->isActive($payload, $fresh, $last)) {
+            $interval = self::DRIVING_ROW_INTERVAL;
+        } else {
+            $interval = self::IDLE_ROW_INTERVAL;
+        }
 
         if (! $chargingChanged
             && $last !== null
@@ -373,7 +403,7 @@ class IngestMqttTelemetry extends Command
                 'duration_seconds' => $payload['durationSeconds'] ?? null,
                 'soc_start' => $payload['startSoc'] ?? null,
                 'soc_end' => $payload['endSoc'] ?? null,
-                'energy_kwh' => $payload['energyAddedKwh'] ?? null,
+                'energy_kwh' => $this->plausibleEnergy($vehicle, $payload),
                 'energy_ah' => $payload['energyAddedAh'] ?? null,
                 'odometer_start' => $payload['startOdometer'] ?? null,
                 'odometer_end' => $payload['endOdometer'] ?? null,
@@ -387,6 +417,49 @@ class IngestMqttTelemetry extends Command
         );
 
         $counts['charging']++;
+    }
+
+    /**
+     * Energie de la session, ecartee si le compteur a deraille.
+     *
+     * On ne corrige pas la valeur — on ne saurait pas vers quoi — on la laisse
+     * vide : mieux vaut une recharge sans energie, que l'utilisateur completera,
+     * qu'un chiffre faux qui partirait dans les statistiques et sur la courbe.
+     * La charge brute reste dans `raw` pour qui voudrait enqueter.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function plausibleEnergy(Vehicle $vehicle, array $payload): ?float
+    {
+        $energy = $payload['energyAddedKwh'] ?? null;
+
+        if ($energy === null) {
+            return null;
+        }
+
+        $energy = (float) $energy;
+        $gained = (float) ($payload['socGained'] ?? 0);
+        $curve = $this->curves?->find($vehicle->charging_curve);
+        $capacity = $curve['battery_net_kwh'] ?? null;
+
+        if ($capacity === null || $gained <= 0) {
+            return $energy;
+        }
+
+        $ceiling = $gained / 100 * (float) $capacity * self::ENERGY_PLAUSIBILITY_FACTOR
+            + self::ENERGY_PLAUSIBILITY_SLACK;
+
+        if ($energy > $ceiling) {
+            $this->warn(sprintf(
+                'Energie ecartee : %s kWh annonces pour %s point(s) de batterie.',
+                round($energy, 1),
+                round($gained, 1)
+            ));
+
+            return null;
+        }
+
+        return $energy;
     }
 
     /**

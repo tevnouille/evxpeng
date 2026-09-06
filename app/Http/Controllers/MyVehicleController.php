@@ -78,6 +78,10 @@ class MyVehicleController extends Controller
             ? $this->sessions($vehicle, $history, $netCapacity, $days, $request->boolean('toutes'))
             : ['visibles' => [], 'masquees' => 0];
 
+        // Etat reconstruit : `is_charging` seul ne distingue pas le roulage du
+        // stationnement, et `is_parked` n'est jamais renseigne.
+        $state = $this->state->describe($telemetry, $history);
+
         return view('my_vehicle.index', [
             'months' => $months,
             'month' => $month,
@@ -94,10 +98,15 @@ class MyVehicleController extends Controller
             'telemetry' => $telemetry,
             // Etat reconstruit : `is_charging` seul ne distingue pas le roulage
             // du stationnement, et `is_parked` n'est jamais renseigne.
-            'state' => $this->state->describe($telemetry, $history),
+            'state' => $state,
             // Juge sur la seule fraicheur des releves : aucun drapeau de source ne
             // dit si la donnee arrive encore.
             'link' => $this->state->link($telemetry, $history),
+            // Cadence de rechargement de la page : suivre une charge se fait au
+            // rythme ou la puissance evolue, une voiture a l'arret n'a rien a
+            // raconter. La table vit dans VehicleState, aux cotes des etats.
+            'refreshSeconds' => VehicleState::REFRESH_SECONDS[$state['state'] ?? VehicleState::PARKED]
+                ?? VehicleState::REFRESH_SECONDS[VehicleState::PARKED],
             'curve' => $curve,
             'days' => $days,
             'soc' => $soc,

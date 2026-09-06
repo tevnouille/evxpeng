@@ -42,8 +42,9 @@
                 </form>
             </div>
             <div class="level-right">
-                <span class="has-text-grey is-size-7" id="auto-refresh-status" data-auto-refresh="30">
-                    Actualisation automatique dans 30 s
+                <span class="has-text-grey is-size-7" id="auto-refresh-status" data-auto-refresh="{{ $refreshSeconds }}"
+                      title="La cadence suit l'état : 5 s en charge, 20 s en route, 60 s à l'arrêt.">
+                    Actualisation automatique dans {{ $refreshSeconds }} s
                 </span>
             </div>
         </div>

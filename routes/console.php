@@ -2,6 +2,7 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use App\Services\VehicleState;
 use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
@@ -16,9 +17,22 @@ Artisan::command('inspire', function () {
 // La commande decide elle-meme du pas d'ecriture en base — quinze secondes en
 // charge ou en roulage, une minute a l'arret : la vider plus souvent ne remplit
 // pas la table pour autant.
+// En charge, on vide le tampon toutes les cinq secondes : c'est la cadence a
+// laquelle la page « Ma voiture » se recharge, et rafraichir l'ecran plus vite
+// que la collecte ne montrerait rien de neuf.
+$charging = fn () => app(VehicleState::class)->anyCharging();
+
+Schedule::command('telemetry:ingest-mqtt')
+    ->everyFiveSeconds()
+    ->withoutOverlapping()
+    ->when($charging);
+
+// Le reste du temps, le quart de minute suffit — la page elle-meme ne se
+// recharge alors qu'aux vingt secondes en roulage, a la minute a l'arret.
 Schedule::command('telemetry:ingest-mqtt')
     ->everyFifteenSeconds()
-    ->withoutOverlapping();
+    ->withoutOverlapping()
+    ->skip($charging);
 
 // La base IRVE bouge de quelques centaines de stations par semaine : un import
 // hebdomadaire suffit largement, et il dure plusieurs minutes.
