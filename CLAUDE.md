@@ -34,16 +34,43 @@ versionnés, il faut donc rebuilder après un clone.
 Tout nouveau point d'entrée JS doit être ajouté à `input:` dans
 `vite.config.js`, sinon `@vite(...)` échoue au rendu.
 
-### docker-compose 1.29.2
+### Dépendances PHP : `composer update` est à chaud
 
-La version installée plante avec `KeyError: 'ContainerConfig'` sur un
-`up -d`/`restart` d'un conteneur existant. Contournement systématique :
+`vendor/`, `composer.json` et `composer.lock` sont **montés en bind** eux aussi
+(depuis le 2026-09-06). Une mise à jour Composer ne demande donc plus de
+reconstruire l'image ni de recréer le conteneur :
 
 ```bash
-sudo docker-compose rm -sf <service> && sudo docker-compose up -d --no-deps <service>
+sudo docker exec -e COMPOSER_ALLOW_SUPERUSER=1 ev-app \
+  composer update --no-dev --optimize-autoloader <paquets nommés>
+sudo docker exec ev-app sh -c 'php artisan config:clear && php artisan view:clear && php artisan route:clear'
 ```
 
-Cette version ignore aussi certaines clés récentes (`cgroup:` par exemple).
+**Nommer les paquets un à un.** `composer.json` ne contraint que
+`laravel/framework`, `laravel/tinker` et `php` : tout le reste est transitif, et
+un `composer update` global emporte les changements de majeure sans prévenir.
+
+Retour arrière : restaurer `composer.lock` puis `composer install`.
+
+**Avant de monter ou de faire confiance à un `vendor/` d'hôte, vérifier qu'il
+correspond au lock** (`vendor/composer/installed.json`). Un rollback de mise à
+jour restaure `composer.lock` mais **pas** `vendor/` : le nôtre a porté 32
+paquets divergents pendant une semaine sans que rien ne le signale.
+
+### docker-compose : utiliser `docker compose`, jamais `docker-compose`
+
+La v1.29.2 est toujours installée et plante avec `KeyError: 'ContainerConfig'`
+sur un `up -d`/`restart` d'un conteneur existant — elle **renomme le conteneur
+et le laisse arrêté**, ce qui a coupé le site quatre minutes le 2026-08-30.
+
+Le **plugin v2** est installé depuis le 2026-09-06
+(`/usr/libexec/docker/cli-plugins/docker-compose`) : utiliser `sudo docker
+compose` (sans tiret). Après toute recréation du conteneur `app`, **redémarrer
+nginx** — il garde en cache l'adresse IP de l'upstream et renverrait 502 :
+
+```bash
+sudo docker compose up -d app && sudo docker restart ev-nginx
+```
 
 ## Tester une page sans passer par le passkey
 
@@ -59,6 +86,26 @@ sudo docker run --rm --network ev-net curlimages/curl:latest -s http://ev-nginx/
 Attention : `curl -o fichier` écrirait **dans le conteneur jetable**. Toujours
 utiliser une redirection shell (`> /tmp/...`) pour récupérer le fichier sur
 l'hôte.
+
+L'application exige l'en-tête posé par la passerelle : sans lui, `IdentifyUser`
+répond 403. Pour obtenir une page rendue comme pour un utilisateur :
+
+```bash
+sudo docker run --rm --network ev-net curlimages/curl -s \
+  -H "X-SSO-Email: atran@lolinux.org" http://ev-nginx/ma-page
+```
+
+### Vue dans un vrai navigateur
+
+Un conteneur nginx jetable qui pose l'en-tête à la place de la passerelle,
+publié sur le port 8099 (`proxy_set_header Host $http_host` est indispensable,
+sinon les redirections cassent). **Ce conteneur contourne l'authentification du
+site : le supprimer dès la vérification finie**, dans le même enchaînement de
+commandes.
+
+```bash
+sudo docker rm -f ev-devproxy && sudo rm -rf /var/docker/ev-devproxy
+```
 
 ## Git
 
@@ -123,36 +170,76 @@ champ `estimated` du JSON déclenche un encart d'avertissement sur la page.
 Les capacités brute/nette proviennent de la fiche `specifications/` du même
 site, pas de la page de courbe qui n'affiche que la brute.
 
-## Télémétrie ABRP : deux secrets à ne pas confondre
+## Télémétrie : le boîtier OBD publie en MQTT
 
-La récupération du niveau de charge passe par l'API Iternio (A Better Routeplanner),
-et elle demande **deux valeurs distinctes** que la documentation d'ABRP nomme mal :
+**A Better Routeplanner a été retiré le 2026-09-02.** Il n'a jamais été une
+source mais un relais : tous les relevés reçus portaient `telemetry_type =
+obdble`, c'est-à-dire le boîtier, dont les données faisaient un détour
+appauvrissant par un cloud tiers. `AbrpClient`, la commande `telemetry:poll` et
+la colonne `vehicles.abrp_token` n'existent plus. Les relevés historiques sont
+conservés et gardent leur source d'origine.
 
-| Valeur | Où on la trouve | Où elle est stockée |
-|---|---|---|
-| **API key** (« Telemetry-Only », gratuite) | abetterrouteplanner.com &rarr; Manage your telemetry API keys | `ABRP_API_KEY` dans le `.env` |
-| **User token** (un par véhicule) | ABRP &rarr; Settings &rarr; Car model &rarr; le véhicule &rarr; **Live data** &rarr; **Generic** | colonne `vehicles.abrp_token` |
+La chaîne actuelle :
 
-Les messages d'erreur permettent de savoir laquelle est en cause : `401 Unauthorized Key`
-désigne la clé, `401 Unauthorized Token` désigne le token. Un `200` sur
-`/tlm/get_carmodels_list` (qui ne demande pas de token) confirme que la clé seule est bonne.
+```
+voiture → dongle OBD → XPCarData (Android) → broker MQTT de la maison
+        → conteneur mqtt-ingest → telemetry:ingest-mqtt → vehicle_telemetries
+```
 
-Autres pièges relevés :
+**Pas de client MQTT en PHP, et c'est structurel** : ajouter une dépendance
+Composer est certes redevenu simple, mais un client MQTT devrait tourner en
+permanence, ce qu'un PHP-FPM ne fait pas. Un conteneur `mosquitto_sub` dépose
+les messages dans `storage/app/system/mqtt-inbox.jsonl`, et la commande les relit
+**à partir d'un décalage en octets** conservé dans `mqtt-inbox-state.json`.
 
-- L'API répond **HTTP 200 même en erreur applicative** : c'est le champ `status` du JSON
-  qui fait foi, jamais le code HTTP seul.
-- `get_latest_telemetry` **n'existe pas** (404) ; l'endpoint est `get_telemetry`.
-- La doc lisible n'est pas la page web mais le JSON de la collection Postman :
-  `https://documenter.gw.postman.com/api/collections/7396339/SWTK5a8w`
-- `env_file` dans docker-compose injecte les variables **à la création du conteneur** :
-  après ajout d'une clé dans `.env`, un `config:clear` ne suffit pas, il faut recréer
-  `ev-app` (`docker-compose rm -sf app && docker-compose up -d --no-deps app`).
+Points à connaître avant de toucher à l'ingestion :
+
+- **Les champs tournent.** Le boîtier interroge les PID à tour de rôle : un
+  message ne porte qu'une poignée de valeurs (sur douze messages, l'odomètre
+  n'apparaissait qu'une fois). Les relevés sont recomposés à partir des
+  dernières valeurs connues, **aucune de plus de cinq minutes** — un report
+  illimité figerait l'odomètre et ferait croire à une voiture à l'arrêt.
+- **Le fichier de décalage est écrit par deux identités** : root via le
+  planificateur (`docker exec`), l'uid 82 via le bouton « Mettre à jour les
+  informations » (`Artisan::call`). Il est donc remis en `0664` après chaque
+  écriture, et un échec dégrade en avertissement au lieu de lever une exception —
+  sinon la requête web répond 500.
+- **Tout champ venant d'un PID peut sortir n'importe quoi** : `cumulativeCharge`
+  a annoncé 17 124 kWh pour 1,2 point de batterie. L'énergie mesurée est
+  confrontée à ce que le gain de niveau permet, et laissée vide au-delà.
+- `vehicles.mqtt_client_id` rattache un topic à une voiture
+  (`vehicles/{id}/data`, `/charging`, `/status`).
+
+**Le boîtier publie aussi des recharges toutes faites** sur `vehicles/{id}/charging` :
+énergie **mesurée** au compteur du BMS, courbe complète, position. Elle prime sur
+l'estimation par SoC × capacité, qui s'est révélée 29 % sous le compte.
+
+## Page publique `/infoCar`
+
+Seule adresse servie **sans passkey**, pour le navigateur embarqué de la
+voiture. **L'exemption se déclare à deux endroits, et les deux sont
+nécessaires** :
+
+1. `/var/docker/ev-gate/nginx/gate.conf` — une `location` sans `auth_request`
+   (copie de référence dans `docker/gate/`, à resynchroniser après modification) ;
+2. `App\Http\Middleware\IdentifyUser::PUBLIC_PATHS` — sinon ce middleware,
+   appliqué à tout le groupe `web`, répond 403.
+
+**La passerelle ne protège pas en filtrant, elle protège en écrasant** :
+`proxy_set_header X-SSO-Email $sso_email`. Toute nouvelle `location` doit poser
+cet en-tête elle aussi — **à vide si elle est publique** — faute de quoi nginx
+transmet celui du client et n'importe qui se déclare propriétaire d'un compte.
+Vérifier toute exemption en forgeant l'en-tête depuis l'extérieur.
+
+La page est **entièrement autonome** : aucune feuille de style ni script
+externe, les assets étant eux aussi derrière la passerelle. Elle doit tenir dans
+un écran qu'on ne peut ni défiler ni dézoomer.
 
 ## Télémétrie : aucune rétention, jamais
 
 Les relevés de `vehicle_telemetries` sont conservés **indéfiniment**, y compris la
-colonne `raw` qui archive la réponse complète d'ABRP. C'est une demande explicite de
-l'utilisateur : ne rien purger.
+colonne `raw` qui archive le relevé complet — hier la réponse d'ABRP, aujourd'hui
+le message du boîtier. C'est une demande explicite de l'utilisateur : ne rien purger.
 
 **Ne pas ajouter de purge, de `prune`, ni de tâche de nettoyage** sur cette table.
 
@@ -164,14 +251,27 @@ au maximum, uniquement en charge.
 
 ## Scheduler
 
-Depuis l'ajout de la télémétrie, l'application a un vrai scheduler Laravel
-(`routes/console.php`), déclenché par une entrée cron sur l'hôte :
+Scheduler Laravel (`routes/console.php`), déclenché par une entrée cron sur l'hôte :
 
 ```
 * * * * * sudo /usr/bin/docker exec ev-app php artisan schedule:run >/dev/null 2>&1
 ```
 
-C'est l'endroit où brancher les prochaines tâches périodiques.
+**L'ordonnancement sous la minute fonctionne avec ce cron** : quand une tâche
+sub-minute est déclarée, `schedule:run` boucle jusqu'à la fin de la minute
+courante (vérifié, le processus reste ~57 s). Les filtres `when`/`skip` ne sont
+évalués qu'aux instants dus, pas à chaque tick.
+
+La cadence de la collecte suit l'état du véhicule, **et la page « Ma voiture »
+suit la même table** (`VehicleState::REFRESH_SECONDS`) : 5 s en charge, 20 s en
+roulage, 60 s à l'arrêt. Rafraîchir l'écran plus vite que la collecte ne
+montrerait rien de neuf — les trois doivent bouger ensemble.
+
+**Augmenter la fréquence d'échantillonnage réveille des faux positifs.** En
+passant à 15 s, `TelemetrySessionDetector` a pris chaque scintillement de
+`isCharging` en roulage pour une recharge d'une minute à zéro kWh. D'où le seuil
+`PendingTelemetryCharges::MIN_KWH`. Vérifier les détecteurs après toute
+accélération.
 
 ## Planificateur : pourquoi pas l'API Iternio
 
@@ -248,8 +348,9 @@ l'administrateur voie la demande — mais repond 403 tant qu'il n'est pas autori
 `users.is_admin` reserve `/admin/utilisateurs`.
 
 `RequiresTelemetry` masque et ferme "Ma voiture" et "Deplacements" pour les comptes
-sans vehicule relie a ABRP. Le critere est la presence d'un token, pas une liste
-d'emails : les pages reapparaissent seules le jour ou quelqu'un renseigne le sien.
+sans vehicule relie au boitier. Le critere est la presence d'un `mqtt_client_id`,
+pas une liste d'emails : les pages reapparaissent seules le jour ou quelqu'un
+renseigne le sien.
 
 **Les relations `chargingSessions`, `vehicles` et `favoriteRoutes` sur `User`
 retirent le scope global** (`withoutGlobalScope('user')`) : elles comptent ce que
