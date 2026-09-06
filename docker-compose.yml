@@ -14,6 +14,14 @@ services:
       - ./database:/var/www/html/database:ro
       - ./resources:/var/www/html/resources:ro
       - ./routes:/var/www/html/routes:ro
+      # Les dependances PHP montees depuis l'hote plutot que figees dans
+      # l'image : une mise a jour Composer devient immediate, sans
+      # reconstruction ni recreation de conteneur — c'est cette recreation,
+      # avec un docker-compose incompatible, qui avait coupe le site.
+      # Non montes en lecture seule : composer doit pouvoir y ecrire.
+      - ./vendor:/var/www/html/vendor
+      - ./composer.json:/var/www/html/composer.json
+      - ./composer.lock:/var/www/html/composer.lock
     env_file:
       - .env
     depends_on:
