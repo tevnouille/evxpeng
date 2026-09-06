@@ -107,6 +107,23 @@ commandes.
 sudo docker rm -f ev-devproxy && sudo rm -rf /var/docker/ev-devproxy
 ```
 
+## CHANGELOG.md est genere
+
+`App\Support\Changelog` reste la **seule source** du journal des nouveautes —
+tenu a la main, redige pour qui se sert de l'application. `CHANGELOG.md` en est
+une vue, regeneree apres tout ajout :
+
+```bash
+sudo docker run --rm -v /var/docker/ev:/app -w /app -u 0:0 ev_app \
+    php artisan changelog:export
+```
+
+**Pas depuis `ev-app`** : la racine du depot n'y est pas montee, le fichier
+serait ecrit dans la couche du conteneur. `changelog:export --check` signale que
+le fichier est perime sans le reecrire.
+
+Ne pas editer `CHANGELOG.md` a la main : la prochaine regeneration l'ecraserait.
+
 ## Git
 
 Le remote est un GitLab auto-hébergé sur la même machine :
