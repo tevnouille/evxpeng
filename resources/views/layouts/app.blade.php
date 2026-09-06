@@ -57,9 +57,20 @@
                         </div>
                     </div>
                 @endif
-                <a class="navbar-item {{ request()->routeIs('charging-curves.*') ? 'is-active' : '' }}" href="{{ route('charging-curves.index') }}">
-                    @include('layouts._icon', ['name' => 'courbe'])Courbe de recharge
-                </a>
+                <div class="navbar-item has-dropdown is-hoverable">
+                    <a class="navbar-link {{ request()->routeIs('charging-curves.*') ? 'is-active' : '' }}"
+                       href="{{ route('charging-curves.index') }}">
+                        @include('layouts._icon', ['name' => 'courbe'])Courbe de recharge
+                    </a>
+                    <div class="navbar-dropdown">
+                        <a class="navbar-item {{ request()->routeIs('charging-curves.index') ? 'is-active' : '' }}" href="{{ route('charging-curves.index') }}">
+                            Courbe du véhicule
+                        </a>
+                        <a class="navbar-item {{ request()->routeIs('charging-curves.compare') ? 'is-active' : '' }}" href="{{ route('charging-curves.compare') }}">
+                            Recharges face à la courbe
+                        </a>
+                    </div>
+                </div>
                 <div class="navbar-item has-dropdown is-hoverable">
                     <a class="navbar-link {{ request()->routeIs('trips.*') || request()->routeIs('planner.*') || request()->routeIs('favorites.*') ? 'is-active' : '' }}"
                        href="{{ route('favorites.index') }}">

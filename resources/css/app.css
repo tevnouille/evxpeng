@@ -189,3 +189,14 @@ body {
 .obd-chart {
     max-height: 150px;
 }
+
+
+/*
+ * Superposition d une recharge et de la courbe du vehicule.
+ *
+ * maintainAspectRatio est desactive pour que la largeur soit celle de la boite :
+ * sans hauteur maximale, le canvas s etire alors sur tout ce qu on lui laisse.
+ */
+.curve-compare {
+    max-height: 260px;
+}

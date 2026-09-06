@@ -41,6 +41,15 @@ class Changelog
 
     private const DATA = [
         [
+            'date' => '2026-09-06',
+            'entries' => [
+                ['type' => 'nouveaute', 'text' => "Nouvelle page « Recharges face à la courbe », dans le menu « Courbe de recharge » : chaque recharge d'au moins 10 kWh relevée par le boîtier est superposée à la courbe du véhicule. C'est ce que la courbe seule ne montre pas — une charge qui n'atteint pas ce que la batterie devrait accepter, borne bridée, batterie froide ou cellule faible, se voit d'un coup d'œil, et l'écart le plus marqué est chiffré. Pour une charge en courant alternatif, la référence est ramenée à la puissance de la borne : sa puissance est imposée par le chargeur, pas par la batterie, et la comparer aux 300 kW de la courbe n'aurait aucun sens."],
+                ['type' => 'nouveaute', 'text' => "Le champ « Coût total facturé » gagne un bouton « Recalculer », à côté de « Gratuit ». Après un « Gratuit » ou une saisie manuelle, reprendre le calcul demandait jusqu'ici de retoucher la remise ou les frais annexes, ce que rien n'indiquait."],
+                ['type' => 'amelioration', 'text' => "« Ma voiture » se recharge maintenant au rythme de ce que fait la voiture : toutes les 5 secondes en charge, 20 secondes en route, une minute à l'arrêt. La collecte des relevés suit la même règle — rafraîchir l'écran plus vite que la donnée n'arrive ne montrerait rien de neuf."],
+                ['type' => 'correction', 'text' => "Une recharge a été enregistrée à 17 124 kWh pour 1,2 % de batterie gagné : le compteur d'énergie de la batterie renvoie parfois une valeur absurde. L'énergie mesurée est désormais confrontée à ce que le gain de niveau permet, et laissée vide si elle est invraisemblable — mieux vaut un champ à compléter qu'un chiffre faux dans les statistiques. La recharge déjà enregistrée a été reprise."],
+            ],
+        ],
+        [
             'date' => '2026-09-04',
             'entries' => [
                 ['type' => 'correction', 'text' => "Le bouton « Mettre à jour les informations » de « Ma voiture » renvoyait par moments une erreur 500. La collecte automatique et ce bouton lancent le même traitement, mais sous deux identités différentes : le planificateur écrit son fichier de position de lecture en tant qu'administrateur, le bouton en tant que serveur web. Le premier créait le fichier sans laisser au second le droit de l'écrire. Les droits sont désormais posés à chaque écriture, et si le fichier reste inaccessible le traitement se contente d'un avertissement au lieu d'échouer — aucun relevé n'était perdu dans l'affaire."],

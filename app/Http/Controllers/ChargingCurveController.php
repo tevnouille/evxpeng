@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\TelemetryChargingSession;
 use App\Models\Vehicle;
 use App\Services\ChargeCurveSimulator;
 use App\Services\ChargingCurveRepository;
@@ -19,6 +20,126 @@ class ChargingCurveController extends Controller
         private readonly ChargingCurveRepository $curves,
         private readonly ChargeCurveSimulator $simulator,
     ) {
+    }
+
+    /**
+     * Energie minimale pour qu'une recharge merite d'etre confrontee a la courbe.
+     *
+     * En dessous, la session ne couvre que quelques points de SoC : on y verrait
+     * un fragment de courbe, pas un comportement.
+     */
+    public const COMPARE_MIN_KWH = 10.0;
+
+    /**
+     * Chaque recharge confrontee a la courbe de reference.
+     *
+     * L'interet est de reperer une charge qui n'atteint pas ce que la batterie
+     * devrait accepter — borne bridee, batterie froide, cellule faible. La
+     * courbe seule ne le montre pas : il faut superposer ce qui s'est
+     * reellement passe.
+     */
+    public function compare(Request $request): View
+    {
+        $vehicles = Vehicle::whereNotNull('mqtt_client_id')
+            ->orderByDesc('is_default')
+            ->orderBy('name')
+            ->get()
+            ->filter(fn ($vehicle) => $this->curves->find($vehicle->charging_curve) !== null)
+            ->values();
+
+        $vehicle = $vehicles->firstWhere('id', (int) $request->query('vehicule')) ?? $vehicles->first();
+        $curve = $vehicle ? $this->curves->find($vehicle->charging_curve) : null;
+
+        $sessions = ($vehicle && $curve)
+            ? TelemetryChargingSession::where('vehicle_id', $vehicle->id)
+                ->where('energy_kwh', '>=', self::COMPARE_MIN_KWH)
+                ->whereNotNull('curve')
+                ->orderByDesc('started_at')
+                ->get()
+                ->map(fn (TelemetryChargingSession $session) => $this->comparison($session, $curve))
+                ->all()
+            : [];
+
+        return view('charging_curves.compare', [
+            'vehicles' => $vehicles,
+            'vehicle' => $vehicle,
+            'curve' => $curve,
+            'sessions' => $sessions,
+            'minKwh' => self::COMPARE_MIN_KWH,
+        ]);
+    }
+
+    /**
+     * Superposition d'une session et de la courbe, sur la plage qu'elle couvre.
+     *
+     * En courant alternatif, la puissance est imposee par la borne et le
+     * chargeur embarque : la confronter aux 300 kW de la courbe ne dirait rien
+     * de la batterie. On bride alors la reference a ce que la borne a delivre,
+     * et la question devient « la puissance a-t-elle tenu ? ».
+     *
+     * @param  array<string, mixed>  $curve
+     * @return array<string, mixed>
+     */
+    private function comparison(TelemetryChargingSession $session, array $curve): array
+    {
+        $measured = [];
+
+        foreach ($session->curve ?? [] as $point) {
+            if (! isset($point['soc'], $point['powerKw'])) {
+                continue;
+            }
+
+            $measured[] = ['x' => round((float) $point['soc'], 1), 'y' => round(abs((float) $point['powerKw']), 1)];
+        }
+
+        $socs = array_column($measured, 'x');
+        $low = $socs === [] ? 0 : max(0, (int) floor(min($socs)) - 2);
+        $high = $socs === [] ? 100 : min(100, (int) ceil(max($socs)) + 2);
+
+        $alternating = $session->charging_type === 'ac';
+        $cap = $alternating && $session->max_power_kw ? (float) $session->max_power_kw : null;
+
+        $reference = [];
+
+        foreach ($curve['points'] as $point) {
+            $soc = (int) $point['soc'];
+
+            if ($soc < $low || $soc > $high) {
+                continue;
+            }
+
+            $kw = (float) $point['kw'];
+            $reference[] = ['x' => $soc, 'y' => round($cap === null ? $kw : min($cap, $kw), 1)];
+        }
+
+        // Ecart le plus marque entre ce que la batterie aurait pu accepter et ce
+        // qu'elle a recu : c'est lui qui signale un defaut, pas la moyenne.
+        $bySoc = array_column($reference, 'y', 'x');
+        $worst = null;
+
+        foreach ($measured as $point) {
+            $expected = $bySoc[(int) round($point['x'])] ?? null;
+
+            if ($expected === null || $expected <= 0) {
+                continue;
+            }
+
+            $gap = $expected - $point['y'];
+
+            if ($worst === null || $gap > $worst['gap']) {
+                $worst = ['soc' => $point['x'], 'measured' => $point['y'], 'expected' => $expected, 'gap' => round($gap, 1)];
+            }
+        }
+
+        return [
+            'session' => $session,
+            'measured' => $measured,
+            'reference' => $reference,
+            'capped_at' => $cap,
+            'alternating' => $alternating,
+            'peak' => $measured === [] ? null : max(array_column($measured, 'y')),
+            'worst' => $worst,
+        ];
     }
 
     public function index(Request $request): View

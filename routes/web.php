@@ -68,6 +68,7 @@ Route::delete('/favoris/{favorite}/bornes/{station}', [FavoriteRouteController::
 Route::post('/favoris/{favorite}/copier', [FavoriteRouteController::class, 'copy'])->name('favorites.copy');
 
 Route::get('/courbe-de-recharge', [ChargingCurveController::class, 'index'])->name('charging-curves.index');
+Route::get('/courbe-de-recharge/comparaison', [ChargingCurveController::class, 'compare'])->name('charging-curves.compare');
 Route::get('/courbe-de-recharge/etat/{vehicle}', [ChargingCurveController::class, 'state'])->name('charging-curves.state');
 
 Route::get('/historique', [HistoryController::class, 'index'])->name('history.index');
