@@ -71,12 +71,21 @@
                             « la batterie encaisse-t-elle&nbsp;? » mais « la puissance a-t-elle tenu&nbsp;? ».
                         </div>
                     @elseif ($comparaison['worst'] && $comparaison['worst']['gap'] > 0)
-                        <div class="notification is-danger is-light is-size-7 py-2 px-3 mb-3">
-                            Écart le plus marqué à <strong>{{ str_replace('.', ',', (string) $comparaison['worst']['soc']) }} %</strong>&nbsp;:
-                            {{ str_replace('.', ',', (string) $comparaison['worst']['measured']) }} kW reçus
-                            contre {{ str_replace('.', ',', (string) $comparaison['worst']['expected']) }} kW attendus,
-                            soit {{ str_replace('.', ',', (string) $comparaison['worst']['gap']) }} kW de moins.
-                            Une borne bridée, une batterie froide ou un départ de charge expliquent la plupart des écarts.
+                        @php($ecart = $comparaison['worst'])
+                        <div class="notification {{ $ecart['significant'] ? 'is-danger' : 'is-light' }} is-light is-size-7 py-2 px-3 mb-3">
+                            Écart le plus marqué à <strong>{{ str_replace('.', ',', (string) $ecart['soc']) }} %</strong>&nbsp;:
+                            {{ str_replace('.', ',', (string) $ecart['measured']) }} kW reçus
+                            contre {{ str_replace('.', ',', (string) $ecart['expected']) }} kW attendus,
+                            soit {{ str_replace('.', ',', (string) $ecart['gap']) }} kW de moins.
+                            @if ($ecart['significant'])
+                                Une borne bridée, une batterie froide ou une cellule faible expliquent la plupart des écarts de cette ampleur.
+                            @else
+                                Écart courant&nbsp;: la courbe décrit un exemplaire du modèle, pas cette voiture-là.
+                            @endif
+                            @if ($comparaison['ramp_points'] > 0)
+                                La montée en puissance du début ({{ $comparaison['ramp_points'] }} point(s)) est visible sur le graphique
+                                mais exclue de ce calcul.
+                            @endif
                         </div>
                     @endif
 

@@ -26,9 +26,42 @@ class ChargingCurveController extends Controller
      * Energie minimale pour qu'une recharge merite d'etre confrontee a la courbe.
      *
      * En dessous, la session ne couvre que quelques points de SoC : on y verrait
-     * un fragment de courbe, pas un comportement.
+     * un fragment de courbe, pas un comportement. Le seuil est bas a dessein —
+     * une charge rapide de quelques kWh couvre deja assez de paliers pour qu'un
+     * bridage se voie, et c'est justement celle-la qu'on veut examiner.
      */
-    public const COMPARE_MIN_KWH = 10.0;
+    public const COMPARE_MIN_KWH = 5.0;
+
+    /**
+     * Duree de montee en puissance ecartee du calcul de l'ecart.
+     *
+     * Une charge rapide ne demarre pas a sa pleine puissance : la borne et la
+     * voiture negocient, le courant monte en quelques dizaines de secondes. Sans
+     * cette exclusion, le premier point de chaque session serait signale comme
+     * le pire defaut — on a mesure 35,7 kW contre 135 attendus sur une charge
+     * qui a ensuite tenu 160 kW.
+     */
+    private const RAMP_UP_SECONDS = 90;
+
+    /**
+     * Puissance en dessous de laquelle un point ne mesure plus une charge.
+     *
+     * Le dernier releve d'une session, ou une pause en cours de route, tombe a
+     * zero : le confronter a la courbe signalait « 78 kW de moins » sur une
+     * charge terminee normalement.
+     */
+    private const IDLE_KW = 1.0;
+
+    /**
+     * A partir de quand un ecart merite d'etre signale comme un defaut.
+     *
+     * Une charge ne suit jamais la courbe au kilowatt pres, et la courbe decrit
+     * un exemplaire du modele, pas cette voiture-la. Alerter sur trois
+     * kilowatts d'ecart apprendrait a ignorer l'alerte.
+     */
+    private const SIGNIFICANT_GAP_RATIO = 0.15;
+
+    private const SIGNIFICANT_GAP_KW = 10.0;
 
     /**
      * Chaque recharge confrontee a la courbe de reference.
@@ -84,12 +117,22 @@ class ChargingCurveController extends Controller
     {
         $measured = [];
 
+        $firstAt = null;
+
         foreach ($session->curve ?? [] as $point) {
             if (! isset($point['soc'], $point['powerKw'])) {
                 continue;
             }
 
-            $measured[] = ['x' => round((float) $point['soc'], 1), 'y' => round(abs((float) $point['powerKw']), 1)];
+            // Les horodatages sont en millisecondes depuis l'epoque.
+            $at = isset($point['timestamp']) ? (float) $point['timestamp'] / 1000 : null;
+            $firstAt ??= $at;
+
+            $measured[] = [
+                'x' => round((float) $point['soc'], 1),
+                'y' => round(abs((float) $point['powerKw']), 1),
+                'ramp' => ($at !== null && $firstAt !== null) && ($at - $firstAt) < self::RAMP_UP_SECONDS,
+            ];
         }
 
         $socs = array_column($measured, 'x');
@@ -120,14 +163,23 @@ class ChargingCurveController extends Controller
         foreach ($measured as $point) {
             $expected = $bySoc[(int) round($point['x'])] ?? null;
 
-            if ($expected === null || $expected <= 0) {
+            // La montee en puissance du debut et les points sans courant — fin
+            // de session, pause — ne disent rien de ce que la batterie accepte.
+            if ($expected === null || $expected <= 0 || $point['ramp'] || $point['y'] < self::IDLE_KW) {
                 continue;
             }
 
             $gap = $expected - $point['y'];
 
             if ($worst === null || $gap > $worst['gap']) {
-                $worst = ['soc' => $point['x'], 'measured' => $point['y'], 'expected' => $expected, 'gap' => round($gap, 1)];
+                $worst = [
+                    'soc' => $point['x'],
+                    'measured' => $point['y'],
+                    'expected' => $expected,
+                    'gap' => round($gap, 1),
+                    'significant' => $gap >= self::SIGNIFICANT_GAP_KW
+                        && $gap >= $expected * self::SIGNIFICANT_GAP_RATIO,
+                ];
             }
         }
 
@@ -139,6 +191,9 @@ class ChargingCurveController extends Controller
             'alternating' => $alternating,
             'peak' => $measured === [] ? null : max(array_column($measured, 'y')),
             'worst' => $worst,
+            // Le graphique montre tout, y compris la montee en puissance : c'est
+            // le chiffre de l'ecart qui l'ignore, pas la courbe.
+            'ramp_points' => count(array_filter($measured, fn ($p) => $p['ramp'])),
         ];
     }
 
