@@ -54,6 +54,13 @@
                             <a class="navbar-item {{ request()->routeIs('my-vehicle.obd') ? 'is-active' : '' }}" href="{{ route('my-vehicle.obd') }}">
                                 Statistiques OBD
                             </a>
+                            {{-- Adresse servie sans passkey : ouverte dans un
+                                 onglet a part, pour ne pas donner a croire qu'on
+                                 quitte la session, et signalee comme publique. --}}
+                            <a class="navbar-item" href="{{ route('info-car') }}" target="_blank" rel="noopener">
+                                Écran voiture
+                                <span class="tag is-warning is-light ml-2">public</span>
+                            </a>
                         </div>
                     </div>
                 @endif

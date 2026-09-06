@@ -12,10 +12,12 @@ use Illuminate\View\View;
  * Etat du vehicule, affiche sans authentification.
  *
  * Destine au navigateur de la voiture, ou une ceremonie passkey n'a pas sa
- * place. La page est donc lisible par quiconque connait l'adresse : elle
- * n'expose que l'etat de la batterie, jamais la position ni l'historique.
- * Savoir ou se trouve une voiture en temps reel, c'est savoir quand la maison
- * est vide — c'est la seule donnee de cette page qui ne devait pas sortir.
+ * place. La page est donc lisible par quiconque connait l'adresse.
+ *
+ * La position y figure a la demande d'atran, qui en a pese la portee : elle est
+ * publique comme le reste de la page. Le bouton ne la dissimule pas — les
+ * coordonnees sont dans la source — il evite seulement d'envoyer la position a
+ * OpenStreetMap a chaque affichage, comme le fait deja « Ma voiture ».
  *
  * Le vehicule n'est pas choisi d'apres un compte, puisqu'il n'y en a pas : on
  * prend celui par defaut, de maniere deterministe.
@@ -112,6 +114,9 @@ class InfoCarController extends Controller
             'availableKwh' => $availableKwh,
             'netCapacity' => $netCapacity,
             'rangeKm' => $rangeKm,
+            'position' => ($telemetry?->lat && $telemetry?->lon)
+                ? ['lat' => (float) $telemetry->lat, 'lon' => (float) $telemetry->lon]
+                : null,
             'refreshSeconds' => VehicleState::REFRESH_SECONDS[$state['state'] ?? VehicleState::PARKED]
                 ?? VehicleState::REFRESH_SECONDS[VehicleState::PARKED],
             'cibles' => self::CIBLES,

@@ -93,6 +93,8 @@
         tbody td { font-size: clamp(.85rem, 3.6vh, 1.5rem); font-weight: 600; }
         tbody td:first-child { font-weight: 700; }
         tbody tr + tr td { border-top: 1px solid #efefef; }
+        #carte { height: 100%; min-height: 55vh; }
+        #carte iframe { width: 100%; height: 100%; min-height: 55vh; border: 1px solid #dcdcdc; border-radius: 8px; }
         .atteint { color: #2ea36b; font-weight: 600; }
         .inconnu { color: #9a9a9a; font-weight: 400; }
         @media (prefers-color-scheme: dark) {
@@ -101,6 +103,7 @@
             .jauge { background: #2c3037; }
             .onglets button { background: #24272d; border-color: #3a3f47; color: #d5d8dd; }
             thead th { border-bottom-color: #3a3f47; }
+            #carte iframe { border-color: #3a3f47; }
             tbody tr + tr td { border-top-color: #24272d; }
         }
     </style>
@@ -127,6 +130,9 @@
             <div class="onglets">
                 <button type="button" data-vue="info" aria-current="page">Info</button>
                 <button type="button" data-vue="recharge">Recharge</button>
+                @if ($position)
+                    <button type="button" data-vue="position">Position</button>
+                @endif
             </div>
         </div>
     </header>
@@ -229,6 +235,23 @@
             </p>
         @endif
     </div>
+
+    @if ($position)
+        {{-- La carte n'est inseree qu'a l'ouverture de l'onglet : sans ce
+             garde-fou, chaque affichage — et la page se recharge seule —
+             enverrait la position du vehicule a OpenStreetMap. --}}
+        <div class="vue" id="vue-position" hidden
+             data-lat="{{ $position['lat'] }}" data-lon="{{ $position['lon'] }}">
+            <div id="carte"></div>
+            <p class="note">
+                {{ number_format($position['lat'], 5, ',', ' ') }},
+                {{ number_format($position['lon'], 5, ',', ' ') }}
+                &middot;
+                <a target="_blank" rel="noopener"
+                   href="https://www.openstreetmap.org/?mlat={{ $position['lat'] }}&mlon={{ $position['lon'] }}#map=15/{{ $position['lat'] }}/{{ $position['lon'] }}">ouvrir dans OpenStreetMap</a>
+            </p>
+        </div>
+    @endif
 @endif
 
 <script>
@@ -257,7 +280,47 @@
         afficher(window.location.hash === '#recharge' ? 'recharge' : 'info');
     })();
 
-    setTimeout(function () { window.location.reload(); }, {{ $refreshSeconds }} * 1000);
+    (function () {
+        var vue = document.getElementById('vue-position');
+        var recharge = setTimeout(function () { window.location.reload(); }, {{ $refreshSeconds }} * 1000);
+
+        if (!vue) { return; }
+
+        var boutons = document.querySelectorAll('.onglets button');
+
+        for (var i = 0; i < boutons.length; i++) {
+            boutons[i].addEventListener('click', function (e) {
+                if (e.currentTarget.dataset.vue !== 'position') { return; }
+
+                // Le rechargement est suspendu tant que la carte est affichee :
+                // elle serait reconstruite toutes les minutes, et rappellerait
+                // OpenStreetMap a chaque fois.
+                clearTimeout(recharge);
+
+                var carte = document.getElementById('carte');
+                if (carte.childElementCount > 0) { return; }
+
+                var lat = parseFloat(vue.dataset.lat);
+                var lon = parseFloat(vue.dataset.lon);
+                var d = 0.006;
+                var cadre = document.createElement('iframe');
+                cadre.src = 'https://www.openstreetmap.org/export/embed.html?bbox='
+                    + [lon - d, lat - d, lon + d, lat + d].join(',')
+                    + '&layer=mapnik&marker=' + lat + ',' + lon;
+                cadre.loading = 'lazy';
+                cadre.referrerPolicy = 'no-referrer';
+                carte.appendChild(cadre);
+            });
+        }
+
+        // L'ancre survit au rechargement : arriver directement sur l'onglet
+        // Position doit inserer la carte, sans attendre un clic qui n'aura pas lieu.
+        if (window.location.hash === '#position') {
+            clearTimeout(recharge);
+            var declencheur = document.querySelector('.onglets button[data-vue=\"position\"]');
+            if (declencheur) { declencheur.click(); }
+        }
+    })();
 </script>
 </body>
 </html>
