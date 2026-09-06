@@ -315,7 +315,7 @@
                     </div>
                 </div>
 
-                <div class="column is-2">
+                <div class="column is-3">
                     <div class="field">
                         <label class="label">Coût unitaire (€/kWh)</label>
                         <div class="control">
@@ -325,7 +325,7 @@
                     </div>
                 </div>
 
-                <div class="column is-3">
+                <div class="column is-4">
                     <div class="field">
                         <label class="label">Coût réel (€)</label>
                         <div class="field has-addons">
@@ -368,7 +368,7 @@
                      cout unitaire : un frais de stationnement ou une penalite est
                      circonstanciel, le reconduire d'office fausserait la recharge
                      suivante. --}}
-                <div class="column is-2">
+                <div class="column is-3">
                     <div class="field">
                         <label class="label">Coût additionnel (€)</label>
                         <div class="control">
@@ -382,13 +382,19 @@
                     </div>
                 </div>
 
-                <div class="column is-3">
+                <div class="column is-4">
                     <div class="field">
                         <label class="label">Coût total facturé (€)</label>
                         <div class="field has-addons">
                             <div class="control is-expanded">
                                 <input class="input" type="number" step="0.01" min="0" name="total_cost" id="total_cost"
                                     value="{{ old('total_cost', $editing ? $editing->total_cost : 0) }}">
+                            </div>
+                            <div class="control">
+                                <button type="button" class="button is-light" id="recompute_total"
+                                    title="Recalculer : coût réel + coût additionnel − remise">
+                                    Recalculer
+                                </button>
                             </div>
                             <div class="control">
                                 <button type="button" class="button is-light" id="free_charge"
@@ -399,7 +405,8 @@
                         </div>
                         <p class="help">
                             Ce qui a été débité&nbsp;: coût réel + coût additionnel &minus; remise,
-                            tant qu'il n'a pas été saisi à la main ; <strong>Gratuit</strong> le met à 0.
+                            tant qu'il n'a pas été saisi à la main.
+                            <strong>Recalculer</strong> reprend ce calcul, <strong>Gratuit</strong> met à 0.
                         </p>
                     </div>
                 </div>

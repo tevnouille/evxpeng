@@ -671,6 +671,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Recharge gratuite ou non debitee : facture a zero, et on fige le
         // calcul automatique pour qu'il ne le remplace pas ensuite.
+        // Reprendre le calcul apres une saisie manuelle ou un « Gratuit » :
+        // sans ce bouton, le seul moyen de reprendre etait de retoucher la
+        // remise ou les frais annexes, ce qui n'a rien d'evident.
+        const recomputeTotalButton = document.getElementById('recompute_total');
+
+        if (recomputeTotalButton) {
+            recomputeTotalButton.addEventListener('click', () => {
+                if (expectedTotal() === null) {
+                    recomputeTotalButton.classList.add('is-danger');
+                    recomputeTotalButton.title = 'Renseignez d\'abord le coût réel.';
+                    setTimeout(() => recomputeTotalButton.classList.remove('is-danger'), 1500);
+
+                    return;
+                }
+
+                totalManuallyEdited = false;
+                recomputeTotal();
+
+                recomputeTotalButton.classList.add('is-success');
+                setTimeout(() => recomputeTotalButton.classList.remove('is-success'), 800);
+            });
+        }
+
         const freeButton = document.getElementById('free_charge');
 
         if (freeButton) {
