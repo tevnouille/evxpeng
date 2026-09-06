@@ -11,6 +11,7 @@ use App\Http\Controllers\DataSourceController;
 use App\Http\Controllers\FavoriteRouteController;
 use App\Http\Controllers\FuelPriceController;
 use App\Http\Controllers\HistoryController;
+use App\Http\Controllers\InfoCarController;
 use App\Http\Controllers\MyVehicleController;
 use App\Http\Controllers\ObdStatsController;
 use App\Http\Controllers\ReferenceDataController;
@@ -37,6 +38,14 @@ Route::delete('/recharges/{chargingSession}', [ChargingSessionController::class,
 // automatique ne voit pas les recharges saisies a la main.
 Route::post('/recharges-detectees/ignorer', [DetectedChargeController::class, 'ignore'])->name('detected-charges.ignore');
 Route::post('/recharges-detectees/retablir', [DetectedChargeController::class, 'restore'])->name('detected-charges.restore');
+
+// Etat du vehicule sans authentification, pour le navigateur de la voiture.
+// La passerelle passkey laisse passer cette adresse et cette adresse seule ;
+// elle n'expose que la batterie, jamais la position. Limitee en debit : elle
+// est ouverte a tous, elle ne doit pas devenir un levier de charge.
+Route::get('/infoCar', [InfoCarController::class, 'show'])
+    ->middleware('throttle:60,1')
+    ->name('info-car');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 Route::get('/dashboard/data', [DashboardController::class, 'data'])->name('dashboard.data');

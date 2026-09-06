@@ -21,12 +21,30 @@ class IdentifyUser
 {
     public const HEADER = 'X-SSO-Email';
 
+    /**
+     * Chemins servis sans identite, en minuscules.
+     *
+     * Une seule adresse : l'etat du vehicule pour le navigateur embarque de la
+     * voiture, ou une ceremonie passkey n'a pas sa place. La passerelle laisse
+     * passer cette adresse et vide l'en-tete d'identite au passage, de sorte
+     * qu'elle ne puisse pas servir a se declarer proprietaire d'un compte.
+     *
+     * L'exception vit ici, dans le middleware qui l'accorde, plutot que dans un
+     * groupe de routes a part : on la lit au meme endroit que la regle.
+     */
+    private const PUBLIC_PATHS = ['infocar'];
+
     public function __construct(private readonly UserProvisioner $provisioner)
     {
     }
 
     public function handle(Request $request, Closure $next): Response
     {
+        // Comparaison en minuscules : un clavier de voiture n'est pas un clavier.
+        if (in_array(strtolower(trim($request->path(), '/')), self::PUBLIC_PATHS, true)) {
+            return $next($request);
+        }
+
         $email = trim((string) $request->header(self::HEADER));
 
         if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
