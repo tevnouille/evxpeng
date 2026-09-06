@@ -81,6 +81,25 @@
             background: #e6e6e6; overflow: hidden; margin-top: .5vh;
         }
         .jauge span { display: block; height: 100%; background: #2ea36b; }
+        /* Rayures defilantes pendant la charge seulement : l'energie qui
+           rentre, pas un decor permanent qui distrairait a l'arret. */
+        .jauge span.charge {
+            background-image: linear-gradient(
+                135deg,
+                rgba(255, 255, 255, .35) 25%, transparent 25%,
+                transparent 50%, rgba(255, 255, 255, .35) 50%,
+                rgba(255, 255, 255, .35) 75%, transparent 75%, transparent
+            );
+            background-size: 1.1em 1.1em;
+            animation: jauge-defile .9s linear infinite;
+        }
+        @keyframes jauge-defile {
+            from { background-position: 0 0; }
+            to   { background-position: 1.1em 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .jauge span.charge { animation: none; }
+        }
         /* Le tableau occupe la hauteur libre et y repartit ses lignes. */
         table { flex: 1 1 auto; width: 100%; border-collapse: collapse; }
         th, td { text-align: right; padding: .3em .5em; }
@@ -153,7 +172,7 @@
                 <p class="valeur">
                     {{ $soc !== null ? rtrim(rtrim(number_format($soc, 1, ',', ' '), '0'), ',') : '—' }}<span class="unite"> %</span>
                 </p>
-                <div class="jauge"><span style="width: {{ max(0, min(100, (int) round($soc ?? 0))) }}%"></span></div>
+                <div class="jauge"><span class="{{ ($state['state'] ?? null) === 'charging' ? 'charge' : '' }}" style="width: {{ max(0, min(100, (int) round($soc ?? 0))) }}%"></span></div>
             </div>
 
             <div>
