@@ -25,7 +25,7 @@
 </div>
 
 <div class="table-container">
-    <table class="table is-fullwidth is-striped is-hoverable" id="{{ $tableId }}" data-sessions-table>
+    <table class="table is-fullwidth is-striped is-hoverable" id="{{ $tableId }}" data-sessions-table data-unit="recharge(s)">
         <thead>
             <tr>
                 {{-- data-sort marque les colonnes triables : la derniere, qui ne
@@ -63,7 +63,7 @@
                     <td data-value="{{ $session->unit_cost !== null ? (float) $session->unit_cost : -1 }}">{{ $session->unit_cost ?? '—' }}</td>
                     <td data-value="{{ $session->real_cost !== null ? (float) $session->real_cost : -1 }}">{{ $session->real_cost ?? '—' }}</td>
                     <td data-value="{{ $session->total_cost !== null ? (float) $session->total_cost : -1 }}">{{ $session->total_cost ?? '—' }}</td>
-                    <td class="is-flex is-flex-wrap-nowrap">
+                    <td class="is-flex is-flex-wrap-nowrap" data-nofilter>
                         <a href="{{ route('charging-sessions.edit', array_merge([$session], $returnQuery)) }}" class="button is-small is-info is-light mr-1">Éditer</a>
                         <a href="{{ route('charging-sessions.index', ['duplicate' => $session->id]) }}" class="button is-small is-light mr-1">Dupliquer</a>
                         <form method="POST" action="{{ route('charging-sessions.destroy', array_merge([$session], $returnQuery)) }}" onsubmit="return confirm('Supprimer cette recharge ?');">

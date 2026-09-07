@@ -95,9 +95,16 @@ function setUpTable(table) {
         let visibles = 0;
 
         lignesDe().forEach((ligne) => {
-            // La derniere colonne ne porte que des boutons : l'inclure ferait
-            // correspondre « supprimer » a toutes les lignes.
-            const texte = aplatir([...ligne.cells].slice(0, -1).map((c) => c.textContent).join(' '));
+            // Les colonnes a exclure sont marquees, jamais deduites de leur
+            // position : la derniere colonne porte des boutons sur le tableau
+            // des recharges — ou « supprimer » aurait correspondu a toutes les
+            // lignes — mais l'adresse sur celui des releves, qu'on veut filtrer.
+            const texte = aplatir(
+                [...ligne.cells]
+                    .filter((c) => !c.hasAttribute('data-nofilter'))
+                    .map((c) => c.textContent)
+                    .join(' ')
+            );
             const garde = terme === '' || texte.includes(terme);
 
             ligne.hidden = !garde;
@@ -109,9 +116,13 @@ function setUpTable(table) {
 
         if (compteur) {
             const total = lignesDe().length;
+            // Le libelle vient du tableau : le meme mecanisme sert aux recharges
+            // et aux positions, et « 4 recharge(s) » sous une liste de releves
+            // serait faux.
+            const unite = table.dataset.unit || 'ligne(s)';
             compteur.textContent = terme === ''
-                ? `${total} recharge(s)`
-                : `${visibles} recharge(s) sur ${total}`;
+                ? `${total} ${unite}`
+                : `${visibles} ${unite} sur ${total}`;
         }
     };
 

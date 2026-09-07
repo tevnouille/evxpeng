@@ -3,11 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Vehicle;
+use App\Services\ReverseGeocoder;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class TripMapController extends Controller
 {
+    public function __construct(private readonly ReverseGeocoder $geocoder)
+    {
+    }
+
     public function index(Request $request): View
     {
         $vehicles = Vehicle::whereNotNull('mqtt_client_id')
@@ -38,7 +43,26 @@ class TripMapController extends Controller
                 ->get()
             : collect();
 
+        // Une seule requete groupee vers la Base Adresse Nationale, et le
+        // resultat est garde definitivement : la journee consultee une seconde
+        // fois ne coute plus rien. Un echec laisse simplement la colonne vide.
+        $this->geocoder->resolveMissing($points);
+        $adresses = $this->geocoder->known($points);
+
         return view('trips.index', [
+            'readings' => $points->map(function ($row) use ($adresses) {
+                $place = $adresses[$this->geocoder->key((float) $row->lat, (float) $row->lon)] ?? null;
+
+                return [
+                    'at' => $row->recorded_at,
+                    'lat' => (float) $row->lat,
+                    'lon' => (float) $row->lon,
+                    'label' => ($place && $place->label !== '') ? $place->label : null,
+                    'distance_m' => $place?->distance_m,
+                    'speed' => $row->speed !== null ? (float) $row->speed : null,
+                    'charging' => (bool) $row->is_charging,
+                ];
+            })->values(),
             'vehicles' => $vehicles,
             'vehicle' => $vehicle,
             'days' => $days,

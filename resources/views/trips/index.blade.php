@@ -101,9 +101,79 @@
                 Les fonds de carte proviennent d'OpenStreetMap : afficher cette page transmet la zone consultée à leurs serveurs.
             </p>
         </div>
+
+        @php($tableId = 'releves-'.$date)
+        <div class="box">
+            <h2 class="title is-5">Relevés du {{ \Carbon\CarbonImmutable::parse($date)->translatedFormat('j F Y') }}</h2>
+
+            <div class="level is-mobile mb-2">
+                <div class="level-left">
+                    <div class="field mb-0">
+                        <div class="control has-icons-left">
+                            <input class="input" type="search" placeholder="Filtrer…" autocomplete="off"
+                                   data-filters="{{ $tableId }}" aria-label="Filtrer les relevés">
+                            <span class="icon is-small is-left">&#128269;</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="level-right">
+                    <span class="has-text-grey is-size-7" data-filter-count="{{ $tableId }}"></span>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="table is-fullwidth is-striped is-hoverable is-narrow"
+                       id="{{ $tableId }}" data-sessions-table data-unit="relevé(s)">
+                    <thead>
+                        <tr>
+                            <th data-sort>Horodatage</th>
+                            <th data-sort>Latitude</th>
+                            <th data-sort>Longitude</th>
+                            <th data-sort>Adresse</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($readings as $releve)
+                            <tr>
+                                <td data-value="{{ $releve['at']->format('Y-m-d H:i:s') }}">
+                                    {{ $releve['at']->timezone(config('app.timezone'))->format('H:i:s') }}
+                                    @if ($releve['charging'])
+                                        <span class="tag is-success is-light ml-1">en charge</span>
+                                    @endif
+                                </td>
+                                <td data-value="{{ $releve['lat'] }}">{{ number_format($releve['lat'], 6, ',', ' ') }}</td>
+                                <td data-value="{{ $releve['lon'] }}">{{ number_format($releve['lon'], 6, ',', ' ') }}</td>
+                                <td>
+                                    @if ($releve['label'])
+                                        {{ $releve['label'] }}
+                                        {{-- La distance dit si le libelle designe l'endroit ou la voiture
+                                             etait, ou la maison la plus proche a trois cents metres. --}}
+                                        @if ($releve['distance_m'] !== null && $releve['distance_m'] > 60)
+                                            <span class="has-text-grey is-size-7">à {{ $releve['distance_m'] }} m</span>
+                                        @endif
+                                    @else
+                                        <span class="has-text-grey">—</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="4" class="has-text-centered has-text-grey">Aucun relevé ce jour-là.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            <p class="has-text-grey is-size-7">
+                Adresses fournies par la <strong>Base Adresse Nationale</strong>, interrogée une seule fois par
+                position — arrondie à une dizaine de mètres — puis conservée. Un tiret signale une position
+                sans adresse connue&nbsp;: pleine campagne, aire d'autoroute, ou point trop imprécis.
+            </p>
+        </div>
     @endif
 @endsection
 
 @push('scripts')
-    @vite('resources/js/trips.js')
+    @vite(['resources/js/trips.js', 'resources/js/sessions-table.js'])
 @endpush
