@@ -58,7 +58,8 @@ class DashboardController extends Controller
             ->join('providers', 'providers.id', '=', 'charging_sessions.provider_id')
             ->when($vehicleId, fn ($query) => $query->where('vehicle_id', $vehicleId))
             ->when($year, fn ($query) => $query->whereYear('charging_sessions.session_date', $year))
-            ->selectRaw('providers.name as name, SUM(quantity_kwh) as kwh, SUM(total_cost) as cost')
+            ->selectRaw('providers.name as name, COUNT(*) as sessions_count, SUM(quantity_kwh) as kwh, '
+                .'SUM(total_cost) as cost, SUM(real_cost) as real_cost')
             ->groupBy('providers.id', 'providers.name')
             ->orderByDesc('kwh')
             ->get();
@@ -118,8 +119,19 @@ class DashboardController extends Controller
             ],
             'by_provider' => $byProvider->map(fn ($p) => [
                 'name' => $p->name,
+                'sessions_count' => (int) $p->sessions_count,
                 'kwh' => (float) $p->kwh,
                 'cost' => (float) $p->cost,
+                'avg_cost_per_kwh' => $p->kwh > 0 ? round($p->cost / $p->kwh, 4) : null,
+                // Part calculee sur le cout total de la periode filtree, pas sur
+                // la somme des fournisseurs : une recharge sans fournisseur
+                // renseigne compte dans le total et doit manquer a la somme des
+                // parts, plutot que d'etre diluee dans les autres.
+                'cost_share' => $totalElectricCost > 0 ? round($p->cost / $totalElectricCost * 100, 1) : null,
+                // Ce que la recharge valait moins ce qui a ete debite : negatif
+                // quand on a paye plus que la valeur, positif quand on a
+                // economise. Meme convention que la vignette Gain.
+                'gain' => round((float) $p->cost - (float) $p->real_cost, 2),
             ])->values(),
         ]);
     }

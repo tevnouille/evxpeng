@@ -247,6 +247,89 @@ function Dashboard({ apiUrl, fuelPricesUrl, vehicles, years, currentYear }) {
                             </div>
                         </div>
                     </div>
+
+                    {/* Recapitulatif chiffre sous les camemberts : ils donnent la
+                        forme, le tableau donne les montants. Meme ordre que le
+                        camembert des kWh, pour que les couleurs se retrouvent. */}
+                    <div className="box">
+                        <h2 className="title is-5">Récapitulatif par fournisseur</h2>
+                        {data.by_provider.length > 0 ? (
+                            <div className="table-container">
+                                <table className="table is-fullwidth is-striped is-hoverable">
+                                    <thead>
+                                        <tr>
+                                            <th>Fournisseur</th>
+                                            <th className="has-text-right">Recharges</th>
+                                            <th className="has-text-right">kWh</th>
+                                            <th className="has-text-right">Coût</th>
+                                            <th className="has-text-right">Coût / kWh</th>
+                                            <th className="has-text-right">Part du coût</th>
+                                            <th className="has-text-right">Gain</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {data.by_provider.map((p, i) => (
+                                            <tr key={p.name}>
+                                                <td>
+                                                    <span
+                                                        className="tag mr-2"
+                                                        style={{
+                                                            backgroundColor: PROVIDER_COLORS[i % PROVIDER_COLORS.length],
+                                                            width: '.8rem',
+                                                            minWidth: '.8rem',
+                                                            padding: 0,
+                                                        }}
+                                                    />
+                                                    {p.name}
+                                                </td>
+                                                <td className="has-text-right">{p.sessions_count}</td>
+                                                <td className="has-text-right">{p.kwh.toFixed(2)}</td>
+                                                <td className="has-text-right">{p.cost.toFixed(2)} €</td>
+                                                <td className="has-text-right">
+                                                    {p.avg_cost_per_kwh !== null ? `${p.avg_cost_per_kwh.toFixed(4)} €` : '—'}
+                                                </td>
+                                                <td className="has-text-right">
+                                                    {p.cost_share !== null ? `${p.cost_share.toFixed(1)} %` : '—'}
+                                                </td>
+                                                <td className={`has-text-right ${p.gain < 0 ? 'has-text-success' : ''}`}>
+                                                    {p.gain.toFixed(2)} €
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <th>Total</th>
+                                            <th className="has-text-right">
+                                                {data.by_provider.reduce((n, p) => n + p.sessions_count, 0)}
+                                            </th>
+                                            <th className="has-text-right">
+                                                {data.by_provider.reduce((n, p) => n + p.kwh, 0).toFixed(2)}
+                                            </th>
+                                            <th className="has-text-right">
+                                                {data.by_provider.reduce((n, p) => n + p.cost, 0).toFixed(2)} €
+                                            </th>
+                                            <th />
+                                            <th className="has-text-right">
+                                                {data.by_provider.reduce((n, p) => n + (p.cost_share ?? 0), 0).toFixed(1)} %
+                                            </th>
+                                            <th className="has-text-right">
+                                                {data.by_provider.reduce((n, p) => n + p.gain, 0).toFixed(2)} €
+                                            </th>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                                <p className="has-text-grey is-size-7">
+                                    Le <strong>gain</strong> compare ce qui a été débité à ce que la recharge valait&nbsp;:
+                                    négatif quand elle a coûté moins que sa valeur. Une recharge sans fournisseur
+                                    renseigné compte dans les totaux du haut mais pas ici, d'où une part cumulée
+                                    parfois inférieure à 100&nbsp;%.
+                                </p>
+                            </div>
+                        ) : (
+                            <p className="has-text-grey">Pas encore de données.</p>
+                        )}
+                    </div>
                 </>
             )}
         </div>
