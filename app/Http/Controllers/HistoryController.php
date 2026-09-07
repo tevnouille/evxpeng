@@ -93,10 +93,24 @@ class HistoryController extends Controller
                 $kwh = (float) $providerSessions->sum('quantity_kwh');
                 $cost = (float) $providerSessions->sum('total_cost');
 
+                // Somme demandee telle quelle : cout reel + remise + frais
+                // annexes.
+                //
+                // Attention en la relisant : `real_cost` porte deja le prix
+                // plein — le total facture vaut `real + extra - discount` — si
+                // bien que reintegrer la remise la compte deux fois. Sur une
+                // recharge Carrefour de 2,05 EUR entierement remisee, la
+                // colonne affiche 4,10. Le prix plein s'obtiendrait par
+                // `real_cost + extra_cost` seuls.
+                $reel = (float) $providerSessions->sum('real_cost')
+                    + (float) $providerSessions->sum('discount')
+                    + (float) $providerSessions->sum('extra_cost');
+
                 return [
                     'count' => $providerSessions->count(),
                     'kwh' => $kwh,
                     'cost' => $cost,
+                    'real_cost' => $reel,
                     'avg_cost_per_kwh' => $kwh > 0 ? $cost / $kwh : null,
                     'cost_share' => $totalCost > 0 ? $cost / $totalCost * 100 : null,
                 ];

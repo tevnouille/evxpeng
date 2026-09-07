@@ -167,6 +167,8 @@
                             <th class="has-text-right">Recharges</th>
                             <th class="has-text-right">kWh</th>
                             <th class="has-text-right">Coût</th>
+                            <th class="has-text-right"
+                                title="Coût réel + remise + coût additionnel : le prix plein, avant remise.">Coût réel</th>
                             <th class="has-text-right">Coût / kWh</th>
                             <th class="has-text-right">Part du coût</th>
                         </tr>
@@ -178,6 +180,7 @@
                                 <td class="has-text-right">{{ $row['count'] }}</td>
                                 <td class="has-text-right">{{ number_format($row['kwh'], 2, ',', ' ') }}</td>
                                 <td class="has-text-right">{{ number_format($row['cost'], 2, ',', ' ') }} €</td>
+                                <td class="has-text-right">{{ number_format($row['real_cost'], 2, ',', ' ') }} €</td>
                                 <td class="has-text-right">
                                     {{ $row['avg_cost_per_kwh'] !== null ? number_format($row['avg_cost_per_kwh'], 4, ',', ' ') . ' €' : '—' }}
                                 </td>
@@ -193,6 +196,7 @@
                             <th class="has-text-right">{{ $stats['sessions_count'] }}</th>
                             <th class="has-text-right">{{ number_format($stats['kwh'], 2, ',', ' ') }}</th>
                             <th class="has-text-right">{{ number_format($stats['cost'], 2, ',', ' ') }} €</th>
+                            <th class="has-text-right">{{ number_format($statsByProvider->sum('real_cost'), 2, ',', ' ') }} €</th>
                             <th class="has-text-right">
                                 {{ $stats['avg_cost_per_kwh'] !== null ? number_format($stats['avg_cost_per_kwh'], 4, ',', ' ') . ' €' : '—' }}
                             </th>
