@@ -249,3 +249,28 @@ body {
     .progress.batterie::-webkit-progress-value { animation: none; }
     .progress.batterie::-moz-progress-bar { animation: none; }
 }
+
+
+/*
+ * En-tetes de colonnes triables.
+ *
+ * La fleche est en ::after pour ne pas decaler le libelle : reserver la place
+ * en permanence evite que la ligne d en-tete sursaute au premier clic.
+ */
+th.is-sortable {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+th.is-sortable::after {
+    content: "\2195";
+    margin-left: .35em;
+    opacity: .3;
+    font-weight: 400;
+}
+
+th.is-sortable[data-direction="asc"]::after { content: "\2191"; opacity: 1; }
+th.is-sortable[data-direction="desc"]::after { content: "\2193"; opacity: 1; }
+
+th.is-sortable:hover::after { opacity: .7; }
