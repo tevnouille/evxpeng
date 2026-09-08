@@ -51,9 +51,28 @@
         }
         .onglets button[aria-current="page"] { background: #2ea36b; border-color: #2ea36b; color: #fff; }
         .fraicheur {
-            flex: 0 0 auto; margin: 0 0 2vh;
+            flex: 0 0 auto; margin: 0 0 .7vh;
             font-size: clamp(.55rem, 1.8vh, .85rem); color: #6b6b6b;
         }
+        /* Compte a rebours du rechargement. Sur un ecran ou rien ne bouge entre
+           deux relevas, une barre qui avance dit deux choses d'un coup d'oeil :
+           quand la page sera renouvelee, et que le navigateur n'a pas suspendu
+           ses minuteries. Figee, elle designe elle-meme la panne. */
+        .attente {
+            flex: 0 0 auto; margin: 0 0 2vh;
+            height: clamp(.15rem, .7vh, .35rem); border-radius: 999px;
+            background: #e6e6e6; overflow: hidden;
+        }
+        .attente span {
+            display: block; height: 100%; width: 0;
+            background: #b4b4b4;
+            /* La largeur vient de l'horloge, pas d'une animation CSS : une
+               animation repartirait de zero apres une mise en veille et
+               annoncerait un delai qui n'existe plus. La transition ne fait
+               qu'adoucir le pas entre deux battements. */
+            transition: width .2s linear;
+        }
+        .attente.suspendue { opacity: .45; }
         .vue { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
         .vue[hidden] { display: none; }
         /*
@@ -140,7 +159,8 @@
         @media (prefers-color-scheme: dark) {
             body { background: #16181c; color: #f0f0f0; }
             .titre, .note, .fraicheur, .valeur .unite, thead th { color: #a0a4ab; }
-            .jauge { background: #2c3037; }
+            .jauge, .attente { background: #2c3037; }
+            .attente span { background: #5a6069; }
             .onglets button { background: #24272d; border-color: #3a3f47; color: #d5d8dd; }
             thead th { border-bottom-color: #3a3f47; }
             #carte iframe { border-color: #3a3f47; }
@@ -183,8 +203,9 @@
     <p class="fraicheur">
         Dernier relevé {{ $telemetry->recorded_at->diffForHumans() }}
         ({{ $telemetry->recorded_at->timezone(config('app.timezone'))->format('d/m H:i:s') }})
-        &middot; page réactualisée toutes les {{ $refreshSeconds }} s
+        &middot; <span id="cadence">page réactualisée toutes les {{ $refreshSeconds }} s</span>
     </p>
+    <div class="attente" id="attente" aria-hidden="true"><span></span></div>
 
     <div class="vue" id="vue-info">
         <div class="grille">
@@ -320,9 +341,66 @@
         afficher(window.location.hash === '#recharge' ? 'recharge' : 'info');
     })();
 
+    var rechargement = (function () {
+        var duree = {{ $refreshSeconds }} * 1000;
+        var echeance = Date.now() + duree;
+        var barre = document.getElementById('attente');
+        var jauge = barre ? barre.firstElementChild : null;
+        var cadence = document.getElementById('cadence');
+        var texte = cadence ? cadence.textContent : '';
+        var suspendu = false;
+
+        /*
+         * Le rechargement se decide sur l'horloge et non sur un delai pose une
+         * fois : le navigateur de la voiture endort ses minuteries des que
+         * l'ecran s'eteint ou que l'onglet passe derriere, et un setTimeout
+         * d'une minute pouvait alors ne jamais aboutir — la page restait
+         * affichee avec des chiffres vieux d'une heure. Un battement court qui
+         * compare deux dates repart juste apres une suspension, et recharge des
+         * la reprise si l'echeance est deja passee.
+         */
+        function battre() {
+            if (suspendu) { return; }
+
+            var reste = echeance - Date.now();
+
+            if (jauge) {
+                var part = (1 - reste / duree) * 100;
+                jauge.style.width = (part < 0 ? 0 : (part > 100 ? 100 : part)).toFixed(1) + '%';
+            }
+
+            if (reste <= 0) { window.location.reload(); }
+        }
+
+        setInterval(battre, 200);
+        battre();
+
+        // Revenir sur la page par le bouton « precedent » la restaure telle
+        // quelle, minuteries comprises : mieux vaut la recharger aussitot.
+        window.addEventListener('pageshow', function (e) {
+            if (e.persisted) { window.location.reload(); }
+        });
+
+        return {
+            suspendre: function () {
+                suspendu = true;
+                if (barre) { barre.classList.add('suspendue'); }
+                if (jauge) { jauge.style.width = '0%'; }
+                if (cadence) { cadence.textContent = 'réactualisation suspendue tant que la carte est affichée'; }
+            },
+            reprendre: function () {
+                if (!suspendu) { return; }
+                suspendu = false;
+                echeance = Date.now() + duree;
+                if (barre) { barre.classList.remove('suspendue'); }
+                if (cadence) { cadence.textContent = texte; }
+                battre();
+            },
+        };
+    })();
+
     (function () {
         var vue = document.getElementById('vue-position');
-        var recharge = setTimeout(function () { window.location.reload(); }, {{ $refreshSeconds }} * 1000);
 
         if (!vue) { return; }
 
@@ -330,12 +408,18 @@
 
         for (var i = 0; i < boutons.length; i++) {
             boutons[i].addEventListener('click', function (e) {
-                if (e.currentTarget.dataset.vue !== 'position') { return; }
+                if (e.currentTarget.dataset.vue !== 'position') {
+                    // Quitter la carte remet le compte a rebours en marche : le
+                    // suspendre sans jamais le reprendre laissait la page figee
+                    // pour de bon des qu'on avait regarde la position une fois.
+                    rechargement.reprendre();
+                    return;
+                }
 
                 // Le rechargement est suspendu tant que la carte est affichee :
                 // elle serait reconstruite toutes les minutes, et rappellerait
                 // OpenStreetMap a chaque fois.
-                clearTimeout(recharge);
+                rechargement.suspendre();
 
                 var carte = document.getElementById('carte');
                 if (carte.childElementCount > 0) { return; }
@@ -356,7 +440,7 @@
         // L'ancre survit au rechargement : arriver directement sur l'onglet
         // Position doit inserer la carte, sans attendre un clic qui n'aura pas lieu.
         if (window.location.hash === '#position') {
-            clearTimeout(recharge);
+            rechargement.suspendre();
             var declencheur = document.querySelector('.onglets button[data-vue=\"position\"]');
             if (declencheur) { declencheur.click(); }
         }
