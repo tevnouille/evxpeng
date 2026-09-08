@@ -168,7 +168,7 @@
                             <th class="has-text-right">kWh</th>
                             <th class="has-text-right">Coût</th>
                             <th class="has-text-right"
-                                title="Coût réel + remise + coût additionnel : le prix plein, avant remise.">Coût réel</th>
+                                title="Coût réel + coût additionnel : le prix plein facturé par la borne, avant remise.">Coût réel</th>
                             <th class="has-text-right">Coût / kWh</th>
                             <th class="has-text-right">Part du coût</th>
                         </tr>
