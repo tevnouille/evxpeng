@@ -39,6 +39,72 @@ class InfoCarController extends Controller
     /** Niveaux vises. */
     private const CIBLES = [80, 90, 100];
 
+    /** Bornes plausibles d'une limite de charge, en pourcentage. */
+    private const LIMITE_MIN = 30;
+
+    private const LIMITE_MAX = 100;
+
+    /**
+     * Valeur brute remontee par le boitier, si elle est numerique.
+     */
+    private static function brut(mixed $releve, string $cle): ?float
+    {
+        $valeur = $releve->raw['telemetry'][$cle] ?? null;
+
+        return is_numeric($valeur) ? (float) $valeur : null;
+    }
+
+    /**
+     * Ecart entre la cellule la plus haute et la plus basse, en millivolts.
+     *
+     * **Mediane de la journee et non derniere valeur** : le boitier interroge
+     * les capteurs a tour de role, si bien que les deux tensions d'un meme
+     * releve ne datent pas du meme instant. Un releve sur cinquante donne meme
+     * un ecart negatif, physiquement impossible — la mediane s'en moque, une
+     * valeur brute non.
+     *
+     * C'est le signe avant-coureur que le SoH ne donne pas : il reste a 99 %
+     * pendant des annees, alors qu'un desequilibre qui se creuse se lit ici.
+     *
+     * @param  \Illuminate\Support\Collection<int, \App\Models\VehicleTelemetry>  $history
+     */
+    private function ecartCellules(\Illuminate\Support\Collection $history): ?int
+    {
+        $ecarts = $history
+            ->map(function ($releve) {
+                $haute = self::brut($releve, 'HV_C_V_MAX');
+                $basse = self::brut($releve, 'HV_C_V_MIN');
+
+                return ($haute !== null && $basse !== null) ? ($haute - $basse) * 1000 : null;
+            })
+            ->filter(fn (?float $ecart) => $ecart !== null && $ecart >= 0)
+            ->sort()
+            ->values();
+
+        return $ecarts->isEmpty() ? null : (int) round($ecarts[intdiv($ecarts->count(), 2)]);
+    }
+
+    /**
+     * Limite de charge reglee dans la voiture, en pourcentage.
+     *
+     * Le boitier renvoie par moments des valeurs absurdes — 5 940 releve sur la
+     * derniere semaine. On retient donc le dernier releve **plausible** plutot
+     * que le dernier tout court.
+     *
+     * @param  \Illuminate\Support\Collection<int, \App\Models\VehicleTelemetry>  $history
+     */
+    private function limiteCharge(\Illuminate\Support\Collection $history): ?int
+    {
+        $limite = $history
+            ->reverse()
+            ->map(fn ($releve) => self::brut($releve, 'CHG_LIMIT'))
+            ->first(fn (?float $valeur) => $valeur !== null
+                && $valeur >= self::LIMITE_MIN
+                && $valeur <= self::LIMITE_MAX);
+
+        return $limite === null ? null : (int) round($limite);
+    }
+
     /**
      * Temps de charge depuis le niveau actuel, par puissance de borne.
      *
@@ -130,6 +196,8 @@ class InfoCarController extends Controller
             'netCapacity' => $netCapacity,
             'rangeKm' => $rangeKm,
             'position' => $position,
+            'ecartCellules' => $this->ecartCellules($history),
+            'limiteCharge' => $this->limiteCharge($history),
             'refreshSeconds' => VehicleState::REFRESH_SECONDS[$state['state'] ?? VehicleState::PARKED]
                 ?? VehicleState::REFRESH_SECONDS[VehicleState::PARKED],
             'cibles' => self::CIBLES,
