@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Vehicle;
 use App\Services\ChargeCurveSimulator;
 use App\Services\ChargingCurveRepository;
+use App\Services\ReverseGeocoder;
 use App\Services\VehicleState;
 use Illuminate\View\View;
 
@@ -28,6 +29,7 @@ class InfoCarController extends Controller
         private readonly VehicleState $state,
         private readonly ChargingCurveRepository $curves,
         private readonly ChargeCurveSimulator $simulator,
+        private readonly ReverseGeocoder $geocoder,
     ) {
     }
 
@@ -102,21 +104,32 @@ class InfoCarController extends Controller
 
         $state = $this->state->describe($telemetry, $history);
 
+        $position = ($telemetry?->lat && $telemetry?->lon)
+            ? ['lat' => (float) $telemetry->lat, 'lon' => (float) $telemetry->lon]
+            : null;
+
         // La courbe passe par forVehicle() : les paliers releves sur cette
         // voiture priment sur la reference du modele quand ils existent.
         $courbe = $this->curves->forVehicle($vehicle);
 
+        // La commune plutot que le compteur : sur l'ecran de la voiture, savoir
+        // ou elle se trouve vaut mieux qu'un kilometrage que le tableau de bord
+        // affiche deja. Elle vient du meme cache que « Deplacements » — une
+        // voiture a l'arret ne redemande rien a la BAN.
+        $ville = $position !== null
+            ? $this->geocoder->city($position['lat'], $position['lon'])
+            : null;
+
         return view('info_car', [
             'vehicle' => $vehicle,
+            'ville' => $ville,
             'telemetry' => $telemetry,
             'state' => $state,
             'soc' => $soc,
             'availableKwh' => $availableKwh,
             'netCapacity' => $netCapacity,
             'rangeKm' => $rangeKm,
-            'position' => ($telemetry?->lat && $telemetry?->lon)
-                ? ['lat' => (float) $telemetry->lat, 'lon' => (float) $telemetry->lon]
-                : null,
+            'position' => $position,
             'refreshSeconds' => VehicleState::REFRESH_SECONDS[$state['state'] ?? VehicleState::PARKED]
                 ?? VehicleState::REFRESH_SECONDS[VehicleState::PARKED],
             'cibles' => self::CIBLES,

@@ -94,6 +94,13 @@
         .valeur { font-size: clamp(1.1rem, 7.5vh, 2.8rem); font-weight: 700; line-height: 1.05; margin: 0; }
         .valeur .unite { font-size: .45em; font-weight: 400; color: #6b6b6b; }
         .moyenne { font-size: clamp(.95rem, 5.2vh, 2.1rem); font-weight: 600; line-height: 1.1; margin: 0; }
+        /* Un nom de commune se coupe plutot que de deborder : « Corbeil-
+           Essonnes » ne tient pas sur un tiers d'ecran etroit, et rien ici ne
+           defile pour aller le rechercher. */
+        .moyenne.texte {
+            font-size: clamp(.85rem, 3.8vh, 1.6rem);
+            overflow-wrap: break-word; hyphens: auto;
+        }
         .note { font-size: clamp(.55rem, 1.6vh, .8rem); color: #6b6b6b; margin: .2em 0 0; }
         .jauge {
             width: 100%; height: clamp(.25rem, 1vh, .5rem); border-radius: 999px;
@@ -225,10 +232,11 @@
                 @endif
             </div>
 
-            @if ($telemetry->odometer !== null)
+            @if ($ville !== null)
                 <div>
-                    <p class="titre">Compteur</p>
-                    <p class="moyenne">{{ number_format($telemetry->odometer, 0, ',', ' ') }} km</p>
+                    <p class="titre">Commune</p>
+                    <p class="moyenne texte">{{ $ville }}</p>
+                    <p class="note">d'après la position relevée</p>
                 </div>
             @endif
 

@@ -38,6 +38,15 @@ class ReverseGeocoder
 
     private const AGENT = 'ev.lolinux.org (suivi de vehicule, usage personnel)';
 
+    /** Un lot de plusieurs centaines de points prend le temps qu'il faut. */
+    private const DELAI_LOT = 60;
+
+    /**
+     * Un point isole, lui, est demande depuis une page qui s'affiche : mieux
+     * vaut une tuile vide qu'un ecran qui reste blanc parce que la BAN tarde.
+     */
+    private const DELAI_UNITAIRE = 5;
+
     public function key(float $lat, float $lon): string
     {
         return number_format($lat, self::PRECISION, '.', '')
@@ -61,7 +70,13 @@ class ReverseGeocoder
             return [];
         }
 
-        return GeocodedPlace::all()
+        // Filtre sur la latitude — colonne de tete de l'index unique — puis
+        // appariement exact en memoire. `all()` chargeait toute la table a
+        // chaque affichage : elle grossit a chaque trajet, et cette methode
+        // sert desormais une page rafraichie toutes les vingt secondes.
+        $latitudes = $cles->map(fn (string $cle) => explode(',', $cle)[0])->unique()->all();
+
+        return GeocodedPlace::whereIn('lat', $latitudes)->get()
             ->filter(fn (GeocodedPlace $place) => $cles->contains($this->key($place->lat, $place->lon)))
             ->keyBy(fn (GeocodedPlace $place) => $this->key($place->lat, $place->lon))
             ->all();
@@ -73,7 +88,7 @@ class ReverseGeocoder
      * @param  Collection<int, object>  $points
      * @return int  Nombre de positions nouvellement resolues.
      */
-    public function resolveMissing(Collection $points): int
+    public function resolveMissing(Collection $points, ?int $delai = null): int
     {
         $connues = $this->known($points);
 
@@ -89,12 +104,12 @@ class ReverseGeocoder
             return 0;
         }
 
-        $lignes = $manquantes->map(fn (string $cle) => str_replace(',', ',', $cle))->all();
-        $csv = "lat,lon\n".implode("\n", $lignes)."\n";
+        // Les cles sont deja au format « lat,lon » attendu par la BAN.
+        $csv = "lat,lon\n".implode("\n", $manquantes->all())."\n";
 
         try {
             $reponse = Http::withHeaders(['User-Agent' => self::AGENT])
-                ->timeout(60)
+                ->timeout($delai ?? self::DELAI_LOT)
                 ->attach('data', $csv, 'positions.csv')
                 ->post(self::ENDPOINT, ['lat' => 'lat', 'lon' => 'lon']);
         } catch (\Throwable $e) {
@@ -113,12 +128,35 @@ class ReverseGeocoder
     }
 
     /**
+     * Commune d'une position, resolue si elle ne l'est pas encore.
+     *
+     * Un seul point, donc un seul appel, et le cache fait le reste : une
+     * voiture a l'arret ne redemande rien, une voiture qui roule ne demande
+     * qu'une fois par tranche de onze metres.
+     */
+    public function city(float $lat, float $lon): ?string
+    {
+        $point = collect([(object) ['lat' => $lat, 'lon' => $lon]]);
+        $cle = $this->key($lat, $lon);
+        $connues = $this->known($point);
+
+        if (! isset($connues[$cle])) {
+            $this->resolveMissing($point, self::DELAI_UNITAIRE);
+            $connues = $this->known($point);
+        }
+
+        // Chaine vide = la BAN a repondu qu'elle ne connaissait pas : on ne la
+        // redemande pas, et la tuile ne s'affiche pas.
+        return ($connues[$cle]->city ?? null) ?: null;
+    }
+
+    /**
      * Enregistre les lignes du CSV renvoye par la BAN.
      */
     private function store(string $csv): int
     {
         $lignes = preg_split("/\r\n|\n|\r/", trim($csv));
-        $entete = str_getcsv(array_shift($lignes) ?? '');
+        $entete = str_getcsv(array_shift($lignes) ?? '', ',', '"', '');
         $index = array_flip($entete);
 
         if (! isset($index['lat'], $index['lon'])) {
@@ -134,7 +172,7 @@ class ReverseGeocoder
                 continue;
             }
 
-            $champs = str_getcsv($ligne);
+            $champs = str_getcsv($ligne, ',', '"', '');
             $valeur = fn (string $nom) => isset($index[$nom]) ? ($champs[$index[$nom]] ?? null) : null;
 
             $lat = $valeur('lat');
