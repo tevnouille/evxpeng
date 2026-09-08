@@ -102,6 +102,13 @@
             overflow-wrap: break-word; hyphens: auto;
         }
         .note { font-size: clamp(.55rem, 1.6vh, .8rem); color: #6b6b6b; margin: .2em 0 0; }
+        /* Un fondu court a la releve : sans lui, la valeur change d'un coup et
+           se lit comme une mesure qui vient de bouger. */
+        .alterne > div:not([hidden]) { animation: alterne-apparait .4s ease-out; }
+        @keyframes alterne-apparait {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
         .jauge {
             width: 100%; height: clamp(.25rem, 1vh, .5rem); border-radius: 999px;
             background: #e6e6e6; overflow: hidden; margin-top: .5vh;
@@ -146,6 +153,7 @@
         }
         @media (prefers-reduced-motion: reduce) {
             .jauge span, .jauge span.charge { animation: none; }
+            .alterne > div:not([hidden]) { animation: none; }
         }
         /* Le tableau occupe la hauteur libre et y repartit ses lignes. */
         table { flex: 1 1 auto; width: 100%; border-collapse: collapse; }
@@ -224,11 +232,27 @@
                 <div class="jauge"><span class="{{ ($state['state'] ?? null) === 'charging' ? 'charge' : '' }}" style="width: {{ max(0, min(100, (int) round($soc ?? 0))) }}%"></span></div>
             </div>
 
-            <div>
-                <p class="titre">Autonomie estimée</p>
-                <p class="valeur">{{ $rangeKm !== null ? $rangeKm : '—' }}<span class="unite"> km</span></p>
-                @if ($availableKwh !== null)
-                    <p class="note">{{ str_replace('.', ',', (string) $availableKwh) }} kWh disponibles</p>
+            {{-- Deux informations pour une seule case, alternees toutes les dix
+                 secondes : sur un ecran qui ne defile pas, la place est comptee.
+                 Le rang de la face vient de l'horloge et non d'un compteur
+                 remis a zero au chargement — la page se recharge toutes les
+                 cinq secondes en charge, et la seconde face n'apparaitrait
+                 jamais. --}}
+            <div class="alterne" data-periode="10">
+                <div>
+                    <p class="titre">Autonomie estimée</p>
+                    <p class="valeur">{{ $rangeKm !== null ? $rangeKm : '—' }}<span class="unite"> km</span></p>
+                    @if ($availableKwh !== null)
+                        <p class="note">{{ str_replace('.', ',', (string) $availableKwh) }} kWh disponibles</p>
+                    @endif
+                </div>
+
+                @if ($telemetry->soh !== null)
+                    <div hidden>
+                        <p class="titre">Santé batterie</p>
+                        <p class="valeur">{{ str_replace('.', ',', rtrim(rtrim((string) $telemetry->soh, '0'), '.')) }}<span class="unite"> %</span></p>
+                        <p class="note">capacité annoncée par la batterie</p>
+                    </div>
                 @endif
             </div>
 
@@ -237,13 +261,6 @@
                     <p class="titre">Commune</p>
                     <p class="moyenne texte">{{ $ville }}</p>
                     <p class="note">d'après la position relevée</p>
-                </div>
-            @endif
-
-            @if ($telemetry->soh !== null)
-                <div>
-                    <p class="titre">Santé batterie</p>
-                    <p class="moyenne">{{ str_replace('.', ',', rtrim(rtrim((string) $telemetry->soh, '0'), '.')) }} %</p>
                 </div>
             @endif
 
@@ -347,6 +364,35 @@
         }
 
         afficher(window.location.hash === '#recharge' ? 'recharge' : 'info');
+    })();
+
+    (function () {
+        var cases = document.querySelectorAll('.alterne');
+
+        /*
+         * Le rang de la face se calcule sur l'heure absolue plutot que sur un
+         * compteur local : la page se recharge toute seule, parfois toutes les
+         * cinq secondes, et un compteur reparti de zero aurait toujours montre
+         * la meme face. Ainsi la releve tombe sur les dizaines de secondes,
+         * qu'un rechargement soit intervenu ou non.
+         */
+        function afficher() {
+            for (var i = 0; i < cases.length; i++) {
+                var faces = cases[i].children;
+
+                if (faces.length < 2) { continue; }
+
+                var periode = (parseInt(cases[i].dataset.periode, 10) || 10) * 1000;
+                var rang = Math.floor(Date.now() / periode) % faces.length;
+
+                for (var f = 0; f < faces.length; f++) {
+                    faces[f].hidden = f !== rang;
+                }
+            }
+        }
+
+        setInterval(afficher, 500);
+        afficher();
     })();
 
     var rechargement = (function () {
