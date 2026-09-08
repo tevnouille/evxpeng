@@ -232,13 +232,13 @@
                 <div class="jauge"><span class="{{ ($state['state'] ?? null) === 'charging' ? 'charge' : '' }}" style="width: {{ max(0, min(100, (int) round($soc ?? 0))) }}%"></span></div>
             </div>
 
-            {{-- Deux informations pour une seule case, alternees toutes les dix
+            {{-- Deux informations pour une seule case, alternees toutes les cinq
                  secondes : sur un ecran qui ne defile pas, la place est comptee.
                  Le rang de la face vient de l'horloge et non d'un compteur
                  remis a zero au chargement — la page se recharge toutes les
                  cinq secondes en charge, et la seconde face n'apparaitrait
                  jamais. --}}
-            <div class="alterne" data-periode="10">
+            <div class="alterne" data-periode="5">
                 <div>
                     <p class="titre">Autonomie estimée</p>
                     <p class="valeur">{{ $rangeKm !== null ? $rangeKm : '—' }}<span class="unite"> km</span></p>
@@ -265,7 +265,7 @@
             @endif
 
             @if ($ecartCellules !== null || $limiteCharge !== null)
-                <div class="alterne" data-periode="10">
+                <div class="alterne" data-periode="5">
                     @if ($ecartCellules !== null)
                         <div>
                             <p class="titre">Écart entre cellules</p>
@@ -287,7 +287,7 @@
             @endif
 
             @if ($telemetry->batt_temp !== null || $telemetry->power_kw !== null)
-                <div class="alterne" data-periode="10">
+                <div class="alterne" data-periode="5">
                     @if ($telemetry->batt_temp !== null)
                         <div>
                             <p class="titre">Température batterie</p>
