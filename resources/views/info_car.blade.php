@@ -399,8 +399,13 @@
          * Le rang de la face se calcule sur l'heure absolue plutot que sur un
          * compteur local : la page se recharge toute seule, parfois toutes les
          * cinq secondes, et un compteur reparti de zero aurait toujours montre
-         * la meme face. Ainsi la releve tombe sur les dizaines de secondes,
-         * qu'un rechargement soit intervenu ou non.
+         * la meme face. Ainsi la releve tombe toujours au meme moment, qu'un
+         * rechargement soit intervenu ou non.
+         *
+         * Chaque case est decalee d'une fraction de la periode, de sorte que
+         * les releves s'etalent au lieu de tomber toutes ensemble. Le decalage
+         * vient du rang dans le document : il ne bouge pas d'un chargement a
+         * l'autre, une case ne se met donc pas a battre de travers.
          */
         function afficher() {
             for (var i = 0; i < cases.length; i++) {
@@ -409,7 +414,8 @@
                 if (faces.length < 2) { continue; }
 
                 var periode = (parseInt(cases[i].dataset.periode, 10) || 10) * 1000;
-                var rang = Math.floor(Date.now() / periode) % faces.length;
+                var decalage = periode / cases.length * i;
+                var rang = Math.floor((Date.now() + decalage) / periode) % faces.length;
 
                 for (var f = 0; f < faces.length; f++) {
                     faces[f].hidden = f !== rang;
