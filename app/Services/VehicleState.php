@@ -46,10 +46,16 @@ class VehicleState
      * les kilometres tombent, et une voiture a l'arret n'a rien a raconter.
      * Recharger plus vite que la collecte n'apporterait rien : la cadence de
      * `telemetry:ingest-mqtt` suit la meme regle.
+     *
+     * **Dix secondes, parce que c'est la cadence mesuree du boitier** (mediane
+     * 10,0 s sur 5 527 messages du 1er au 8 septembre 2026, identique en charge
+     * et en roulage). Les cinq secondes de la charge faisaient une requete sur
+     * deux pour rien, et les vingt secondes du roulage affichaient une donnee
+     * deux fois plus vieille que necessaire.
      */
     public const REFRESH_SECONDS = [
-        self::CHARGING => 5,
-        self::DRIVING => 20,
+        self::CHARGING => 10,
+        self::DRIVING => 10,
         self::PARKED => 60,
         self::OFFLINE => 60,
     ];

@@ -41,6 +41,14 @@ class Changelog
 
     private const DATA = [
         [
+            'date' => '2026-09-09',
+            'entries' => [
+                ['type' => 'correction', 'text' => "« Info voiture » renvoyait par moments une erreur 429, page blanche à l'écran de la voiture. La cause était dans le rechargement automatique livré la veille : l'échéance était vérifiée cinq fois par seconde, et une fois passée, chaque vérification relançait le chargement de la page. Sur un lien mobile lent, la page mettait plus d'une seconde à arriver — le temps que trente à cinquante requêtes soient lancées, chacune annulant la précédente, jusqu'à ce que le serveur oppose sa limite de débit. Le rechargement n'est désormais déclenché qu'une fois, et le battement s'arrête avec lui. La voiture passe de trente à cinquante requêtes par minute à six."],
+                ['type' => 'amelioration', 'text' => "Le rythme de rafraîchissement passe à dix secondes en charge comme en roulage, au lieu de cinq et vingt. C'est la cadence réellement mesurée du boîtier : médiane de 10,0 secondes sur les 5 527 relevés reçus du 1er au 8 septembre, identique dans les deux cas. Les cinq secondes de la charge demandaient une page sur deux pour rien ; les vingt secondes du roulage affichaient une donnée deux fois plus vieille que nécessaire."],
+                ['type' => 'amelioration', 'text' => "Les pages d'erreur 429 et 503 se rechargent d'elles-mêmes au bout de trente secondes. Sur l'écran de la voiture, une page d'erreur restait affichée jusqu'à ce qu'on la recharge à la main — ce qui ne se fait pas en conduisant. Le serveur a redémarré ce soir à 19 h 02 : les quelques secondes où il n'a pas répondu auraient figé l'écran jusqu'à l'arrêt du véhicule."],
+            ],
+        ],
+        [
             'date' => '2026-09-08',
             'entries' => [
                 ['type' => 'nouveaute', 'text' => "Deux mesures de plus sur « Info voiture », dans une case qui alterne comme la première. L'« écart entre cellules » — 26 mV — est le signe avant-coureur que la santé batterie ne donne pas : celle-ci reste à 99 % pendant des années, alors qu'un déséquilibre qui se creuse se lit tout de suite ici. C'est la médiane des dernières vingt-quatre heures et non la dernière valeur, parce que le boîtier interroge les capteurs à tour de rôle : les deux tensions d'un même relevé ne datent pas du même instant, et un relevé sur cinquante donne même un écart négatif, physiquement impossible. La « limite de charge » — 80 % — dit ce qui est réglé dans la voiture, ce qu'on oublie d'avoir changé avant un long trajet ; le boîtier renvoyant par moments des valeurs absurdes (5 940 relevé cette semaine), c'est le dernier relevé plausible qui est retenu."],

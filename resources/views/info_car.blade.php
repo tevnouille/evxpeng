@@ -435,6 +435,7 @@
         var cadence = document.getElementById('cadence');
         var texte = cadence ? cadence.textContent : '';
         var suspendu = false;
+        var lance = false;
 
         /*
          * Le rechargement se decide sur l'horloge et non sur un delai pose une
@@ -455,10 +456,23 @@
                 jauge.style.width = (part < 0 ? 0 : (part > 100 ? 100 : part)).toFixed(1) + '%';
             }
 
-            if (reste <= 0) { window.location.reload(); }
+            /*
+             * Une seule fois, et le battement s'arrete. Le navigateur met du
+             * temps a aller chercher la page sur un lien mobile, et pendant ce
+             * temps la page en cours continue de tourner : sans ce garde-fou,
+             * reload() repartait cinq fois par seconde, chaque requete annulant
+             * la precedente jusqu'a ce que le serveur oppose sa limite de debit.
+             * Mesure sur la voiture : 30 a 58 requetes par minute au lieu de six,
+             * et des reponses 429 en rafale.
+             */
+            if (reste <= 0 && ! lance) {
+                lance = true;
+                clearInterval(battement);
+                window.location.reload();
+            }
         }
 
-        setInterval(battre, 200);
+        var battement = setInterval(battre, 200);
         battre();
 
         // Revenir sur la page par le bouton « precedent » la restaure telle
