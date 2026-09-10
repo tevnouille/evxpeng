@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\FavoriteRoute;
 use App\Models\Vehicle;
 use App\Services\ReverseGeocoder;
 use Illuminate\Http\Request;
@@ -70,6 +71,23 @@ class TripMapController extends Controller
         $tripIndexes = $this->tripIndexes($points);
         $trips = $this->trips($points, $tripIndexes);
 
+        // Rapprochement choisi par l'utilisateur, jamais automatique : deux
+        // trajets aux points de depart proches sur une fenetre de temps large
+        // se ressembleraient trop pour qu'une detection devine juste a coup sur.
+        $favorites = FavoriteRoute::orderBy('name')->get();
+        $selectedTripIndex = $request->query('trajet') !== null ? (int) $request->query('trajet') : null;
+        $selectedFavoriteId = $request->query('favori') !== null ? (int) $request->query('favori') : null;
+        $comparison = null;
+
+        if ($selectedTripIndex !== null && $selectedFavoriteId !== null) {
+            $trip = collect($trips)->firstWhere('trip', $selectedTripIndex);
+            $favorite = $favorites->firstWhere('id', $selectedFavoriteId);
+
+            if ($trip !== null && $favorite !== null) {
+                $comparison = $this->comparison($trip, $favorite);
+            }
+        }
+
         return view('trips.index', [
             'readings' => $points->values()->map(function ($row, $i) use ($adresses, $tripIndexes) {
                 $place = $adresses[$this->geocoder->key((float) $row->lat, (float) $row->lon)] ?? null;
@@ -103,7 +121,38 @@ class TripMapController extends Controller
                 'charging' => (bool) $row->is_charging,
                 'trip' => $tripIndexes[$i] ?? 0,
             ])->values(),
+            'favorites' => $favorites,
+            'selectedTripIndex' => $selectedTripIndex,
+            'selectedFavoriteId' => $selectedFavoriteId,
+            'comparison' => $comparison,
         ]);
+    }
+
+    /**
+     * Confronte un deplacement reellement effectue a un trajet favori : temps
+     * et distance estimes par le planificateur au moment ou le favori a ete
+     * cree, contre ce que la telemetrie a enregistre ce jour-la.
+     *
+     * @param  array<string, mixed>  $trip
+     * @return array<string, mixed>
+     */
+    private function comparison(array $trip, FavoriteRoute $favorite): array
+    {
+        // diffInMinutes() rend un flottant depuis Carbon 3 : sans arrondi, la
+        // page affichait « 158.68333333333 min ».
+        $realMinutes = (int) round($trip['from']->diffInMinutes($trip['to']));
+        $realKm = $trip['distance'];
+        $plannedKm = (float) $favorite->distance_km;
+
+        return [
+            'favorite' => $favorite,
+            'real_minutes' => $realMinutes,
+            'planned_minutes' => $favorite->duration_minutes,
+            'minutes_gap' => $realMinutes - $favorite->duration_minutes,
+            'real_km' => $realKm,
+            'planned_km' => $plannedKm,
+            'km_gap' => $realKm !== null ? round($realKm - $plannedKm, 1) : null,
+        ];
     }
 
     /**

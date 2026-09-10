@@ -129,6 +129,115 @@
             </p>
         </div>
 
+        @if ($favorites->isNotEmpty() && $trips->isNotEmpty())
+            <div class="box">
+                <h2 class="title is-5 mb-2">Comparer à un trajet favori</h2>
+                <p class="has-text-grey is-size-7 mb-4">
+                    Rapprochement à choisir soi-même, jamais deviné automatiquement : deux trajets aux
+                    points de départ proches se ressembleraient trop pour qu'une détection tombe juste à
+                    coup sûr.
+                </p>
+
+                <form method="GET" class="columns is-align-items-flex-end">
+                    <input type="hidden" name="vehicule" value="{{ $vehicle->id }}">
+                    <input type="hidden" name="date" value="{{ $date }}">
+
+                    <div class="column is-4">
+                        <div class="field">
+                            <label class="label">Déplacement</label>
+                            <div class="control">
+                                <div class="select is-fullwidth">
+                                    <select name="trajet">
+                                        <option value="">— choisir —</option>
+                                        @foreach ($trips as $trip)
+                                            <option value="{{ $trip['trip'] }}" @selected($selectedTripIndex === $trip['trip'])>
+                                                {{ $trip['from']->format('H:i') }}–{{ $trip['to']->format('H:i') }}
+                                                @if ($trip['distance'] !== null)
+                                                    ({{ $trip['distance'] }} km)
+                                                @endif
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="column is-4">
+                        <div class="field">
+                            <label class="label">Trajet favori</label>
+                            <div class="control">
+                                <div class="select is-fullwidth">
+                                    <select name="favori">
+                                        <option value="">— choisir —</option>
+                                        @foreach ($favorites as $favorite)
+                                            <option value="{{ $favorite->id }}" @selected($selectedFavoriteId === $favorite->id)>
+                                                {{ $favorite->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="column is-4">
+                        <div class="field">
+                            <div class="control">
+                                <button class="button is-link" type="submit">Comparer</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+
+                @if ($comparison)
+                    <div class="columns is-mobile is-multiline mt-2">
+                        <div class="column">
+                            <p class="heading">Durée estimée</p>
+                            <p class="title is-4">{{ $comparison['planned_minutes'] }} min</p>
+                        </div>
+                        <div class="column">
+                            <p class="heading">Durée réelle</p>
+                            <p class="title is-4">{{ $comparison['real_minutes'] }} min</p>
+                        </div>
+                        <div class="column">
+                            <p class="heading">Écart</p>
+                            <p class="title is-4 {{ $comparison['minutes_gap'] > 0 ? 'has-text-danger' : 'has-text-success' }}">
+                                {{ $comparison['minutes_gap'] > 0 ? '+' : '' }}{{ $comparison['minutes_gap'] }} min
+                            </p>
+                        </div>
+                    </div>
+                    <div class="columns is-mobile is-multiline">
+                        <div class="column">
+                            <p class="heading">Distance estimée</p>
+                            <p class="title is-4">{{ number_format($comparison['planned_km'], 0, ',', ' ') }} km</p>
+                        </div>
+                        <div class="column">
+                            <p class="heading">Distance réelle</p>
+                            <p class="title is-4">
+                                {{ $comparison['real_km'] !== null ? number_format($comparison['real_km'], 0, ',', ' ').' km' : '—' }}
+                            </p>
+                        </div>
+                        <div class="column">
+                            <p class="heading">Écart</p>
+                            <p class="title is-4">
+                                @if ($comparison['km_gap'] === null)
+                                    —
+                                @else
+                                    {{ $comparison['km_gap'] > 0 ? '+' : '' }}{{ number_format($comparison['km_gap'], 0, ',', ' ') }} km
+                                @endif
+                            </p>
+                        </div>
+                    </div>
+                    <p class="has-text-grey is-size-7">
+                        La durée estimée est celle du trajet routier seul (OSRM), sans temps de recharge — le
+                        planificateur ne calcule pas d'arrêts imposés, il propose des bornes le long du
+                        parcours. L'écart inclut donc tout arrêt réellement fait, recharge ou pause.
+                    </p>
+                @endif
+            </div>
+        @endif
+
         <div class="box">
             <h2 class="title is-5">Relevés du {{ \Carbon\CarbonImmutable::parse($date)->translatedFormat('j F Y') }}</h2>
 

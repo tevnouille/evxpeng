@@ -48,20 +48,16 @@ fenêtre large compte des recharges d'avant l'installation du boîtier,
 faussant le ratio sans que rien ne le signale. Voir le CHANGELOG.md du
 2026-09-10.
 
-## Comparaison trajet planifié vs trajet réellement effectué
-
-`RoutePlannerController` estime temps et arrêts de recharge via
-`ChargeCurveSimulator` ; `TripMapController` reconstitue après coup ce qui
-s'est vraiment passé (vitesse, arrêts, distance). Les deux ne se recoupent
-jamais aujourd'hui.
-
-- Après un trajet effectué qui ressemble à un itinéraire planifié récent
-  (ou à un trajet favori), proposer une comparaison temps estimé/réel,
-  arrêts prévus/réels.
-- Question, non triviale : comment rapprocher automatiquement un trajet
-  réel d'un plan ou d'un favori (mêmes points de départ/arrivée à quelques
-  centaines de mètres près, sur une fenêtre de temps raisonnable) ? À
-  concevoir avant de coder — risque de faux rapprochements.
+« Comparaison trajet planifié vs trajet réellement effectué » est livrée, sur
+« Déplacements » (`TripMapController::comparison()`). La question ouverte
+(risque de faux rapprochements) est tranchée en évitant complètement la
+détection automatique : deux menus déroulants laissent choisir soi-même le
+déplacement du jour et le trajet favori à confronter. Seuls les trajets
+favoris sont comparables (pas de plan éphémère du planificateur : rien n'y
+est persisté tant qu'il n'est pas enregistré en favori), et seule la durée
+routière (OSRM, sans arrêt imposé) est estimée — le planificateur ne prévoit
+pas de pauses, donc l'écart observé inclut toute recharge ou pause réelle.
+Voir le CHANGELOG.md du 2026-09-10.
 
 ## Notes personnelles sur les bornes
 
