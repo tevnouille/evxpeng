@@ -114,13 +114,16 @@ tenu a la main, redige pour qui se sert de l'application. `CHANGELOG.md` en est
 une vue, regeneree apres tout ajout :
 
 ```bash
-sudo docker run --rm -v /var/docker/ev:/app -w /app -u 0:0 ev_app \
+sudo docker run --rm -v /var/docker/ev:/app -w /app -u 0:0 ev-app \
     php artisan changelog:export
 ```
 
-**Pas depuis `ev-app`** : la racine du depot n'y est pas montee, le fichier
-serait ecrit dans la couche du conteneur. `changelog:export --check` signale que
-le fichier est perime sans le reecrire.
+**Pas via `docker exec ev-app`** (le conteneur qui tourne) : la racine du depot
+n'y est pas montee, le fichier serait ecrit dans la couche du conteneur. La
+commande ci-dessus lance un conteneur jetable a partir de la meme image
+(`ev-app`, confondre les deux noms est facile), avec la racine du depot montee
+en `/app` — c'est ce qui fait la difference. `changelog:export --check` signale
+que le fichier est perime sans le reecrire.
 
 Ne pas editer `CHANGELOG.md` a la main : la prochaine regeneration l'ecraserait.
 
