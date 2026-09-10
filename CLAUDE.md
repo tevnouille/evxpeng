@@ -354,6 +354,24 @@ C'est voulu : `telemetry:poll` doit voir les vehicules de tous les comptes. Le
 corollaire est qu'une commande artisan travaille sur toute la base — y penser
 avant d'ecrire une commande qui modifie des donnees.
 
+### Se deconnecter, c'est deconnecter la passerelle
+
+L'application **n'a pas de session a elle** : l'identite arrive dans l'en-tete a
+chaque requete. Il n'y a donc rien a detruire ici. `/deconnexion`
+(`LogoutController`) redirige vers `pk.lolinux.org/logout.php`, qui detruit la
+session de la passerelle — donc **deconnecte de tous les services qu'elle
+protege**, pas seulement de celui-ci. Le menu le dit au survol, « Mon compte »
+en toutes lettres. Ne pas essayer d'ajouter une deconnexion « locale » : elle
+n'aurait aucun effet, la page suivante reposerait l'identite.
+
+L'adresse de la passerelle est dans `services.passkey.url`
+(`PASSKEY_GATEWAY_URL`), pas recopiee dans les vues.
+
+`deconnexion` figure dans `PUBLIC_PATHS` a cote de `infocar`. **Ce n'est pas un
+trou** : la passerelle exige toujours un passkey pour atteindre l'adresse, c'est
+l'identite *applicative* qui n'y est pas requise. Sans cela, un compte en
+attente d'autorisation recevrait un 403 sans aucun moyen d'en changer.
+
 Tables restees communes a dessein : `charging_stations` (IRVE) et `fuel_prices`,
 donnees publiques importees. `vehicle_telemetries` et `charge_alerts` sont
 cloisonnees par ricochet via leur vehicule.
