@@ -27,6 +27,13 @@ class MyVehicleController extends Controller
      */
     private const MIN_KM_FOR_COST = 50;
 
+    /**
+     * En dessous, une moyenne quotidienne se fait sur trop peu de jours pour
+     * etre autre chose qu'un instantane : deux jours de vacances sans rouler
+     * feraient croire que la voiture ne consomme plus rien.
+     */
+    private const MIN_COVERAGE_DAYS_FOR_ESTIMATE = 3;
+
     public function __construct(
         private readonly ChargingCurveRepository $curves,
         private readonly TelemetrySessionDetector $detector,
@@ -98,6 +105,12 @@ class MyVehicleController extends Controller
 
         $costPerKm = $vehicle ? $this->costPerKm($vehicle, $history, $days) : ['km' => null, 'cost' => 0.0, 'per_km' => null];
 
+        // Question posee dans le TODO avant de s'y lancer : utile seulement si
+        // l'estimation reste grossiere et honnete sur ses limites — un usage
+        // qui recharge tous les soirs a la maison n'a jamais vraiment besoin de
+        // "planifier" une recharge, mais voir le rythme actuel reste un repere.
+        $nextCharge = $this->nextChargeEstimate($history, $rangeKm);
+
         return view('my_vehicle.index', [
             'months' => $months,
             'month' => $month,
@@ -146,6 +159,7 @@ class MyVehicleController extends Controller
             'healthLabels' => collect($healthTrend)->map(fn ($d) => CarbonImmutable::createFromFormat('Y-m-d', $d['date'])->format('d/m'))->values(),
             'healthGapMv' => collect($healthTrend)->pluck('median')->values(),
             'costPerKm' => $costPerKm,
+            'nextCharge' => $nextCharge,
         ]);
     }
 
@@ -229,6 +243,54 @@ class MyVehicleController extends Controller
             'km' => $km,
             'cost' => round($cost, 2),
             'per_km' => ($km !== null && $km >= self::MIN_KM_FOR_COST) ? round($cost / $km, 3) : null,
+        ];
+    }
+
+    /**
+     * Estimation grossiere du delai avant qu'une recharge devienne
+     * necessaire, a partir du rythme de roulage recent (odometre) et de
+     * l'autonomie actuelle.
+     *
+     * Volontairement simple : une moyenne lineaire sur la fenetre couverte,
+     * rien qui modelise les jours de la semaine ou les trajets a venir. Une
+     * voiture rechargee tous les soirs a la maison n'a jamais vraiment besoin
+     * de "planifier" une recharge ; ce chiffre reste un repere, pas une alerte.
+     *
+     * @param  \Illuminate\Support\Collection<int, \App\Models\VehicleTelemetry>  $history
+     * @return array{km_per_day: float, days_remaining: int}|null
+     */
+    private function nextChargeEstimate($history, ?int $rangeKm): ?array
+    {
+        if ($rangeKm === null) {
+            return null;
+        }
+
+        $withOdometer = $history->whereNotNull('odometer')->values();
+
+        if ($withOdometer->count() < 2) {
+            return null;
+        }
+
+        $delta = (int) $withOdometer->last()->odometer - (int) $withOdometer->first()->odometer;
+        // diffInDays() rend un flottant depuis Carbon 3 (deja rencontre sur
+        // diffInMinutes() pour la comparaison de trajets) : arrondi a l'entier
+        // inferieur, la fraction de journee ne dit rien de plus ici.
+        $coverageDays = (int) floor($withOdometer->first()->recorded_at->diffInDays($withOdometer->last()->recorded_at));
+
+        if ($delta <= 0 || $coverageDays < self::MIN_COVERAGE_DAYS_FOR_ESTIMATE) {
+            return null;
+        }
+
+        $kmPerDay = $delta / $coverageDays;
+
+        if ($kmPerDay <= 0) {
+            return null;
+        }
+
+        return [
+            'km_per_day' => round($kmPerDay, 1),
+            'days_remaining' => (int) floor($rangeKm / $kmPerDay),
+            'coverage_days' => $coverageDays,
         ];
     }
 

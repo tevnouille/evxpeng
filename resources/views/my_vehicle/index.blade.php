@@ -93,6 +93,14 @@
                             <p class="has-text-grey is-size-7">
                                 à {{ str_replace('.', ',', (string) $vehicle->kwh_per_100km) }} kWh/100 km
                             </p>
+                            @if ($nextCharge)
+                                <p class="has-text-grey is-size-7">
+                                    ~{{ $nextCharge['days_remaining'] }} jour{{ $nextCharge['days_remaining'] > 1 ? 's' : '' }}
+                                    avant recharge nécessaire, au rythme actuel
+                                    ({{ str_replace('.', ',', (string) $nextCharge['km_per_day']) }} km/j en moyenne
+                                    sur {{ $nextCharge['coverage_days'] }} jours)
+                                </p>
+                            @endif
                         @else
                             <p class="has-text-grey is-size-7">
                                 Renseignez une consommation sur la fiche du véhicule.

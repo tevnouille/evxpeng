@@ -1,8 +1,10 @@
 # TODO
 
-Idées de fonctionnalités à trier, notées le 2026-09-10 pour ne pas les perdre.
-Chaque entrée pointe vers le code existant à réutiliser et les questions à
-trancher avant de s'y mettre.
+Rien en attente pour l'instant.
+
+Les neuf idées notées le 2026-09-10 ont toutes été livrées ce jour-là — la
+liste ci-dessous garde trace de ce qui a été tranché et pourquoi, pour qui
+retomberait sur un besoin voisin. Détail complet dans CHANGELOG.md.
 
 « Santé batterie (SoH) dans le temps » est livrée sous une forme différente de
 la note initiale : le SoH lui-même reste figé à 99 % sur toute la période
@@ -70,17 +72,16 @@ Recherche de borne : `ChargerLookupController::stations()` expose désormais
 « Rechercher bornes » côté saisie de recharge. Voir le CHANGELOG.md du
 2026-09-10.
 
-## Estimation "prochaine recharge nécessaire"
-
-Rien aujourd'hui ne projette l'autonomie actuelle sur les habitudes de
-déplacement pour dire "il faudra recharger d'ici tel jour".
-
-- Combiner l'autonomie courante (déjà calculée dans `MyVehicleController` /
-  `InfoCarController`) et une fréquence de trajets habituelle (`DailyVehicleActivity`
-  ou un nouveau calcul sur `TripMapController`) pour une estimation grossière.
-- Question : vaut vraiment le coup pour un usage single-utilisateur avec
-  recharge à domicile ? Peut-être la fonctionnalité la moins prioritaire de
-  cette liste — à confirmer avant de s'y lancer.
+« Estimation "prochaine recharge nécessaire" » est livrée, en version
+délibérément minimale vu le doute initial sur sa valeur : une ligne sous
+« Autonomie estimée » sur « Ma voiture »
+(`MyVehicleController::nextChargeEstimate()`), pas de nouvelle page ni
+d'alerte. Moyenne linéaire km/jour sur la période couverte par l'odomètre
+(≥ 3 jours de recul exigés, sinon tue plutôt que d'afficher un instantané
+trompeur), comparée à l'autonomie déjà calculée. Corrigé en route :
+`Carbon::diffInDays()` rend un flottant depuis Carbon 3, même piège que
+`diffInMinutes()` sur la comparaison de trajets. Voir le CHANGELOG.md du
+2026-09-10.
 
 « État de charge en cours sur la page de partage de position » est livrée :
 bandeau puissance/niveau/temps restant si la voiture charge au moment où le
