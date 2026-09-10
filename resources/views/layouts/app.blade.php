@@ -79,7 +79,7 @@
                     </div>
                 </div>
                 <div class="navbar-item has-dropdown is-hoverable">
-                    <a class="navbar-link {{ request()->routeIs('trips.*') || request()->routeIs('planner.*') || request()->routeIs('favorites.*') ? 'is-active' : '' }}"
+                    <a class="navbar-link {{ request()->routeIs('trips.*') || request()->routeIs('planner.*') || request()->routeIs('favorites.*') || request()->routeIs('position-shares.*') ? 'is-active' : '' }}"
                        href="{{ route('favorites.index') }}">
                         @include('layouts._icon', ['name' => 'trajets'])Trajets
                     </a>
@@ -87,6 +87,9 @@
                         @if (\App\Support\CurrentUser::get()?->hasTelemetry())
                             <a class="navbar-item {{ request()->routeIs('trips.*') ? 'is-active' : '' }}" href="{{ route('trips.index') }}">
                                 @include('layouts._icon', ['name' => 'carte'])Déplacements
+                            </a>
+                            <a class="navbar-item {{ request()->routeIs('position-shares.*') ? 'is-active' : '' }}" href="{{ route('position-shares.index') }}">
+                                @include('layouts._icon', ['name' => 'carte'])Partager ma position
                             </a>
                         @endif
                         <a class="navbar-item {{ request()->routeIs('planner.*') ? 'is-active' : '' }}" href="{{ route('planner.index') }}">

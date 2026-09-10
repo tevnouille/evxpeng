@@ -61,4 +61,11 @@ return [
         'thresholds' => [79, 89, 95, 96, 97, 98, 99, 100],
     ],
 
+    'position_share' => [
+        // Domaine dedie des liens de partage de position, distinct du domaine
+        // principal de l'appli : un vhost a part, entierement public, qui ne
+        // passe pas par la passerelle passkey (docker/share/README.md).
+        'domain' => env('POSITION_SHARE_DOMAIN', 's.lolinux.fr'),
+    ],
+
 ];

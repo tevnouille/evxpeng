@@ -39,6 +39,20 @@ class IdentifyUser
      */
     private const PUBLIC_PATHS = ['infocar', 'deconnexion'];
 
+    /**
+     * Routes nommees servies sans identite, en plus de PUBLIC_PATHS.
+     *
+     * `position-shares.show` : le lien de partage de position, ouvert sur le
+     * domaine dedie s.lolinux.fr (docker/share/README.md), qui ne passe pas
+     * par la passerelle passkey. Verifie par nom de route et non par chemin,
+     * puisque le chemin est un token genere (`/{token}`) qui ne peut pas
+     * figurer dans PUBLIC_PATHS. Le middleware `web` s'execute apres le
+     * routage, `Request::route()` est donc deja resolu ici. La protection
+     * reste le token lui-meme, aleatoire et non devinable — comme tout lien
+     * de partage.
+     */
+    private const PUBLIC_ROUTES = ['position-shares.show'];
+
     public function __construct(private readonly UserProvisioner $provisioner)
     {
     }
@@ -47,6 +61,10 @@ class IdentifyUser
     {
         // Comparaison en minuscules : un clavier de voiture n'est pas un clavier.
         if (in_array(strtolower(trim($request->path(), '/')), self::PUBLIC_PATHS, true)) {
+            return $next($request);
+        }
+
+        if ($request->routeIs(...self::PUBLIC_ROUTES)) {
             return $next($request);
         }
 

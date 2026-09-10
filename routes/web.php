@@ -15,6 +15,8 @@ use App\Http\Controllers\InfoCarController;
 use App\Http\Controllers\LogoutController;
 use App\Http\Controllers\MyVehicleController;
 use App\Http\Controllers\ObdStatsController;
+use App\Http\Controllers\PositionShareController;
+use App\Http\Controllers\PublicPositionShareController;
 use App\Http\Controllers\ReferenceDataController;
 use App\Http\Controllers\UserAdminController;
 use App\Http\Controllers\RoutePlannerController;
@@ -64,6 +66,20 @@ Route::get('/ma-voiture/statistiques-obd', [ObdStatsController::class, 'index'])
 Route::get('/deplacements', [TripMapController::class, 'index'])
     ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
     ->name('trips.index');
+
+// Partage temporaire de la position du vehicule par lien unique. Le lien lui-
+// meme (position-shares.show) est declare plus bas, sous le domaine dedie
+// s.lolinux.fr : ces trois routes-ci restent sur le domaine principal, donc
+// derriere le passkey.
+Route::get('/partager-ma-position', [PositionShareController::class, 'index'])
+    ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
+    ->name('position-shares.index');
+Route::post('/partager-ma-position', [PositionShareController::class, 'store'])
+    ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
+    ->name('position-shares.store');
+Route::delete('/partager-ma-position/{positionShare}', [PositionShareController::class, 'destroy'])
+    ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
+    ->name('position-shares.destroy');
 
 Route::get('/planificateur', [RoutePlannerController::class, 'index'])->name('planner.index');
 Route::get('/planificateur/adresses', [RoutePlannerController::class, 'suggestions'])->name('planner.suggestions');
@@ -143,3 +159,16 @@ Route::get('/admin/puissances', [ReferenceDataController::class, 'powerRatings']
 Route::post('/admin/puissances', [ReferenceDataController::class, 'storePowerRating'])->name('reference-data.power-ratings.store');
 Route::put('/admin/puissances/{powerRating}', [ReferenceDataController::class, 'updatePowerRating'])->name('reference-data.power-ratings.update');
 Route::delete('/admin/puissances/{powerRating}', [ReferenceDataController::class, 'destroyPowerRating'])->name('reference-data.power-ratings.destroy');
+
+// Lien de partage de position : domaine dedie, distinct de celui de l'appli.
+// Le token (40 caracteres alphanumeriques generes par PositionShare) fait
+// office de mot de passe ; la contrainte where() evite aussi toute collision
+// avec un futur chemin court sur ce meme domaine. Documente dans
+// docker/share/README.md, a cote du vhost qui route ce domaine ici sans
+// passer par la passerelle passkey.
+Route::domain(config('services.position_share.domain'))->group(function () {
+    Route::get('/{token}', [PublicPositionShareController::class, 'show'])
+        ->where('token', '[A-Za-z0-9]{40}')
+        ->middleware('throttle:60,1')
+        ->name('position-shares.show');
+});
