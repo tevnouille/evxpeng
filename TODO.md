@@ -19,16 +19,12 @@ publie la session terminée — pas de sondage séparé. Dédoublonnage par la
 colonne `gap_alert_delivered` sur `telemetry_charging_sessions`, sur le même
 principe que `delivered` dans `ChargeAlert`. Voir le CHANGELOG.md du 2026-09-10.
 
-## Cumul "économisé depuis le début" (équivalent carburant)
-
-`FuelPriceService` calcule déjà l'équivalent essence/diesel par recharge
-(section CLAUDE.md « Équivalence carburant »), affiché recharge par recharge
-dans l'historique mensuel. Rien n'additionne sur la durée de vie du compte.
-
-- Ajouter un total cumulé (kWh, coût réel, coût essence/diesel équivalent,
-  gain) sur le dashboard ou une nouvelle carte « Depuis le début ».
-- Respecter la règle déjà en place : les recharges sans véhicule configuré
-  (`configured_sessions`) restent exclues du calcul, pas de valeur inventée.
+« Cumul "économisé depuis le début" » est livré, sous forme plus simple que la
+note initiale : le calcul cumulé existait déjà en fait (sélectionner « Toutes
+les années » sur le dashboard le donnait), il manquait une carte toujours
+visible sans avoir à changer de filtre. `DashboardController::lifetime()`
+réutilise `FuelPriceService::equivalentTotals()` sur l'ensemble des recharges
+du compte. Voir le CHANGELOG.md du 2026-09-10.
 
 ## Alerte si le prix du carburant dépasse un seuil
 

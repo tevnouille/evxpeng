@@ -5,13 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\ChargingSession;
 use App\Models\Vehicle;
 use App\Services\FuelPriceService;
+use App\Support\CurrentUser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function index(): View
+    public function index(FuelPriceService $fuelPriceService): View
     {
         $currentYear = (int) now()->year;
 
@@ -29,7 +30,57 @@ class DashboardController extends Controller
             'vehicles' => Vehicle::orderBy('name')->get(),
             'years' => $years,
             'currentYear' => $currentYear,
+            // Toujours sur l'ensemble du compte, independamment des filtres
+            // annee/vehicule du reste du tableau de bord : "depuis le debut"
+            // n'a pas a etre redecouvert en choisissant "Toutes les annees".
+            'lifetime' => $this->lifetime($fuelPriceService),
+            'showFuelEquivalent' => (bool) (CurrentUser::get()?->show_fuel_equivalent ?? true),
         ]);
+    }
+
+    /**
+     * Cumul toutes recharges confondues, depuis la premiere enregistree.
+     *
+     * @return array<string, mixed>
+     */
+    private function lifetime(FuelPriceService $fuelPriceService): array
+    {
+        $sessions = ChargingSession::with('vehicle')->get();
+
+        $totalKwh = (float) $sessions->sum('quantity_kwh');
+        $totalCost = (float) $sessions->sum('total_cost');
+        $totalRealCost = (float) $sessions->sum('real_cost');
+
+        // Meme regle que partout ailleurs (App\Services\FuelPriceService) :
+        // prix du jour de chaque recharge, consommation du vehicule de chaque
+        // recharge, aucune valeur inventee pour un vehicule sans consommation
+        // renseignee — il reste compte dans total_sessions, pas dans configured_sessions.
+        $equivalenceRows = $sessions->map(fn ($session) => (object) [
+            'session_date' => $session->session_date,
+            'quantity_kwh' => (float) $session->quantity_kwh,
+            'kwh_per_100km' => $session->vehicle->kwh_per_100km,
+            'essence_l_per_100km' => $session->vehicle->essence_l_per_100km,
+            'diesel_l_per_100km' => $session->vehicle->diesel_l_per_100km,
+        ]);
+        $fuelEquivalent = $fuelPriceService->equivalentTotals($equivalenceRows);
+
+        return [
+            'kwh' => round($totalKwh, 1),
+            'cost' => round($totalCost, 2),
+            'real_cost' => round($totalRealCost, 2),
+            'gain' => round($totalCost - $totalRealCost, 2),
+            'sessions_count' => $sessions->count(),
+            'first_date' => $sessions->min('session_date'),
+            'essence_liters' => $fuelEquivalent['essence_liters'],
+            'diesel_liters' => $fuelEquivalent['diesel_liters'],
+            'essence_cost' => $fuelEquivalent['essence_cost'],
+            'diesel_cost' => $fuelEquivalent['diesel_cost'],
+            'savings_essence' => round($fuelEquivalent['essence_cost'] - $totalCost, 2),
+            'savings_diesel' => round($fuelEquivalent['diesel_cost'] - $totalCost, 2),
+            'configured_sessions' => $fuelEquivalent['configured_sessions'],
+            'total_sessions' => $fuelEquivalent['total_sessions'],
+            'estimated' => $fuelEquivalent['estimated'],
+        ];
     }
 
     public function data(Request $request, FuelPriceService $fuelPriceService): JsonResponse
