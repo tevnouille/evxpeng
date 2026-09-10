@@ -12,6 +12,10 @@ function popupFor(point) {
         lines.push(`Autonomie estimée : ${point.range_km} km`);
     }
 
+    if (point.charging) {
+        lines.push('En charge');
+    }
+
     lines.push(point.address ?? 'Adresse inconnue');
 
     return lines.join('<br>');
@@ -57,7 +61,10 @@ function renderMap() {
             radius: isLast ? 9 : 5,
             color: '#fff',
             weight: isLast ? 3 : 2,
-            fillColor: isLast ? '#f14668' : '#3e8ed0',
+            // Jaune en charge, meme convention que "Déplacements" : la couleur
+            // du dernier point prime, sauf s'il charge, information plus utile
+            // que "c'est le plus recent" qu'on lit deja a la taille du point.
+            fillColor: point.charging ? '#ffdd57' : (isLast ? '#f14668' : '#3e8ed0'),
             fillOpacity: 1,
         })
             .bindPopup(popupFor(point))

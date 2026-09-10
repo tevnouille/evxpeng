@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\PositionShare;
+use App\Models\VehicleTelemetry;
+use App\Services\ChargeCurveSimulator;
 use App\Services\ChargingCurveRepository;
 use App\Services\ReverseGeocoder;
 use Illuminate\View\View;
@@ -22,6 +24,7 @@ class PublicPositionShareController extends Controller
     public function __construct(
         private readonly ChargingCurveRepository $curves,
         private readonly ReverseGeocoder $geocoder,
+        private readonly ChargeCurveSimulator $simulator,
     ) {
     }
 
@@ -65,6 +68,7 @@ class PublicPositionShareController extends Controller
                 'soc' => $soc,
                 'range_km' => $rangeKm,
                 'address' => ($place && $place->label !== '') ? $place->label : null,
+                'charging' => (bool) $row->is_charging,
             ];
         })->values();
 
@@ -72,6 +76,34 @@ class PublicPositionShareController extends Controller
             'vehicle' => $vehicle,
             'share' => $share,
             'mapPoints' => $mapPoints,
+            // Etat courant, independant de la fenetre de points affichee : le
+            // destinataire du lien veut savoir si la voiture charge *maintenant*,
+            // pas si elle chargeait au tout debut du partage.
+            'charging' => $this->chargingNow($vehicle->latestTelemetry, $curve, $netCapacity),
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $curve
+     * @return array{power_kw: float, soc: float, remaining_minutes: int|null}|null
+     */
+    private function chargingNow(?VehicleTelemetry $latest, ?array $curve, ?float $netCapacity): ?array
+    {
+        if ($latest === null || ! $latest->is_charging || $latest->soc === null) {
+            return null;
+        }
+
+        $soc = (float) $latest->soc;
+        $power = $latest->power_kw !== null ? abs((float) $latest->power_kw) : null;
+
+        $remaining = ($power !== null && $power > 0 && $curve !== null && $netCapacity)
+            ? $this->simulator->duration($curve, $soc, 100.0, $power)
+            : null;
+
+        return [
+            'power_kw' => $power ?? 0.0,
+            'soc' => $soc,
+            'remaining_minutes' => $remaining !== null ? (int) round($remaining / 60) : null,
+        ];
     }
 }

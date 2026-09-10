@@ -82,14 +82,10 @@ déplacement pour dire "il faudra recharger d'ici tel jour".
   recharge à domicile ? Peut-être la fonctionnalité la moins prioritaire de
   cette liste — à confirmer avant de s'y lancer.
 
-## État de charge en cours sur la page de partage de position
-
-`PositionShare` (livré le 2026-09-10, voir CHANGELOG.md et
-`app/Http/Controllers/PublicPositionShareController.php`) affiche batterie,
-autonomie et adresse par point, mais pas si la voiture est en train de
-charger au moment où le destinataire consulte le lien.
-
-- Ajouter l'état de charge en cours (puissance, temps restant estimé) sur la
-  page publique, utile si on partage sa position pendant une charge sur
-  autoroute. Réutiliser `VehicleState` et `ChargeCurveSimulator`, déjà
-  partagés avec `InfoCarController`.
+« État de charge en cours sur la page de partage de position » est livrée :
+bandeau puissance/niveau/temps restant si la voiture charge au moment où le
+lien est consulté (`PublicPositionShareController::chargingNow()`,
+`ChargeCurveSimulator` déjà partagé avec `InfoCarController`), plus un point
+jaune sur la carte pour tout relevé pris en charge. Vérifié avec un relevé de
+test inséré puis retiré aussitôt (45,5 kW, 62 % → ~52 min jusqu'à 100 %,
+calcul correct) — jamais laissé en base. Voir le CHANGELOG.md du 2026-09-10.

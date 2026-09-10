@@ -19,6 +19,17 @@
                 <span id="share-refresh-status" class="has-text-grey"></span>
             </p>
 
+            @if ($charging)
+                <div class="notification is-success is-light">
+                    <strong>En charge</strong> — {{ number_format($charging['power_kw'], 1, ',', ' ') }} kW,
+                    {{ (int) $charging['soc'] }} % actuellement
+                    @if ($charging['remaining_minutes'] !== null)
+                        , encore environ {{ $charging['remaining_minutes'] }} min jusqu'à 100 %
+                    @endif
+                    .
+                </div>
+            @endif
+
             @if ($mapPoints->isEmpty())
                 <div class="notification is-warning is-light">
                     Aucun relevé de position depuis le début du partage. Revenez un peu plus tard.
