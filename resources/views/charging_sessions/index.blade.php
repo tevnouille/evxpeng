@@ -458,7 +458,7 @@
 
     <div class="level">
         <div class="level-left">
-            <h2 class="title is-4">Recharges</h2>
+            <h2 class="title is-4">Recharges de {{ now()->translatedFormat('F Y') }}</h2>
         </div>
         <div class="level-right">
             <div class="buttons">

@@ -45,7 +45,7 @@ class Changelog
             'entries' => [
                 ['type' => 'nouveaute', 'text' => "Un lien « Déconnexion » apparaît dans le menu, à droite, et un bouton sur « Mon compte ». Il n'y en avait aucun : une fois le passkey présenté, il fallait fermer le navigateur ou vider ses cookies pour repartir — impossible de passer d'un compte à l'autre sur la même machine. À noter, et c'est écrit sur « Mon compte » : l'application n'a pas de session à elle, votre identité lui est transmise à chaque page par la passerelle passkey. Se déconnecter ferme la session de cette passerelle, donc vous déconnecte de tous les services qu'elle protège, pas seulement de celui-ci. Pour revenir, il suffit de représenter son passkey."],
                 ['type' => 'amelioration', 'text' => "Sur « Déplacements », les relevés d'une journée sont désormais regroupés par déplacement : chaque trajet distinct — séparé du suivant par un écart de plus de quinze minutes entre deux relevés, signe que le boîtier ne remontait plus rien moteur coupé — a sa propre couleur sur la carte. Un sélecteur, visible dès qu'une journée compte plusieurs trajets, permet d'isoler l'un d'eux : la carte se recadre dessus et le tableau des relevés en dessous ne montre plus que ses lignes."],
-                ['type' => 'amelioration', 'text' => "« Recharges » affiche désormais toutes les recharges enregistrées au lieu des dix dernières."],
+                ['type' => 'amelioration', 'text' => "« Recharges » affiche désormais tout le mois en cours au lieu des dix dernières recharges."],
             ],
         ],
         [
