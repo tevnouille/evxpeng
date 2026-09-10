@@ -1,43 +1,9 @@
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Au-dela de cet ecart entre deux releves, on considere que la voiture a ete
-// coupee (le boitier OBD ne remonte plus rien moteur eteint) : c'est la limite
-// entre deux deplacements distincts de la meme journee. En dessous, un arret
-// bref (feu, embouteillage, charge) fait toujours partie du meme trajet.
-const TRIP_GAP_SECONDS = 15 * 60;
-
 // Palette distincte des couleurs deja prises par les marqueurs (vert premier
 // releve, rouge dernier, jaune charge) pour ne pas se meler a leur sens.
 const TRIP_COLORS = ['#3e8ed0', '#ff8c42', '#9b59b6', '#00b0a3', '#c0392b', '#6c7a89'];
-
-function timeToSeconds(time) {
-    const [h, m, s] = time.split(':').map(Number);
-
-    return h * 3600 + m * 60 + s;
-}
-
-// Decoupe les releves de la journee en deplacements successifs, sur les
-// ecarts de temps entre releves consecutifs.
-function splitTrips(points) {
-    const trips = [];
-    let current = [points[0]];
-
-    for (let i = 1; i < points.length; i++) {
-        const gap = timeToSeconds(points[i].time) - timeToSeconds(points[i - 1].time);
-
-        if (gap > TRIP_GAP_SECONDS) {
-            trips.push(current);
-            current = [];
-        }
-
-        current.push(points[i]);
-    }
-
-    trips.push(current);
-
-    return trips;
-}
 
 // Marqueurs vectoriels plutot que les icones par defaut de Leaflet : celles-ci
 // sont chargees par URL relative a la feuille de style et se cassent des qu'on
@@ -95,6 +61,54 @@ function popupFor(point, index, total) {
     return lines.join('<br>');
 }
 
+// Cable les boutons du selecteur de deplacement : montrer/cacher les calques
+// de la carte, recadrer dessus, et repercuter le choix sur le filtre du
+// tableau des releves (evenement ecoute par sessions-table.js).
+function setUpTripFilter(map, tripLayers, allCoordinates) {
+    const container = document.getElementById('trip-filter');
+
+    if (!container) {
+        return;
+    }
+
+    const table = document.getElementById(container.dataset.table);
+    const buttons = [...container.querySelectorAll('[data-trip]')];
+
+    buttons.forEach((button) => {
+        button.addEventListener('click', () => {
+            const selected = button.dataset.trip;
+
+            buttons.forEach((b) => {
+                b.classList.toggle('is-link', b === button);
+                b.classList.toggle('is-selected', b === button);
+            });
+
+            let bounds = allCoordinates;
+
+            tripLayers.forEach(({ layer, coordinates }, tripIndex) => {
+                const show = selected === 'all' || String(tripIndex) === selected;
+
+                if (show) {
+                    layer.addTo(map);
+                } else {
+                    layer.remove();
+                }
+            });
+
+            if (selected !== 'all') {
+                bounds = tripLayers.get(Number(selected))?.coordinates ?? allCoordinates;
+            }
+
+            map.fitBounds(L.latLngBounds(bounds), { padding: [30, 30], maxZoom: 16 });
+
+            if (table) {
+                table.dataset.tripFilter = selected;
+                table.dispatchEvent(new Event('trip-filter-change'));
+            }
+        });
+    });
+}
+
 function renderMap() {
     const container = document.getElementById('trip-map');
 
@@ -115,39 +129,49 @@ function renderMap() {
         maxZoom: 19,
     }).addTo(map);
 
-    const trips = splitTrips(points);
+    // Le decoupage en deplacements est calcule cote serveur (TripMapController) :
+    // c'est lui qui alimente aussi le selecteur et le filtre du tableau, une
+    // seule source de verite pour les trois.
+    const byTrip = new Map();
 
-    // Associe chaque point a la couleur de son deplacement, pour que la ligne
-    // et ses marqueurs se repondent visuellement.
-    const tripColorByPoint = new Map();
+    points.forEach((point, index) => {
+        if (!byTrip.has(point.trip)) {
+            byTrip.set(point.trip, []);
+        }
 
-    trips.forEach((trip, tripIndex) => {
+        byTrip.get(point.trip).push({ point, index });
+    });
+
+    const tripLayers = new Map();
+    const allCoordinates = points.map((point) => [point.lat, point.lon]);
+
+    byTrip.forEach((entries, tripIndex) => {
         const color = TRIP_COLORS[tripIndex % TRIP_COLORS.length];
-
-        trip.forEach((point) => tripColorByPoint.set(point, color));
+        const layer = L.layerGroup();
+        const coordinates = entries.map(({ point }) => [point.lat, point.lon]);
 
         // Les positions sont espacees d'une minute au mieux : la ligne relie
         // des releves, elle ne retrace pas la route empruntee. D'ou le pointille.
-        L.polyline(trip.map((point) => [point.lat, point.lon]), {
+        L.polyline(coordinates, {
             color,
             weight: 3,
             opacity: 0.7,
             dashArray: '6, 6',
-        }).addTo(map);
+        }).addTo(layer);
+
+        entries.forEach(({ point, index }) => {
+            L.circleMarker([point.lat, point.lon], markerFor(point, index, points.length, color))
+                .bindPopup(popupFor(point, index, points.length))
+                .addTo(layer);
+        });
+
+        layer.addTo(map);
+        tripLayers.set(tripIndex, { layer, coordinates });
     });
 
-    points.forEach((point, index) => {
-        L.circleMarker(
-            [point.lat, point.lon],
-            markerFor(point, index, points.length, tripColorByPoint.get(point))
-        )
-            .bindPopup(popupFor(point, index, points.length))
-            .addTo(map);
-    });
+    map.fitBounds(L.latLngBounds(allCoordinates), { padding: [30, 30], maxZoom: 16 });
 
-    const coordinates = points.map((point) => [point.lat, point.lon]);
-
-    map.fitBounds(L.latLngBounds(coordinates), { padding: [30, 30], maxZoom: 16 });
+    setUpTripFilter(map, tripLayers, allCoordinates);
 }
 
 renderMap();

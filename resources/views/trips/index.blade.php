@@ -88,7 +88,34 @@
             </div>
         </div>
 
+        @php($tableId = 'releves-'.$date)
         <div class="box">
+            @if ($trips->count() > 1)
+                <div class="field">
+                    <label class="label">Déplacement</label>
+                    <div class="control">
+                        <div class="buttons are-small" id="trip-filter" data-table="{{ $tableId }}">
+                            <button type="button" class="button is-link is-selected" data-trip="all">
+                                Toute la journée
+                            </button>
+                            @foreach ($trips as $trip)
+                                <button type="button" class="button" data-trip="{{ $trip['trip'] }}">
+                                    {{ $trip['from']->format('H:i') }}–{{ $trip['to']->format('H:i') }}
+                                    @if ($trip['distance'] !== null)
+                                        <span class="has-text-grey ml-1">({{ $trip['distance'] }} km)</span>
+                                    @endif
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+                    <p class="help">
+                        Chaque déplacement est colorié différemment sur la carte. La limite entre deux
+                        déplacements est posée sur un écart de plus de 15 minutes entre deux relevés — le
+                        signe que le boîtier OBD ne remontait plus rien, moteur coupé.
+                    </p>
+                </div>
+            @endif
+
             <div id="trip-map" style="height: 520px;" data-points='@json($mapPoints)'></div>
             <p class="has-text-grey is-size-7 mt-3">
                 Point vert : premier relevé de la journée. Point rouge : dernier. Point jaune : véhicule en charge.
@@ -102,7 +129,6 @@
             </p>
         </div>
 
-        @php($tableId = 'releves-'.$date)
         <div class="box">
             <h2 class="title is-5">Relevés du {{ \Carbon\CarbonImmutable::parse($date)->translatedFormat('j F Y') }}</h2>
 
@@ -134,7 +160,7 @@
                     </thead>
                     <tbody>
                         @forelse ($readings as $releve)
-                            <tr>
+                            <tr data-trip="{{ $releve['trip'] }}">
                                 <td data-value="{{ $releve['at']->format('Y-m-d H:i:s') }}">
                                     {{ $releve['at']->timezone(config('app.timezone'))->format('H:i:s') }}
                                     @if ($releve['charging'])

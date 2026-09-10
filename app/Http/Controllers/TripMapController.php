@@ -9,6 +9,22 @@ use Illuminate\View\View;
 
 class TripMapController extends Controller
 {
+    /**
+     * Au-dela de cet ecart entre deux releves consecutifs, on considere que la
+     * voiture a ete coupee (le boitier OBD ne remonte plus rien moteur
+     * eteint) : c'est la limite entre deux deplacements distincts de la meme
+     * journee.
+     *
+     * Verifie sur l'historique complet (2026-09-10, 4079 releves du seul
+     * vehicule equipe) : les ecarts de plus de cinq minutes se repartissent en
+     * deux groupes nettement separes, l'un sous 840 s (bref decrochage reseau
+     * en roulant ou en stationnement, le boitier restant branche), l'autre a
+     * partir de 1314 s (arret reel, moteur coupe). 900 s tombe dans le creux
+     * entre les deux : ni assez court pour couper un trajet sur un long feu,
+     * ni assez long pour fondre deux sorties separees dans le meme trajet.
+     */
+    private const TRIP_GAP_SECONDS = 900;
+
     public function __construct(private readonly ReverseGeocoder $geocoder)
     {
     }
@@ -49,8 +65,13 @@ class TripMapController extends Controller
         $this->geocoder->resolveMissing($points);
         $adresses = $this->geocoder->known($points);
 
+        // Calcule une seule fois : la vue s'en sert pour colorer la carte, le
+        // selecteur de deplacements et le filtre du tableau des releves.
+        $tripIndexes = $this->tripIndexes($points);
+        $trips = $this->trips($points, $tripIndexes);
+
         return view('trips.index', [
-            'readings' => $points->map(function ($row) use ($adresses) {
+            'readings' => $points->values()->map(function ($row, $i) use ($adresses, $tripIndexes) {
                 $place = $adresses[$this->geocoder->key((float) $row->lat, (float) $row->lon)] ?? null;
 
                 return [
@@ -61,6 +82,7 @@ class TripMapController extends Controller
                     'distance_m' => $place?->distance_m,
                     'speed' => $row->speed !== null ? (float) $row->speed : null,
                     'charging' => (bool) $row->is_charging,
+                    'trip' => $tripIndexes[$i] ?? 0,
                 ];
             })->values(),
             'vehicles' => $vehicles,
@@ -70,7 +92,8 @@ class TripMapController extends Controller
             'points' => $points,
             'distanceOdometer' => $this->odometerDistance($points),
             'distanceGps' => $this->gpsDistance($points),
-            'mapPoints' => $points->map(fn ($row) => [
+            'trips' => $trips,
+            'mapPoints' => $points->values()->map(fn ($row, $i) => [
                 'lat' => (float) $row->lat,
                 'lon' => (float) $row->lon,
                 'time' => $row->recorded_at->format('H:i:s'),
@@ -78,8 +101,54 @@ class TripMapController extends Controller
                 'speed' => $row->speed !== null ? (float) $row->speed : null,
                 'odometer' => $row->odometer,
                 'charging' => (bool) $row->is_charging,
+                'trip' => $tripIndexes[$i] ?? 0,
             ])->values(),
         ]);
+    }
+
+    /**
+     * Indice de deplacement (0, 1, 2...) pour chaque releve, dans l'ordre de
+     * $points, sur les ecarts de temps entre releves consecutifs.
+     *
+     * @return array<int, int>
+     */
+    private function tripIndexes($points): array
+    {
+        $indexes = [];
+        $trip = 0;
+        $previous = null;
+
+        foreach ($points->values() as $i => $row) {
+            if ($previous !== null && $previous->diffInSeconds($row->recorded_at) > self::TRIP_GAP_SECONDS) {
+                $trip++;
+            }
+
+            $indexes[$i] = $trip;
+            $previous = $row->recorded_at;
+        }
+
+        return $indexes;
+    }
+
+    /**
+     * Resume par deplacement, pour le selecteur de la vue : plage horaire,
+     * nombre de releves, distance parcourue (au compteur, quand disponible).
+     *
+     * @param  array<int, int>  $tripIndexes
+     * @return \Illuminate\Support\Collection
+     */
+    private function trips($points, array $tripIndexes)
+    {
+        return $points->values()
+            ->groupBy(fn ($row, $i) => $tripIndexes[$i] ?? 0)
+            ->map(fn ($rows, $trip) => [
+                'trip' => (int) $trip,
+                'from' => $rows->first()->recorded_at,
+                'to' => $rows->last()->recorded_at,
+                'count' => $rows->count(),
+                'distance' => $this->odometerDistance($rows),
+            ])
+            ->values();
     }
 
     /**

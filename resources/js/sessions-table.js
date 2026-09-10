@@ -92,6 +92,9 @@ function setUpTable(table) {
 
     const filtrer = () => {
         const terme = aplatir(champ.value.trim());
+        // Filtre par deplacement, pose par trips.js sur le selecteur de la
+        // carte : absent ou 'all' sur les tableaux qui n'en ont pas (recharges).
+        const trajet = table.dataset.tripFilter;
         let visibles = 0;
 
         lignesDe().forEach((ligne) => {
@@ -105,7 +108,9 @@ function setUpTable(table) {
                     .map((c) => c.textContent)
                     .join(' ')
             );
-            const garde = terme === '' || texte.includes(terme);
+            const correspondTexte = terme === '' || texte.includes(terme);
+            const correspondTrajet = !trajet || trajet === 'all' || ligne.dataset.trip === trajet;
+            const garde = correspondTexte && correspondTrajet;
 
             ligne.hidden = !garde;
 
@@ -120,13 +125,15 @@ function setUpTable(table) {
             // et aux positions, et « 4 recharge(s) » sous une liste de releves
             // serait faux.
             const unite = table.dataset.unit || 'ligne(s)';
-            compteur.textContent = terme === ''
-                ? `${total} ${unite}`
-                : `${visibles} ${unite} sur ${total}`;
+            const filtreActif = terme !== '' || (trajet && trajet !== 'all');
+            compteur.textContent = filtreActif
+                ? `${visibles} ${unite} sur ${total}`
+                : `${total} ${unite}`;
         }
     };
 
     champ.addEventListener('input', filtrer);
+    table.addEventListener('trip-filter-change', filtrer);
     filtrer();
 }
 
