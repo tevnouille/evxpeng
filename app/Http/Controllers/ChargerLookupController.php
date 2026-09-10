@@ -68,10 +68,14 @@ class ChargerLookupController extends Controller
             ->orderByRaw('CASE WHEN city LIKE ? THEN 0 ELSE 1 END', [addcslashes($terms[0] ?? $query, '%_\\').'%'])
             ->orderByDesc('max_power_kw')
             ->limit(self::LIMIT)
-            ->get(['name', 'city', 'address', 'operator', 'network', 'max_power_kw']);
+            ->get(['id', 'name', 'city', 'address', 'operator', 'network', 'max_power_kw']);
 
         return response()->json([
             'results' => $stations->map(fn ($station) => [
+                // Inutilise par l'autocomplete de saisie de recharge (elle ne
+                // remplit que des champs texte) ; sert a App\Http\Controllers\ChargingStationNoteController
+                // pour retrouver la borne exacte plutot que son seul libelle.
+                'id' => $station->id,
                 'name' => $station->name,
                 'city' => $station->city,
                 'address' => $station->address,

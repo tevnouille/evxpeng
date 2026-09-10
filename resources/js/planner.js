@@ -3,6 +3,15 @@ import 'leaflet/dist/leaflet.css';
 import { wireAddressInputs } from './address-autocomplete';
 import { wireNetworkFilter } from './network-picker';
 
+// La popup est injectee en HTML (bindPopup(string)) : une note tapee au
+// clavier ne doit pas pouvoir y glisser une balise.
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+
+    return div.innerHTML;
+}
+
 function endpointMarker(color) {
     return {
         radius: 9,
@@ -34,6 +43,7 @@ function stopPopup(stop, index) {
         `${stop.power_kw} kW · ${stop.points_count} point(s) de charge`,
         `Km ${Math.round(stop.km)} · détour ${stop.detour_km} km`,
         `${Math.round(stop.soc_in)} % &rarr; ${Math.round(stop.soc_out)} % en ${stop.minutes} min`,
+        stop.note ? `<em>${escapeHtml(stop.note)}</em>` : '',
     ];
 
     return lines.filter(Boolean).join('<br>');

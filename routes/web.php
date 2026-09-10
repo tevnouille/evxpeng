@@ -3,6 +3,7 @@
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\ChargerLookupController;
 use App\Http\Controllers\ChargingCurveController;
+use App\Http\Controllers\ChargingStationNoteController;
 use App\Http\Controllers\ChangelogController;
 use App\Http\Controllers\ChargingSessionController;
 use App\Http\Controllers\DashboardController;
@@ -92,6 +93,10 @@ Route::delete('/favoris/{favorite}', [FavoriteRouteController::class, 'destroy']
 Route::post('/favoris/{favorite}/bornes', [FavoriteRouteController::class, 'addStation'])->name('favorites.stations.store');
 Route::delete('/favoris/{favorite}/bornes/{station}', [FavoriteRouteController::class, 'removeStation'])->name('favorites.stations.destroy');
 Route::post('/favoris/{favorite}/copier', [FavoriteRouteController::class, 'copy'])->name('favorites.copy');
+
+Route::get('/mes-bornes', [ChargingStationNoteController::class, 'index'])->name('station-notes.index');
+Route::post('/mes-bornes', [ChargingStationNoteController::class, 'store'])->name('station-notes.store');
+Route::delete('/mes-bornes/{stationNote}', [ChargingStationNoteController::class, 'destroy'])->name('station-notes.destroy');
 
 Route::get('/courbe-de-recharge', [ChargingCurveController::class, 'index'])->name('charging-curves.index');
 Route::get('/courbe-de-recharge/comparaison', [ChargingCurveController::class, 'compare'])->name('charging-curves.compare');

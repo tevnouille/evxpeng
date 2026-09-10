@@ -59,18 +59,16 @@ routière (OSRM, sans arrêt imposé) est estimée — le planificateur ne prév
 pas de pauses, donc l'écart observé inclut toute recharge ou pause réelle.
 Voir le CHANGELOG.md du 2026-09-10.
 
-## Notes personnelles sur les bornes
-
-`ChargingStation` (base IRVE, données publiques importées, cf. CLAUDE.md
-« Libellés IRVE ») n'a aucun champ pour une appréciation personnelle. Le
-planificateur et les favoris (`FavoriteRouteController`) ne s'appuient que
-sur la donnée brute.
-
-- Nouveau modèle (ou champ) rattaché à l'utilisateur (`BelongsToUser`) :
-  note libre sur une borne (fiable, HS, accès compliqué), affichée dans le
-  planificateur et les favoris à côté de la borne concernée.
-- Question : une note par (utilisateur, borne), ou par (utilisateur, borne,
-  visite) si on veut dater chaque observation ?
+« Notes personnelles sur les bornes » est livrée, page `/mes-bornes`
+(`App\Models\ChargingStationNote`). Question tranchée : une note par
+(utilisateur, borne), pas par visite — la réécrire remplace l'observation
+précédente. `App\Services\RouteCorridor::stations()` centralise l'affichage :
+notes ajoutées après coup sur les résultats, une seule requête, donc
+planificateur et favoris les récupèrent sans rien changer côté contrôleur.
+Recherche de borne : `ChargerLookupController::stations()` expose désormais
+`id` (utilisé nulle part ailleurs avant), sur le même mécanisme que
+« Rechercher bornes » côté saisie de recharge. Voir le CHANGELOG.md du
+2026-09-10.
 
 ## Estimation "prochaine recharge nécessaire"
 

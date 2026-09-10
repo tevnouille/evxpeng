@@ -177,6 +177,11 @@ function renderMap() {
             box.appendChild(document.createTextNode(line));
         });
 
+        if (station.note) {
+            box.appendChild(document.createElement('br'));
+            box.appendChild(element('em', null, station.note));
+        }
+
         const favorite = favorites.find((entry) => entry.station_id === station.id);
         const button = element('button', `button is-small mt-2 ${favorite ? 'is-danger is-light' : 'is-link'}`,
             favorite ? 'Retirer du trajet' : 'Ajouter au trajet');

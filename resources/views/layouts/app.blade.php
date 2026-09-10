@@ -79,7 +79,7 @@
                     </div>
                 </div>
                 <div class="navbar-item has-dropdown is-hoverable">
-                    <a class="navbar-link {{ request()->routeIs('trips.*') || request()->routeIs('planner.*') || request()->routeIs('favorites.*') || request()->routeIs('position-shares.*') ? 'is-active' : '' }}"
+                    <a class="navbar-link {{ request()->routeIs('trips.*') || request()->routeIs('planner.*') || request()->routeIs('favorites.*') || request()->routeIs('position-shares.*') || request()->routeIs('station-notes.*') ? 'is-active' : '' }}"
                        href="{{ route('favorites.index') }}">
                         @include('layouts._icon', ['name' => 'trajets'])Trajets
                     </a>
@@ -97,6 +97,9 @@
                         </a>
                         <a class="navbar-item {{ request()->routeIs('favorites.*') ? 'is-active' : '' }}" href="{{ route('favorites.index') }}">
                             @include('layouts._icon', ['name' => 'favoris'])Favoris
+                        </a>
+                        <a class="navbar-item {{ request()->routeIs('station-notes.*') ? 'is-active' : '' }}" href="{{ route('station-notes.index') }}">
+                            @include('layouts._icon', ['name' => 'favoris'])Notes sur les bornes
                         </a>
                     </div>
                 </div>

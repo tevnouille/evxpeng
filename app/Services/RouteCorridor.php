@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ChargingStation;
+use App\Models\ChargingStationNote;
 
 /**
  * Ce qui se trouve le long d'un itineraire.
@@ -139,7 +140,34 @@ class RouteCorridor
 
         usort($found, fn ($a, $b) => $a['km'] <=> $b['km']);
 
+        $this->attachNotes($found);
+
         return $found;
+    }
+
+    /**
+     * Ajoute la note personnelle de l'utilisateur courant sur chaque borne,
+     * s'il en a laisse une (App\Http\Controllers\ChargingStationNoteController).
+     * Une seule requete pour tout le corridor, apres coup : le service reste
+     * une pure question de geometrie, il ne filtre ni ne trie sur la note.
+     *
+     * @param  array<int, array<string, mixed>>  &$found
+     */
+    private function attachNotes(array &$found): void
+    {
+        $ids = array_column(array_column($found, 'station'), 'id');
+
+        if ($ids === []) {
+            return;
+        }
+
+        $notes = ChargingStationNote::whereIn('charging_station_id', $ids)
+            ->pluck('note', 'charging_station_id');
+
+        foreach ($found as &$entry) {
+            $entry['station']['note'] = $notes[$entry['station']['id']] ?? null;
+        }
+        unset($entry);
     }
 
     /**
