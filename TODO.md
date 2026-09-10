@@ -11,22 +11,13 @@ avant-coureur retenu sur `/infoCar` — qui est tracé jour par jour, dans un
 nouveau graphique « Équilibre des cellules » sur « Ma voiture ». Voir
 `App\Services\BatteryHealth` et le CHANGELOG.md du 2026-09-10.
 
-## Alerte SMS sur écart de recharge significatif
-
-`ChargingCurveController::compare()` calcule déjà l'écart entre puissance
-mesurée et courbe de référence par session, et le marque `significant` (ligne
-~181, seuils `SIGNIFICANT_GAP_KW` / `SIGNIFICANT_GAP_RATIO`). Rien n'alerte
-aujourd'hui : il faut visiter `/courbe-de-recharge/comparaison` pour le voir.
-
-- Détecter la fin d'une `TelemetryChargingSession`, calculer l'écart comme le
-  fait déjà `comparison()`, et envoyer un SMS via `FreeMobileSms` (même
-  mécanisme que `ChargeAlert`) si `significant`.
-- Question : où brancher la détection de fin de charge ? Probablement dans le
-  même passage que `TelemetrySessionDetector` / `PendingTelemetryCharges`,
-  pas un nouveau poll.
-- Attention à ne pas alerter sur une charge AC volontairement bridée à faible
-  puissance — `comparison()` gère déjà ce cas en calant la référence sur
-  `max_power_kw` de la session, à réutiliser tel quel.
+« Alerte SMS sur écart de recharge significatif » est livrée : le calcul est
+extrait dans `App\Services\ChargeCurveComparison` (une seule implémentation
+pour la page et l'alerte), et `App\Services\ChargeGapNotifier` envoie le SMS,
+appelé depuis `IngestMqttTelemetry::handleCharging()` au moment où le boîtier
+publie la session terminée — pas de sondage séparé. Dédoublonnage par la
+colonne `gap_alert_delivered` sur `telemetry_charging_sessions`, sur le même
+principe que `delivered` dans `ChargeAlert`. Voir le CHANGELOG.md du 2026-09-10.
 
 ## Cumul "économisé depuis le début" (équivalent carburant)
 

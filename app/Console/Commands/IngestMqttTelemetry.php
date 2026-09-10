@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\TelemetryChargingSession;
 use App\Models\Vehicle;
 use App\Models\VehicleTelemetry;
+use App\Services\ChargeGapNotifier;
 use App\Services\ChargeThresholdNotifier;
 use App\Services\ChargingCurveRepository;
 use Illuminate\Console\Command;
@@ -114,7 +115,7 @@ class IngestMqttTelemetry extends Command
         'longitude' => 'lon',
     ];
 
-    public function handle(ChargeThresholdNotifier $notifier, ChargingCurveRepository $curves): int
+    public function handle(ChargeThresholdNotifier $notifier, ChargingCurveRepository $curves, ChargeGapNotifier $gapNotifier): int
     {
         $this->curves = $curves;
 
@@ -173,7 +174,7 @@ class IngestMqttTelemetry extends Command
             if ($kind === 'data') {
                 $carried[$clientId] = $this->handleData($vehicle, $payload, $carried[$clientId] ?? [], $counts, $notifier);
             } elseif ($kind === 'charging') {
-                $this->handleCharging($vehicle, $payload, $counts);
+                $this->handleCharging($vehicle, $payload, $counts, $gapNotifier);
             }
         }
 
@@ -372,7 +373,7 @@ class IngestMqttTelemetry extends Command
         return $fresh;
     }
 
-    private function handleCharging(Vehicle $vehicle, array $payload, array &$counts): void
+    private function handleCharging(Vehicle $vehicle, array $payload, array &$counts, ChargeGapNotifier $gapNotifier): void
     {
         $externalId = $payload['id'] ?? null;
         $startedAt = $this->timestamp($payload['startTime'] ?? null);
@@ -395,7 +396,7 @@ class IngestMqttTelemetry extends Command
             return;
         }
 
-        TelemetryChargingSession::updateOrCreate(
+        $session = TelemetryChargingSession::updateOrCreate(
             ['vehicle_id' => $vehicle->id, 'external_id' => $externalId],
             [
                 'started_at' => $startedAt,
@@ -415,6 +416,14 @@ class IngestMqttTelemetry extends Command
                 'raw' => array_diff_key($payload, ['chargingCurve' => null]),
             ]
         );
+
+        // Meme jugement que la page « Recharges face à la courbe » : la
+        // session vient d'etre finalisee, c'est le seul moment ou il n'y a
+        // rien a gagner a attendre. ChargeGapNotifier retente au prochain
+        // passage si l'envoi echoue (identifiants absents, Free indisponible).
+        if ($gapNotifier->notify($vehicle, $session)) {
+            $this->info("SMS envoye : ecart de charge significatif sur la recharge du {$startedAt->format('d/m H:i')}.");
+        }
 
         $counts['charging']++;
     }

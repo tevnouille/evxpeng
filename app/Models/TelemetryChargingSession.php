@@ -30,6 +30,7 @@ class TelemetryChargingSession extends Model
         'lat',
         'lon',
         'curve',
+        'gap_alert_delivered',
         'raw',
     ];
 
@@ -44,6 +45,7 @@ class TelemetryChargingSession extends Model
         'lat' => 'float',
         'lon' => 'float',
         'curve' => 'array',
+        'gap_alert_delivered' => 'boolean',
         'raw' => 'array',
     ];
 
