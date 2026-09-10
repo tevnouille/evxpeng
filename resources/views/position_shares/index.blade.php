@@ -31,14 +31,25 @@
         <div class="columns is-align-items-flex-end">
             <div class="column is-4">
                 <div class="field">
-                    <label class="label" for="expires_at">Fin du partage</label>
+                    <label class="label" for="duree">Durée du partage</label>
                     <div class="control">
-                        <input class="input" type="datetime-local" id="expires_at" name="expires_at"
-                               value="{{ old('expires_at', now()->addHour()->format('Y-m-d\TH:i')) }}"
-                               min="{{ now()->format('Y-m-d\TH:i') }}"
-                               max="{{ now()->addHours($maxHours)->format('Y-m-d\TH:i') }}" required>
+                        <div class="select is-fullwidth">
+                            <select id="duree" name="duree" required>
+                                @foreach ($durations as $duration)
+                                    @php
+                                        // Au-dela d'une journee, l'heure ne parle plus : « 168 heures »
+                                        // se lit moins vite que « 7 jours ».
+                                        $label = ($duration > 24 && $duration % 24 === 0)
+                                            ? intdiv($duration, 24).' jour'.(intdiv($duration, 24) > 1 ? 's' : '')
+                                            : $duration.' heure'.($duration > 1 ? 's' : '');
+                                    @endphp
+                                    <option value="{{ $duration }}" @selected((int) old('duree', 1) === $duration)>
+                                        {{ $label }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
-                    <p class="help">Jusqu'à {{ intdiv($maxHours, 24) }} jours à l'avance.</p>
                 </div>
             </div>
             <div class="column is-4">

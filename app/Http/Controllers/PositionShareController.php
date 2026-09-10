@@ -20,8 +20,11 @@ use Illuminate\View\View;
  */
 class PositionShareController extends Controller
 {
-    /** Duree maximale d'un partage : un lien oublie ne doit pas rester actif indefiniment. */
-    private const MAX_HOURS = 24 * 7;
+    /**
+     * Durees proposees, en heures : un menu plutot qu'un champ date/heure —
+     * plus rapide a remplir. La vue affiche 168 en jours, pas en heures.
+     */
+    private const DURATIONS = [1, 8, 12, 24, 24 * 7];
 
     public function __construct(private readonly FreeMobileSms $sms)
     {
@@ -32,18 +35,17 @@ class PositionShareController extends Controller
         return view('position_shares.index', [
             'shares' => PositionShare::with('vehicle')->orderByDesc('created_at')->get(),
             'smsConfigured' => $this->sms->forUser(CurrentUser::get())->configured(),
-            'maxHours' => self::MAX_HOURS,
+            'durations' => self::DURATIONS,
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'expires_at' => [
-                'required', 'date', 'after:now',
-                'before:'.now()->addHours(self::MAX_HOURS)->toDateTimeString(),
-            ],
+            'duree' => ['required', 'integer', 'in:'.implode(',', self::DURATIONS)],
         ]);
+
+        $expiresAt = now()->addHours((int) $data['duree']);
 
         // Vehicule par defaut relie au boitier : aucun choix propose tant
         // qu'un seul compte n'a jamais plus d'un vehicule equipe.
@@ -58,7 +60,7 @@ class PositionShareController extends Controller
 
         $share = PositionShare::create([
             'vehicle_id' => $vehicle->id,
-            'expires_at' => $data['expires_at'],
+            'expires_at' => $expiresAt,
         ]);
 
         $message = sprintf(
