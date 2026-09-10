@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Vehicle;
+use App\Services\BatteryHealth;
 use App\Services\ChargeCurveSimulator;
 use App\Services\ChargingCurveRepository;
 use App\Services\ReverseGeocoder;
@@ -30,6 +31,7 @@ class InfoCarController extends Controller
         private readonly ChargingCurveRepository $curves,
         private readonly ChargeCurveSimulator $simulator,
         private readonly ReverseGeocoder $geocoder,
+        private readonly BatteryHealth $battery,
     ) {
     }
 
@@ -52,36 +54,6 @@ class InfoCarController extends Controller
         $valeur = $releve->raw['telemetry'][$cle] ?? null;
 
         return is_numeric($valeur) ? (float) $valeur : null;
-    }
-
-    /**
-     * Ecart entre la cellule la plus haute et la plus basse, en millivolts.
-     *
-     * **Mediane de la journee et non derniere valeur** : le boitier interroge
-     * les capteurs a tour de role, si bien que les deux tensions d'un meme
-     * releve ne datent pas du meme instant. Un releve sur cinquante donne meme
-     * un ecart negatif, physiquement impossible — la mediane s'en moque, une
-     * valeur brute non.
-     *
-     * C'est le signe avant-coureur que le SoH ne donne pas : il reste a 99 %
-     * pendant des annees, alors qu'un desequilibre qui se creuse se lit ici.
-     *
-     * @param  \Illuminate\Support\Collection<int, \App\Models\VehicleTelemetry>  $history
-     */
-    private function ecartCellules(\Illuminate\Support\Collection $history): ?int
-    {
-        $ecarts = $history
-            ->map(function ($releve) {
-                $haute = self::brut($releve, 'HV_C_V_MAX');
-                $basse = self::brut($releve, 'HV_C_V_MIN');
-
-                return ($haute !== null && $basse !== null) ? ($haute - $basse) * 1000 : null;
-            })
-            ->filter(fn (?float $ecart) => $ecart !== null && $ecart >= 0)
-            ->sort()
-            ->values();
-
-        return $ecarts->isEmpty() ? null : (int) round($ecarts[intdiv($ecarts->count(), 2)]);
     }
 
     /**
@@ -196,7 +168,7 @@ class InfoCarController extends Controller
             'netCapacity' => $netCapacity,
             'rangeKm' => $rangeKm,
             'position' => $position,
-            'ecartCellules' => $this->ecartCellules($history),
+            'ecartCellules' => $this->battery->medianGap($history),
             'limiteCharge' => $this->limiteCharge($history),
             'refreshSeconds' => VehicleState::REFRESH_SECONDS[$state['state'] ?? VehicleState::PARKED]
                 ?? VehicleState::REFRESH_SECONDS[VehicleState::PARKED],

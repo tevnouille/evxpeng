@@ -360,6 +360,27 @@
         </div>
 
         <div class="box">
+            <h2 class="title is-5 mb-2">Équilibre des cellules</h2>
+            <p class="has-text-grey is-size-7 mb-4">
+                Écart entre la cellule la plus haute et la plus basse, médiane du jour. C'est le signal
+                avant-coureur que la tuile « Santé batterie » ci-dessus ne donne pas : le SoH reste à 99&nbsp;%
+                pendant des années, alors qu'un déséquilibre qui se creuse se lit ici, bien avant que le SoH ne
+                bouge. Les jours trop peu échantillonnés sont omis plutôt que d'ajouter du bruit à la courbe.
+            </p>
+
+            @if (count($healthTrend) < 2)
+                <p class="has-text-grey">
+                    Pas encore assez de jours exploitables pour tracer une courbe
+                    ({{ count($healthTrend) }} pour l'instant).
+                </p>
+            @else
+                <canvas id="battery-health-chart"
+                    data-labels='@json($healthLabels)'
+                    data-gap='@json($healthGapMv)'></canvas>
+            @endif
+        </div>
+
+        <div class="box">
             <div class="columns is-vcentered mb-2">
                 <div class="column">
                     <h2 class="title is-5 mb-0">Kilomètres et recharges au quotidien</h2>

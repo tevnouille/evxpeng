@@ -73,6 +73,59 @@ function renderSocChart() {
     });
 }
 
+function renderBatteryHealthChart() {
+    const canvas = document.getElementById('battery-health-chart');
+
+    if (!canvas) {
+        return;
+    }
+
+    const labels = JSON.parse(canvas.dataset.labels);
+    const gap = JSON.parse(canvas.dataset.gap);
+
+    new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Écart entre cellules',
+                    data: gap,
+                    borderColor: '#9b59b6',
+                    backgroundColor: 'rgba(155, 89, 182, 0.12)',
+                    fill: true,
+                    tension: 0.2,
+                    pointRadius: 3,
+                    // Un jour omis (echantillon trop faible) ne doit pas etre
+                    // relie comme s'il avait ete mesure.
+                    spanGaps: false,
+                },
+            ],
+        },
+        options: {
+            aspectRatio: 4,
+            scales: {
+                y: {
+                    min: 0,
+                    title: { display: true, text: 'Écart (mV)' },
+                    ticks: { callback: (value) => `${value} mV` },
+                },
+                x: {
+                    ticks: { maxTicksLimit: 20, autoSkip: true },
+                },
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => `${context.parsed.y} mV`,
+                    },
+                },
+            },
+        },
+    });
+}
+
 // La carte OpenStreetMap n'est inseree qu'au clic : tant que l'utilisateur ne
 // la demande pas, la position du vehicule ne quitte pas le serveur.
 function setUpMapToggle() {
@@ -176,5 +229,6 @@ function setUpAutoRefresh() {
 }
 
 renderSocChart();
+renderBatteryHealthChart();
 setUpMapToggle();
 setUpAutoRefresh();

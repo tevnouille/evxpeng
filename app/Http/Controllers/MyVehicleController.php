@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Vehicle;
+use App\Services\BatteryHealth;
 use App\Services\ChargingCurveRepository;
 use App\Services\MeasuredChargingSessions;
 use App\Services\PendingTelemetryCharges;
@@ -25,6 +26,7 @@ class MyVehicleController extends Controller
         private readonly VehicleState $state,
         private readonly TelemetrySources $sources,
         private readonly MeasuredChargingSessions $measured,
+        private readonly BatteryHealth $battery,
     ) {
     }
 
@@ -82,6 +84,10 @@ class MyVehicleController extends Controller
         // stationnement, et `is_parked` n'est jamais renseigne.
         $state = $this->state->describe($telemetry, $history);
 
+        // Signal avant-coureur de degradation batterie : le SoH ne bouge pas
+        // assez vite pour se lire sur une courbe (App\Services\BatteryHealth).
+        $healthTrend = $this->battery->dailyMedianGap($history);
+
         return view('my_vehicle.index', [
             'months' => $months,
             'month' => $month,
@@ -126,6 +132,9 @@ class MyVehicleController extends Controller
             'chartSoc' => $history->pluck('soc')->map(fn ($v) => $v === null ? null : (float) $v)->values(),
             'chartCharging' => $history->pluck('is_charging')->map(fn ($v) => (bool) $v)->values(),
             'pointCount' => $history->count(),
+            'healthTrend' => $healthTrend,
+            'healthLabels' => collect($healthTrend)->map(fn ($d) => CarbonImmutable::createFromFormat('Y-m-d', $d['date'])->format('d/m'))->values(),
+            'healthGapMv' => collect($healthTrend)->pluck('median')->values(),
         ]);
     }
 
