@@ -44,7 +44,7 @@ class ChargingSessionController extends Controller
 
         return view('charging_sessions.index', [
             'returnTo' => null,
-            'sessions' => $this->recentSessions(),
+            'sessions' => $this->allSessions(),
             'vehicles' => Vehicle::orderBy('name')->get(),
             'locations' => Location::orderBy('name')->get(),
             'providers' => Provider::orderBy('name')->get(),
@@ -62,7 +62,7 @@ class ChargingSessionController extends Controller
     {
         return view('charging_sessions.index', [
             'returnTo' => $this->returnTo($request),
-            'sessions' => $this->recentSessions(),
+            'sessions' => $this->allSessions(),
             'vehicles' => Vehicle::orderBy('name')->get(),
             'locations' => Location::orderBy('name')->get(),
             'providers' => Provider::orderBy('name')->get(),
@@ -137,12 +137,11 @@ class ChargingSessionController extends Controller
         return $route->with('success', $message);
     }
 
-    private function recentSessions(): Collection
+    private function allSessions(): Collection
     {
         return ChargingSession::with(['vehicle', 'location', 'provider', 'powerRating'])
             ->orderByDesc('session_date')
             ->orderByDesc('id')
-            ->limit(10)
             ->get();
     }
 
