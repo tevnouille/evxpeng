@@ -33,6 +33,10 @@ services:
     image: nginx:alpine
     container_name: ev-nginx
     restart: unless-stopped
+    ports:
+      # Sur le VPS, la passerelle ev-gate est remplacee par le nginx de l'hote,
+      # qui a besoin d'un point d'entree. 8098 : 8095/8096/8097 sont deja pris.
+      - "127.0.0.1:8098:80"
     volumes:
       - ./public:/var/www/html/public:ro
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
