@@ -174,4 +174,44 @@ function renderMap() {
     setUpTripFilter(map, tripLayers, allCoordinates);
 }
 
+// Carte des trajets habituels (/deplacements/recurrents) : une trace par
+// trajet, sans marqueur ni popup — l'effet recherche est purement visuel,
+// le cumul de traces translucides qui s'assombrit la ou l'on repasse souvent.
+function renderRecurringMap() {
+    const container = document.getElementById('recurring-map');
+
+    if (!container) {
+        return;
+    }
+
+    const polylines = JSON.parse(container.dataset.polylines);
+
+    if (polylines.length === 0) {
+        return;
+    }
+
+    const map = L.map(container);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap',
+        maxZoom: 19,
+    }).addTo(map);
+
+    const allCoordinates = [];
+
+    polylines.forEach((coordinates) => {
+        L.polyline(coordinates, {
+            color: '#3e8ed0',
+            weight: 4,
+            opacity: 0.12,
+            lineCap: 'round',
+        }).addTo(map);
+
+        allCoordinates.push(...coordinates);
+    });
+
+    map.fitBounds(L.latLngBounds(allCoordinates), { padding: [30, 30], maxZoom: 15 });
+}
+
 renderMap();
+renderRecurringMap();

@@ -6,6 +6,19 @@ Les neuf idées notées le 2026-09-10 ont toutes été livrées ce jour-là — 
 liste ci-dessous garde trace de ce qui a été tranché et pourquoi, pour qui
 retomberait sur un besoin voisin. Détail complet dans CHANGELOG.md.
 
+« Corrélation météo/consommation » est livrée : colonnes consommation
+apparente et température sur le tableau quotidien de « Ma voiture »
+(`App\Services\WeatherService`, Open-Meteo, mis en cache dans `daily_weather`).
+Nécessaire car le boîtier ne remonte jamais de température extérieure malgré
+la colonne `ext_temp` prévue pour — vérifié sur l'historique complet, aucun
+relevé ne la porte.
+
+« Carte agrégée des trajets récurrents » est livrée, page « Trajets
+habituels » (`TripMapController::recurring()`) : traces semi-transparentes
+superposées sur une fenêtre glissante (14 à 180 jours), sans bibliothèque de
+heatmap — l'effet vient du cumul d'opacité. Chaque trajet est ramené à 150
+points maximum avant l'envoi au navigateur.
+
 « Santé batterie (SoH) dans le temps » est livrée sous une forme différente de
 la note initiale : le SoH lui-même reste figé à 99 % sur toute la période
 collectée (vérifié), donc c'est l'écart entre cellules — déjà le signal

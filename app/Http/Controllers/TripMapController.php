@@ -26,6 +26,17 @@ class TripMapController extends Controller
      */
     private const TRIP_GAP_SECONDS = 900;
 
+    /** Fenetre par defaut de la carte des trajets recurrents. */
+    private const RECURRING_DEFAULT_DAYS = 30;
+
+    /**
+     * Points gardes par trajet sur la carte agregee : elle n'a qu'a montrer la
+     * forme des routes empruntees, pas chaque releve. Un mois entier peut
+     * porter des dizaines de milliers de points ; sans reduction, la page
+     * deviendrait lourde a charger et a faire tourner dans le navigateur.
+     */
+    private const RECURRING_MAX_POINTS_PER_TRIP = 150;
+
     public function __construct(private readonly ReverseGeocoder $geocoder)
     {
     }
@@ -126,6 +137,93 @@ class TripMapController extends Controller
             'selectedFavoriteId' => $selectedFavoriteId,
             'comparison' => $comparison,
         ]);
+    }
+
+    /**
+     * Superpose plusieurs jours de trajets sur une seule carte, pour faire
+     * ressortir les routes empruntees le plus souvent : un trajet isole se
+     * voit a peine, un trajet quotidien (domicile-travail) s'assombrit a
+     * force de lignes translucides superposees. Pas de bibliotheque de
+     * heatmap : l'effet vient du simple cumul de traces a faible opacite.
+     */
+    public function recurring(Request $request): View
+    {
+        $vehicles = Vehicle::whereNotNull('mqtt_client_id')
+            ->orderByDesc('is_default')
+            ->orderBy('name')
+            ->get();
+
+        $vehicle = $vehicles->firstWhere('id', (int) $request->query('vehicule')) ?? $vehicles->first();
+
+        $days = max(7, min(180, (int) $request->query('jours', self::RECURRING_DEFAULT_DAYS)));
+
+        $points = $vehicle
+            ? $vehicle->telemetries()
+                ->whereNotNull('lat')
+                ->where('recorded_at', '>=', now()->subDays($days))
+                ->orderBy('recorded_at')
+                ->get()
+            : collect();
+
+        $tripIndexes = $this->tripIndexes($points);
+        $polylines = $this->downsampledTrips($points, $tripIndexes);
+
+        return view('trips.recurring', [
+            'vehicles' => $vehicles,
+            'vehicle' => $vehicle,
+            'days' => $days,
+            'polylines' => $polylines,
+            'tripCount' => count($polylines),
+            'pointCount' => $points->count(),
+        ]);
+    }
+
+    /**
+     * Un trace par trajet, reduit a un nombre de points raisonnable.
+     *
+     * @param  \Illuminate\Support\Collection<int, \App\Models\VehicleTelemetry>  $points
+     * @param  array<int, int>  $tripIndexes
+     * @return array<int, array<int, array{0: float, 1: float}>>
+     */
+    private function downsampledTrips($points, array $tripIndexes): array
+    {
+        $byTrip = [];
+
+        foreach ($points->values() as $i => $row) {
+            $byTrip[$tripIndexes[$i] ?? 0][] = [(float) $row->lat, (float) $row->lon];
+        }
+
+        // Un trajet a moins de deux points ne trace rien : un GPS isole entre
+        // deux longs arrets, par exemple.
+        $byTrip = array_filter($byTrip, fn (array $coords) => count($coords) >= 2);
+
+        return array_values(array_map(function (array $coords) {
+            $count = count($coords);
+
+            if ($count <= self::RECURRING_MAX_POINTS_PER_TRIP) {
+                return $coords;
+            }
+
+            $stride = (int) ceil($count / self::RECURRING_MAX_POINTS_PER_TRIP);
+            $sampled = [];
+
+            foreach ($coords as $index => $point) {
+                if ($index % $stride === 0) {
+                    $sampled[] = $point;
+                }
+            }
+
+            // Le dernier point est toujours garde : sans lui, l'arrivee du
+            // trajet manquerait a chaque fois qu'elle ne tombe pas sur le pas
+            // retenu par le sous-echantillonnage.
+            $last = end($coords);
+
+            if ($sampled === [] || $sampled[count($sampled) - 1] !== $last) {
+                $sampled[] = $last;
+            }
+
+            return $sampled;
+        }, $byTrip));
     }
 
     /**

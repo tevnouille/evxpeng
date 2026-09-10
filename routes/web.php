@@ -68,6 +68,10 @@ Route::get('/deplacements', [TripMapController::class, 'index'])
     ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
     ->name('trips.index');
 
+Route::get('/deplacements/recurrents', [TripMapController::class, 'recurring'])
+    ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
+    ->name('trips.recurring');
+
 // Partage temporaire de la position du vehicule par lien unique. Le lien lui-
 // meme (position-shares.show) est declare plus bas, sous le domaine dedie
 // s.lolinux.fr : ces trois routes-ci restent sur le domaine principal, donc

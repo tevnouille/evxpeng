@@ -85,8 +85,11 @@
                     </a>
                     <div class="navbar-dropdown">
                         @if (\App\Support\CurrentUser::get()?->hasTelemetry())
-                            <a class="navbar-item {{ request()->routeIs('trips.*') ? 'is-active' : '' }}" href="{{ route('trips.index') }}">
+                            <a class="navbar-item {{ request()->routeIs('trips.index') ? 'is-active' : '' }}" href="{{ route('trips.index') }}">
                                 @include('layouts._icon', ['name' => 'carte'])Déplacements
+                            </a>
+                            <a class="navbar-item {{ request()->routeIs('trips.recurring') ? 'is-active' : '' }}" href="{{ route('trips.recurring') }}">
+                                @include('layouts._icon', ['name' => 'carte'])Trajets habituels
                             </a>
                             <a class="navbar-item {{ request()->routeIs('position-shares.*') ? 'is-active' : '' }}" href="{{ route('position-shares.index') }}">
                                 @include('layouts._icon', ['name' => 'carte'])Partager ma position
