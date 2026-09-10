@@ -12,6 +12,10 @@ Le journal est rédigé pour qui se sert de l'application, pas depuis l'historiq
 Git : les messages de commit parlent de code, et une bonne moitié d'entre eux ne
 change rien de visible. La même liste s'affiche sur `/changelog`.
 
+## 10 septembre 2026
+
+- **Nouveauté** — Un lien « Déconnexion » apparaît dans le menu, à droite, et un bouton sur « Mon compte ». Il n'y en avait aucun : une fois le passkey présenté, il fallait fermer le navigateur ou vider ses cookies pour repartir — impossible de passer d'un compte à l'autre sur la même machine. À noter, et c'est écrit sur « Mon compte » : l'application n'a pas de session à elle, votre identité lui est transmise à chaque page par la passerelle passkey. Se déconnecter ferme la session de cette passerelle, donc vous déconnecte de tous les services qu'elle protège, pas seulement de celui-ci. Pour revenir, il suffit de représenter son passkey.
+
 ## 9 septembre 2026
 
 - **Correction** — Les erreurs 500 intermittentes sont corrigees a la racine. L'application rangeait son cache dans des fichiers, et le compteur du limiteur de debit s'y ecrivait a chaque visite de la page publique. Le cache fichier n'est pas atomique : deux requetes qui se croisent — la voiture toutes les dix secondes, la collecte, un chargement manuel — pouvaient lire un fichier que l'autre venait de remplacer, d'ou une 500 sans cause apparente. Le cache passe en base de donnees, ou chaque ecriture est atomique.

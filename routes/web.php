@@ -12,6 +12,7 @@ use App\Http\Controllers\FavoriteRouteController;
 use App\Http\Controllers\FuelPriceController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\InfoCarController;
+use App\Http\Controllers\LogoutController;
 use App\Http\Controllers\MyVehicleController;
 use App\Http\Controllers\ObdStatsController;
 use App\Http\Controllers\ReferenceDataController;
@@ -87,6 +88,12 @@ Route::get('/mon-compte', [AccountController::class, 'index'])->name('account.in
 Route::put('/mon-compte', [AccountController::class, 'update'])->name('account.update');
 Route::put('/mon-compte/preferences', [AccountController::class, 'updatePreferences'])->name('account.preferences');
 Route::post('/mon-compte/sms-test', [AccountController::class, 'testSms'])->name('account.test-sms');
+
+// Deconnexion : detruit la session de la passerelle, pas une session locale —
+// l'application n'en a pas. Un controleur invocable plutot qu'une fermeture,
+// pour que `route:cache` continue de fonctionner : une fermeture n'est pas
+// serialisable et ferait echouer la mise en cache des routes.
+Route::get('/deconnexion', LogoutController::class)->name('logout');
 
 // Journal des nouveautes : ouvert a tous les comptes.
 Route::get('/changelog', [ChangelogController::class, 'index'])->name('changelog');

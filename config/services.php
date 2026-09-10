@@ -36,6 +36,13 @@ return [
     ],
 
 
+    'passkey' => [
+        // Passerelle qui authentifie et pose l'en-tete d'identite. L'application
+        // n'est joignable que par elle ; cette adresse ne sert qu'a construire
+        // le lien de deconnexion, la passerelle etant seule a tenir une session.
+        'url' => env('PASSKEY_GATEWAY_URL', 'https://pk.lolinux.org'),
+    ],
+
     'osrm' => [
         // Serveur de calcul d'itineraire. La demo publique suffit au volume d'une
         // application personnelle ; l'URL reste configurable pour pouvoir

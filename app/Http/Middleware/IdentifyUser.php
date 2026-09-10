@@ -24,15 +24,20 @@ class IdentifyUser
     /**
      * Chemins servis sans identite, en minuscules.
      *
-     * Une seule adresse : l'etat du vehicule pour le navigateur embarque de la
-     * voiture, ou une ceremonie passkey n'a pas sa place. La passerelle laisse
-     * passer cette adresse et vide l'en-tete d'identite au passage, de sorte
-     * qu'elle ne puisse pas servir a se declarer proprietaire d'un compte.
+     * `infocar` : l'etat du vehicule pour le navigateur embarque de la voiture,
+     * ou une ceremonie passkey n'a pas sa place. La passerelle laisse passer
+     * cette adresse et vide l'en-tete d'identite au passage, de sorte qu'elle
+     * ne puisse pas servir a se declarer proprietaire d'un compte.
+     *
+     * `deconnexion` : la passerelle exige toujours un passkey pour y acceder,
+     * c'est bien ici que l'identite n'est pas requise. Sans cela, un compte
+     * refuse plus bas (en attente d'autorisation) verrait un 403 sans aucun
+     * moyen de se deconnecter pour changer de compte — l'impasse.
      *
      * L'exception vit ici, dans le middleware qui l'accorde, plutot que dans un
      * groupe de routes a part : on la lit au meme endroit que la regle.
      */
-    private const PUBLIC_PATHS = ['infocar'];
+    private const PUBLIC_PATHS = ['infocar', 'deconnexion'];
 
     public function __construct(private readonly UserProvisioner $provisioner)
     {
@@ -57,7 +62,8 @@ class IdentifyUser
         // en posseder un ne suffit pas a entrer ici. Le compte est bien cree,
         // pour que l'administrateur voie la demande, mais reste ferme.
         abort_if($user->approved_at === null, 403,
-            'Votre compte est en attente d\'autorisation sur cette application.');
+            'Votre compte est en attente d\'autorisation sur cette application. '
+            .'Pour repartir avec un autre compte : /deconnexion');
 
         $this->touchLastSeen($user);
 

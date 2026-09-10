@@ -120,4 +120,26 @@
             </div>
         </div>
     @endif
+
+    {{-- La deconnexion est expliquee ici, et pas seulement offerte dans le
+         menu : son effet deborde largement cette application. --}}
+    <div class="box">
+        <div class="columns is-vcentered">
+            <div class="column">
+                <p>
+                    Se déconnecter ferme la session de la <strong>passerelle passkey</strong>.
+                    <br>
+                    <span class="has-text-grey is-size-7">
+                        Cette application n'a pas de session à elle&nbsp;: votre identité lui est
+                        transmise par la passerelle à chaque page. Fermer cette session vous
+                        déconnecte donc de <strong>tous</strong> les services qu'elle protège, pas
+                        seulement de celui-ci. Pour revenir, il suffit de représenter votre passkey.
+                    </span>
+                </p>
+            </div>
+            <div class="column is-narrow">
+                <a class="button is-light" href="{{ route('logout') }}">Se déconnecter</a>
+            </div>
+        </div>
+    </div>
 @endsection

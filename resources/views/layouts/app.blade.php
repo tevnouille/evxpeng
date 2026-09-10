@@ -110,6 +110,13 @@
                     <a class="navbar-item {{ request()->routeIs('account.*') ? 'is-active' : '' }}" href="{{ route('account.index') }}">
                         @include('layouts._icon', ['name' => 'compte']){{ $user->email }}
                     </a>
+                    {{-- Deconnexion de la passerelle, donc de tous les services
+                         qu'elle protege. Le titre le dit au survol ; « Mon
+                         compte » l'explique en toutes lettres. --}}
+                    <a class="navbar-item" href="{{ route('logout') }}"
+                       title="Déconnecte de la passerelle passkey, donc de tous les services qu'elle protège">
+                        @include('layouts._icon', ['name' => 'deconnexion'])Déconnexion
+                    </a>
                 @endif
             </div>
         </div>
