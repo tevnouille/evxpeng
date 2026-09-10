@@ -132,16 +132,18 @@ dans le `~/.ssh/config` de l'utilisateur `claudecode`, donc **ne jamais préfixe
 les commandes git par `sudo`** — sudo perd cette configuration SSH et le push
 échoue.
 
-Si le push échoue avec `Connection refused` sur le port 2222, GitLab est
-simplement éteint (l'utilisateur l'arrête quand il ne s'en sert pas, ce n'est
-pas un incident) :
+L'authentification passe par une **clé de déploiement dédiée**,
+`~/.ssh/id_ev_deploy`, déclarée en écriture sur le seul projet `root/ev`. Elle
+n'ouvre rien d'autre : un `git ls-remote` avec cette clé échoue sur les autres
+dépôts du GitLab. Le `ssh gitlab-local` répond « Welcome to GitLab, @root! » —
+c'est le propriétaire de la clé, **pas** son périmètre, ne pas s'en alarmer.
 
-```bash
-cd /var/docker/gitlab && sudo docker-compose up -d
-```
-
-Compter 2-3 minutes avant que `gitlab-ctl status` affiche tous les services en
-`run:`.
+**Pousser fait partie du travail, ce n'est pas une formalité de fin de session.**
+La sauvegarde quotidienne de ce projet ne couvre **pas** le code source
+(`ev.conf` n'archive que la base, `.env`, `docker-compose.yml`, `public/build`
+et `storage/app/system`), et il n'existe aucune copie locale sur le Mac. Un
+commit non poussé n'a donc **qu'un seul exemplaire** ; poussé, il entre dans la
+sauvegarde de GitLab, elle-même rapatriée hors du VPS chaque nuit.
 
 ## Pièges Blade / Bulma rencontrés
 
