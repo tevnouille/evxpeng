@@ -26,17 +26,16 @@ visible sans avoir à changer de filtre. `DashboardController::lifetime()`
 réutilise `FuelPriceService::equivalentTotals()` sur l'ensemble des recharges
 du compte. Voir le CHANGELOG.md du 2026-09-10.
 
-## Alerte si le prix du carburant dépasse un seuil
-
-La table `fuel_prices` (import régulier, cf. CLAUDE.md) existe et sert
-uniquement au calcul de l'équivalent par recharge. Jamais utilisée pour
-notifier.
-
-- SMS (ou juste un encart sur le dashboard) quand le prix essence/diesel
-  dépasse un seuil réglable, à la manière des paliers de charge
-  (`config('services.charge_alerts.thresholds')`).
-- Question : seuil global ou par utilisateur (comme les identifiants Free
-  Mobile, propres à chaque compte) ?
+« Alerte si le prix du carburant dépasse un seuil » est livrée. La question
+ouverte est tranchée en faveur du seuil par utilisateur (`users.fuel_alert_essence_price`
+/ `fuel_alert_diesel_price`, réglables dans /mon-compte) plutôt que global :
+même logique que les identifiants Free Mobile, déjà propres à chaque compte,
+et aucun prix « raisonnable » à deviner à la place de qui que ce soit.
+`App\Services\FuelPriceAlertNotifier` notifie sur le franchissement (comparaison
+au relevé le plus récent avant celui du jour, pas seulement la veille au cas où
+un jour aurait manqué), appelé par la nouvelle commande planifiée
+`fuel-prices:check` (7h30 chaque matin) — jusqu'ici le prix n'était rafraîchi
+que par une visite de page. Voir le CHANGELOG.md du 2026-09-10.
 
 ## Coût réel au km glissant
 

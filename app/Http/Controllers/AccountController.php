@@ -80,4 +80,25 @@ class AccountController extends Controller
 
         return back()->with('error', 'Envoi refusé. Le détail figure dans le journal des envois.');
     }
+
+    /**
+     * Seuils de prix carburant, par utilisateur et non globaux : le prix est
+     * une donnee partagee, mais le seuil qui interesse depend de qui regarde
+     * (meme choix que les identifiants Free Mobile). Verifie une fois par jour
+     * par App\Console\Commands\CheckFuelPriceAlerts.
+     */
+    public function updateFuelAlert(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'fuel_alert_essence_price' => ['nullable', 'numeric', 'between:0,5'],
+            'fuel_alert_diesel_price' => ['nullable', 'numeric', 'between:0,5'],
+        ]);
+
+        $user = CurrentUser::get();
+        $user->fuel_alert_essence_price = $data['fuel_alert_essence_price'] ?: null;
+        $user->fuel_alert_diesel_price = $data['fuel_alert_diesel_price'] ?: null;
+        $user->save();
+
+        return redirect()->route('account.index')->with('success', 'Seuils de prix carburant enregistrés.');
+    }
 }

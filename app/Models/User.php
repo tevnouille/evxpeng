@@ -78,6 +78,8 @@ class User extends Authenticatable
             'last_seen_at' => 'datetime',
             'is_admin' => 'boolean',
             'show_fuel_equivalent' => 'boolean',
+            'fuel_alert_essence_price' => 'decimal:3',
+            'fuel_alert_diesel_price' => 'decimal:3',
         ];
     }
 }

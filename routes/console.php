@@ -37,3 +37,8 @@ Schedule::command('telemetry:ingest-mqtt')
 // La base IRVE bouge de quelques centaines de stations par semaine : un import
 // hebdomadaire suffit largement, et il dure plusieurs minutes.
 Schedule::command('irve:import')->weeklyOn(1, '04:30')->withoutOverlapping();
+
+// Le prix carburant n'etait rafraichi que par une visite de page (ensureToday)
+// ou le bouton admin : un jour sans visite ne comparait le prix a personne.
+// Le matin, avant que quiconque ne prenne la route.
+Schedule::command('fuel-prices:check')->dailyAt('07:30')->withoutOverlapping();

@@ -96,6 +96,50 @@
         </div>
     </form>
 
+    <form method="POST" action="{{ route('account.fuel-alert') }}" class="box">
+        @csrf
+        @method('PUT')
+        <h2 class="subtitle">Alerte prix carburant</h2>
+
+        <p class="mb-4">
+            Un SMS part quand le prix moyen national franchit le seuil choisi (à la hausse, une
+            fois par franchissement). Laissez vide pour ne recevoir aucune alerte. Part sur le
+            même compte Free Mobile que l'alerte de recharge, ci-dessus.
+        </p>
+
+        <div class="columns">
+            <div class="column is-4">
+                <div class="field">
+                    <label class="label" for="fuel_alert_essence_price">Seuil essence (€/L)</label>
+                    <div class="control">
+                        <input class="input" type="number" id="fuel_alert_essence_price" name="fuel_alert_essence_price"
+                               value="{{ old('fuel_alert_essence_price', $user->fuel_alert_essence_price) }}"
+                               min="0" max="5" step="0.001" placeholder="ex. 1,900">
+                    </div>
+                </div>
+            </div>
+
+            <div class="column is-4">
+                <div class="field">
+                    <label class="label" for="fuel_alert_diesel_price">Seuil diesel (€/L)</label>
+                    <div class="control">
+                        <input class="input" type="number" id="fuel_alert_diesel_price" name="fuel_alert_diesel_price"
+                               value="{{ old('fuel_alert_diesel_price', $user->fuel_alert_diesel_price) }}"
+                               min="0" max="5" step="0.001" placeholder="ex. 1,900">
+                    </div>
+                </div>
+            </div>
+
+            <div class="column is-4 is-flex is-align-items-flex-end">
+                <div class="field">
+                    <div class="control">
+                        <button class="button is-link" type="submit">Enregistrer</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+
     @if ($smsConfigured)
         <div class="box">
             <div class="columns is-vcentered">

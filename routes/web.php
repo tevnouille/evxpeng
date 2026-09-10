@@ -104,6 +104,7 @@ Route::get('/mon-compte', [AccountController::class, 'index'])->name('account.in
 Route::put('/mon-compte', [AccountController::class, 'update'])->name('account.update');
 Route::put('/mon-compte/preferences', [AccountController::class, 'updatePreferences'])->name('account.preferences');
 Route::post('/mon-compte/sms-test', [AccountController::class, 'testSms'])->name('account.test-sms');
+Route::put('/mon-compte/alerte-carburant', [AccountController::class, 'updateFuelAlert'])->name('account.fuel-alert');
 
 // Deconnexion : detruit la session de la passerelle, pas une session locale —
 // l'application n'en a pas. Un controleur invocable plutot qu'une fermeture,
