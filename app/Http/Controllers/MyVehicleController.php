@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ChargingSession;
 use App\Models\Vehicle;
 use App\Services\BatteryHealth;
 use App\Services\ChargingCurveRepository;
@@ -18,6 +19,13 @@ use Illuminate\View\View;
 class MyVehicleController extends Controller
 {
     private const DEFAULT_DAYS = 14;
+
+    /**
+     * En dessous, rapporter le cout aux kilometres ne veut plus rien dire :
+     * une seule recharge sur une fenetre a peine entamee donnerait un chiffre
+     * enorme. Meme logique que MIN_KM_FOR_CONSUMPTION dans DailyVehicleActivity.
+     */
+    private const MIN_KM_FOR_COST = 50;
 
     public function __construct(
         private readonly ChargingCurveRepository $curves,
@@ -88,6 +96,8 @@ class MyVehicleController extends Controller
         // assez vite pour se lire sur une courbe (App\Services\BatteryHealth).
         $healthTrend = $this->battery->dailyMedianGap($history);
 
+        $costPerKm = $vehicle ? $this->costPerKm($vehicle, $history, $days) : ['km' => null, 'cost' => 0.0, 'per_km' => null];
+
         return view('my_vehicle.index', [
             'months' => $months,
             'month' => $month,
@@ -135,6 +145,7 @@ class MyVehicleController extends Controller
             'healthTrend' => $healthTrend,
             'healthLabels' => collect($healthTrend)->map(fn ($d) => CarbonImmutable::createFromFormat('Y-m-d', $d['date'])->format('d/m'))->values(),
             'healthGapMv' => collect($healthTrend)->pluck('median')->values(),
+            'costPerKm' => $costPerKm,
         ]);
     }
 
@@ -174,6 +185,51 @@ class MyVehicleController extends Controller
             : array_values(array_filter($sessions, PendingTelemetryCharges::isSignificant(...)));
 
         return ['visibles' => $visibles, 'masquees' => count($sessions) - count($visibles)];
+    }
+
+    /**
+     * Cout reellement facture au kilometre, sur la meme fenetre glissante que
+     * le reste de la page. Croise les recharges saisies (ChargingSession) et
+     * la distance parcourue (odometre du boitier OBD).
+     *
+     * Ne compte que ce que les recharges ont coute : aucun abonnement
+     * domicile/box n'existe dans le modele de donnees de l'application, et
+     * rien d'autre ici ne raisonne avec — l'ajouter serait une fonctionnalite
+     * a part, pas une hypothese a glisser dans ce calcul.
+     *
+     * @param  \Illuminate\Support\Collection<int, \App\Models\VehicleTelemetry>  $history
+     * @return array{km: int|null, cost: float, per_km: float|null}
+     */
+    private function costPerKm(Vehicle $vehicle, $history, int $days): array
+    {
+        $withOdometer = $history->whereNotNull('odometer')->values();
+        $km = null;
+        $periodStart = null;
+
+        if ($withOdometer->count() >= 2) {
+            $delta = (int) $withOdometer->last()->odometer - (int) $withOdometer->first()->odometer;
+
+            // Compteur remis a zero, ou changement de source : un ecart
+            // negatif n'est pas une distance.
+            $km = $delta >= 0 ? $delta : null;
+            $periodStart = $withOdometer->first()->recorded_at;
+        }
+
+        // Bornees a la periode reellement couverte par l'odometre, pas aux
+        // $days demandes : au-dela (avant l'installation du boitier, ou un
+        // simple trou de telemetrie), le cout gonflerait sans que la distance
+        // suive, faussant le ratio plutot que de le laisser vide.
+        $cost = ($periodStart !== null)
+            ? (float) ChargingSession::where('vehicle_id', $vehicle->id)
+                ->where('session_date', '>=', $periodStart)
+                ->sum('total_cost')
+            : 0.0;
+
+        return [
+            'km' => $km,
+            'cost' => round($cost, 2),
+            'per_km' => ($km !== null && $km >= self::MIN_KM_FOR_COST) ? round($cost / $km, 3) : null,
+        ];
     }
 
     /**

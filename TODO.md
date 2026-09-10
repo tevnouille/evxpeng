@@ -37,17 +37,16 @@ un jour aurait manqué), appelé par la nouvelle commande planifiée
 `fuel-prices:check` (7h30 chaque matin) — jusqu'ici le prix n'était rafraîchi
 que par une visite de page. Voir le CHANGELOG.md du 2026-09-10.
 
-## Coût réel au km glissant
-
-Le coût réel par recharge existe (`ChargingSession`), mais rien ne le
-rapporte aux kilomètres parcourus sur une fenêtre récente (30/90 jours) pour
-donner un chiffre "coût au km" directement lisible.
-
-- Croiser `ChargingSession` (coût réel) et l'odomètre (`VehicleTelemetry`,
-  déjà utilisé par `DailyVehicleActivity` et `TripMapController::odometerDistance()`)
-  sur une fenêtre glissante.
-- Question : inclure un abonnement domicile/box (pas dans le modèle
-  actuellement) ou rester sur le seul coût des recharges saisies ?
+« Coût réel au km glissant » est livré, sur « Ma voiture »
+(`MyVehicleController::costPerKm()`), même fenêtre glissante que le reste de
+la page. Question tranchée : pas d'abonnement domicile/box dans le calcul —
+ce concept n'existe nulle part ailleurs dans le modèle de données, l'ajouter
+serait une fonctionnalité à part entière, pas une hypothèse à glisser ici.
+Piège rencontré et corrigé en route : le coût doit être borné à la période
+*réellement couverte par l'odomètre*, pas aux jours demandés — sinon une
+fenêtre large compte des recharges d'avant l'installation du boîtier,
+faussant le ratio sans que rien ne le signale. Voir le CHANGELOG.md du
+2026-09-10.
 
 ## Comparaison trajet planifié vs trajet réellement effectué
 

@@ -381,6 +381,41 @@
         </div>
 
         <div class="box">
+            <h2 class="title is-5 mb-2">Coût réel au km</h2>
+
+            @if ($costPerKm['per_km'] === null)
+                <p class="has-text-grey">
+                    @if ($costPerKm['km'] === null)
+                        Pas assez de relevés d'odomètre sur les {{ $days }} derniers jours pour estimer une distance.
+                    @else
+                        Seulement {{ number_format($costPerKm['km'], 0, ',', ' ') }} km parcourus sur les
+                        {{ $days }} derniers jours : trop peu pour un ratio qui veuille dire quelque chose.
+                    @endif
+                </p>
+            @else
+                <div class="columns is-mobile is-multiline mb-1">
+                    <div class="column">
+                        <p class="heading">Distance</p>
+                        <p class="title is-4">{{ number_format($costPerKm['km'], 0, ',', ' ') }} km</p>
+                    </div>
+                    <div class="column">
+                        <p class="heading">Payé en recharges</p>
+                        <p class="title is-4">{{ number_format($costPerKm['cost'], 2, ',', ' ') }} €</p>
+                    </div>
+                    <div class="column">
+                        <p class="heading">Coût au km</p>
+                        <p class="title is-4">{{ number_format($costPerKm['per_km'], 3, ',', ' ') }} €/km</p>
+                    </div>
+                </div>
+                <p class="has-text-grey is-size-7">
+                    Sur la période réellement couverte par l'odomètre du boîtier (au plus {{ $days }} derniers
+                    jours) — pas l'énergie rechargée, qui inclut la perte de charge. N'inclut aucun abonnement
+                    (domicile, box) : seulement ce que les recharges ont coûté.
+                </p>
+            @endif
+        </div>
+
+        <div class="box">
             <div class="columns is-vcentered mb-2">
                 <div class="column">
                     <h2 class="title is-5 mb-0">Kilomètres et recharges au quotidien</h2>
