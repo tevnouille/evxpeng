@@ -452,6 +452,8 @@
                     L'énergie est celle <strong>entrée dans la batterie</strong>, déduite de l'écart
                     de niveau de charge — inférieure à celle facturée à la borne.
                     Un jour sans aucun relevé affiche «&nbsp;—&nbsp;»&nbsp;: ce n'est pas un jour sans rouler.
+                    La température vient d'Open-Meteo (le boîtier ne la remonte jamais) pour la position
+                    du dernier relevé connu, pas celle de chaque trajet&nbsp;: indicative.
                 </p>
 
                 <div class="table-container">
@@ -462,10 +464,17 @@
                                 <th class="has-text-right">Distance</th>
                                 <th class="has-text-right">Recharges</th>
                                 <th class="has-text-right">Énergie rechargée</th>
+                                <th class="has-text-right">Consommation</th>
+                                <th class="has-text-right">Température</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach ($activityDays as $day)
+                                @php
+                                    $dayConsumption = ($day['km'] > 0 && $day['kwh'] > 0)
+                                        ? round($day['kwh'] / $day['km'] * 100, 1)
+                                        : null;
+                                @endphp
                                 <tr @class(['has-text-grey' => ! $day['has_data']])>
                                     <td>{{ $day['date']->translatedFormat('D d/m') }}</td>
                                     <td class="has-text-right">
@@ -481,6 +490,12 @@
                                     <td class="has-text-right">
                                         {{ $day['kwh'] > 0 ? str_replace('.', ',', (string) round($day['kwh'], 2)) . ' kWh' : '' }}
                                     </td>
+                                    <td class="has-text-right">
+                                        {{ $dayConsumption !== null ? str_replace('.', ',', (string) $dayConsumption) . ' kWh/100km' : '' }}
+                                    </td>
+                                    <td class="has-text-right">
+                                        {{ $day['temp_mean'] !== null ? str_replace('.', ',', (string) $day['temp_mean']) . ' °C' : '' }}
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -492,6 +507,10 @@
                                 <td class="has-text-right">
                                     {{ $activityTotals['kwh'] > 0 ? str_replace('.', ',', (string) $activityTotals['kwh']) . ' kWh' : '' }}
                                 </td>
+                                <td class="has-text-right">
+                                    {{ $activityTotals['kwh_per_100km'] ? str_replace('.', ',', (string) $activityTotals['kwh_per_100km']) . ' kWh/100km' : '' }}
+                                </td>
+                                <td></td>
                             </tr>
                         </tfoot>
                     </table>

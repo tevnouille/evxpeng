@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ChargingSession;
 use App\Models\Vehicle;
+use App\Models\VehicleTelemetry;
 use App\Services\BatteryHealth;
 use App\Services\ChargingCurveRepository;
 use App\Services\MeasuredChargingSessions;
@@ -12,6 +13,7 @@ use App\Services\DailyVehicleActivity;
 use App\Services\TelemetrySessionDetector;
 use App\Services\TelemetrySources;
 use App\Services\VehicleState;
+use App\Services\WeatherService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -42,6 +44,7 @@ class MyVehicleController extends Controller
         private readonly TelemetrySources $sources,
         private readonly MeasuredChargingSessions $measured,
         private readonly BatteryHealth $battery,
+        private readonly WeatherService $weather,
     ) {
     }
 
@@ -90,6 +93,10 @@ class MyVehicleController extends Controller
         $activity = ($vehicle && $month)
             ? $this->activity->forMonth($vehicle, $month, $netCapacity)
             : ['days' => [], 'totals' => []];
+
+        if ($month !== null && $activity['days'] !== []) {
+            $activity['days'] = $this->withWeather($activity['days'], $month, $telemetry);
+        }
 
         $sessions = $vehicle
             ? $this->sessions($vehicle, $history, $netCapacity, $days, $request->boolean('toutes'))
@@ -244,6 +251,39 @@ class MyVehicleController extends Controller
             'cost' => round($cost, 2),
             'per_km' => ($km !== null && $km >= self::MIN_KM_FOR_COST) ? round($cost / $km, 3) : null,
         ];
+    }
+
+    /**
+     * Ajoute la temperature moyenne du jour a chaque ligne du tableau
+     * quotidien. Le boitier ne la remonte jamais — verifie sur l'historique
+     * complet, la colonne `ext_temp` reste vide — d'ou App\Services\WeatherService.
+     *
+     * Une seule position pour tout le mois affiche (le dernier releve connu) :
+     * indicatif, comme les autres approximations geographiques de
+     * l'application.
+     *
+     * @param  array<int, array<string, mixed>>  $days
+     * @return array<int, array<string, mixed>>
+     */
+    private function withWeather(array $days, CarbonImmutable $month, ?VehicleTelemetry $telemetry): array
+    {
+        if ($telemetry === null || $telemetry->lat === null || $telemetry->lon === null) {
+            return $days;
+        }
+
+        $weather = $this->weather->forRange(
+            $month->startOfMonth(),
+            $month->endOfMonth(),
+            (float) $telemetry->lat,
+            (float) $telemetry->lon
+        );
+
+        foreach ($days as &$day) {
+            $day['temp_mean'] = $weather[$day['date']->format('Y-m-d')]['mean'] ?? null;
+        }
+        unset($day);
+
+        return $days;
     }
 
     /**
