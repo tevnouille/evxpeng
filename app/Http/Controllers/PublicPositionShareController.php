@@ -48,6 +48,27 @@ class PublicPositionShareController extends Controller
             ->orderBy('recorded_at')
             ->get();
 
+        // Le tout premier relevé posterieur au partage peut manquer une
+        // vingtaine de secondes (cadence du boitier) : sans repli, le lien
+        // ouvert dans cette fenetre affichait "aucun relevé" alors que la
+        // position etait connue. Le dernier point connu, meme anterieur au
+        // partage, vaut mieux qu'une page vide — signale comme tel dans la
+        // vue plutot que de laisser croire qu'il est aussi frais que les
+        // autres.
+        $usingFallback = false;
+
+        if ($points->isEmpty()) {
+            $fallback = $vehicle->telemetries()
+                ->whereNotNull('lat')
+                ->orderByDesc('recorded_at')
+                ->first();
+
+            if ($fallback !== null) {
+                $points = collect([$fallback]);
+                $usingFallback = true;
+            }
+        }
+
         $this->geocoder->resolveMissing($points);
         $adresses = $this->geocoder->known($points);
 
@@ -76,6 +97,7 @@ class PublicPositionShareController extends Controller
             'vehicle' => $vehicle,
             'share' => $share,
             'mapPoints' => $mapPoints,
+            'usingFallback' => $usingFallback,
             // Etat courant, independant de la fenetre de points affichee : le
             // destinataire du lien veut savoir si la voiture charge *maintenant*,
             // pas si elle chargeait au tout debut du partage.

@@ -35,6 +35,12 @@
                     Aucun relevé de position depuis le début du partage. Revenez un peu plus tard.
                 </div>
             @else
+                @if ($usingFallback)
+                    <div class="notification is-info is-light">
+                        Rien de nouveau depuis le début du partage : voici la dernière position connue,
+                        relevée à {{ $mapPoints->first()['time'] }}.
+                    </div>
+                @endif
                 <div id="share-map" style="height: 70vh;" data-points='@json($mapPoints)'></div>
                 <p class="has-text-grey is-size-7 mt-3">
                     Point rouge : position la plus récente. La ligne est pointillée à dessein : elle relie
