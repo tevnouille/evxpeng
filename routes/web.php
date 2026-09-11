@@ -51,6 +51,14 @@ Route::get('/infoCar', [InfoCarController::class, 'show'])
     ->middleware('throttle:60,1')
     ->name('info-car');
 
+// Meme chemin que la page elle-meme (GET/POST distincts sur /infoCar) : la
+// location nginx dediee (docker/gate/gate.conf) ne filtre que sur le chemin,
+// pas sur la methode, donc rien a resynchroniser cote passerelle pour ce
+// second verbe. Idem pour IdentifyUser::PUBLIC_PATHS, qui compare le chemin.
+Route::post('/infoCar', [InfoCarController::class, 'unlock'])
+    ->middleware('throttle:10,1')
+    ->name('info-car.unlock');
+
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 Route::get('/dashboard/data', [DashboardController::class, 'data'])->name('dashboard.data');
 

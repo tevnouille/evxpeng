@@ -8,6 +8,8 @@ use App\Services\ChargeCurveSimulator;
 use App\Services\ChargingCurveRepository;
 use App\Services\ReverseGeocoder;
 use App\Services\VehicleState;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
@@ -23,9 +25,20 @@ use Illuminate\View\View;
  *
  * Le vehicule n'est pas choisi d'apres un compte, puisqu'il n'y en a pas : on
  * prend celui par defaut, de maniere deterministe.
+ *
+ * Protegee par un code a 6 chiffres (config('services.info_car.pin')), retenu
+ * un an par cookie — pas une identite, juste un filtre contre qui tomberait
+ * sur l'adresse sans la connaitre. Le cookie est chiffre par le middleware
+ * standard de Laravel (EncryptCookies, non exclu ici) : sa seule valeur en
+ * clair pour qui l'intercepterait est celle, deja publique, de la page.
  */
 class InfoCarController extends Controller
 {
+    /** Un an, en minutes : la duree demandee avant de redemander le code. */
+    private const UNLOCK_MINUTES = 60 * 24 * 365;
+
+    private const UNLOCK_COOKIE = 'infocar_code';
+
     public function __construct(
         private readonly VehicleState $state,
         private readonly ChargingCurveRepository $curves,
@@ -169,8 +182,14 @@ class InfoCarController extends Controller
         return $lignes;
     }
 
-    public function show(): View
+    public function show(Request $request): View
     {
+        $pin = config('services.info_car.pin');
+
+        if ($pin !== null && $request->cookie(self::UNLOCK_COOKIE) !== (string) $pin) {
+            return view('info_car_gate');
+        }
+
         // Aucun utilisateur en session : le scope par compte est inactif, on
         // designe donc explicitement un vehicule plutot que de prendre « le
         // premier venu », qui pourrait etre celui de quelqu'un d'autre.
@@ -234,5 +253,26 @@ class InfoCarController extends Controller
             'recharges' => $this->recharges($courbe, $soc),
             'rangeChart' => $rangeChart,
         ]);
+    }
+
+    /**
+     * Verifie le code saisi au pave numerique. hash_equals() plutot qu'un
+     * simple === : le code, bien que court, n'a pas a etre compare en temps
+     * variable pour qui observerait les reponses de pres.
+     */
+    public function unlock(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'code' => ['required', 'string', 'regex:/^[0-9]{6}$/'],
+        ]);
+
+        $pin = config('services.info_car.pin');
+
+        if ($pin !== null && hash_equals((string) $pin, $data['code'])) {
+            return redirect()->route('info-car')
+                ->cookie(self::UNLOCK_COOKIE, (string) $pin, self::UNLOCK_MINUTES);
+        }
+
+        return redirect()->route('info-car')->with('error', 'Code incorrect.');
     }
 }

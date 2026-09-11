@@ -61,6 +61,15 @@ return [
         'thresholds' => [79, 89, 95, 96, 97, 98, 99, 100],
     ],
 
+    'info_car' => [
+        // Code a 6 chiffres pour deverrouiller /infoCar, retenu un an par
+        // cookie chiffre (App\Http\Controllers\InfoCarController::unlock()).
+        // Aucune valeur par defaut : sans PIN configure, la page reste
+        // ouverte comme avant plutot que de reposer sur un code invente qui
+        // donnerait une fausse impression de protection.
+        'pin' => env('INFO_CAR_PIN'),
+    ],
+
     'position_share' => [
         // Domaine dedie des liens de partage de position, distinct du domaine
         // principal de l'appli : un vhost a part, entierement public, qui ne
