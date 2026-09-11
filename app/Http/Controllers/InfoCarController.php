@@ -81,7 +81,15 @@ class InfoCarController extends Controller
 
         $width = 600;
         $height = 220;
-        $marge = 12;
+        // Marges asymetriques : de la place a gauche pour les valeurs km, en
+        // bas pour l'horodatage. Un simple sous-titre sous le graphique s'est
+        // revele repousse hors ecran par le SVG (flex: 1 1 auto, qui prend
+        // tout l'espace vertical disponible) sur l'ecran sans defilement de
+        // la voiture — l'horodatage doit donc faire partie du dessin lui-meme.
+        $margeHaut = 16;
+        $margeBas = 32;
+        $margeGauche = 44;
+        $margeDroite = 10;
 
         $instants = array_map(fn ($point) => $point['at']->getTimestamp(), $series);
         $valeurs = array_column($series, 'km');
@@ -97,11 +105,14 @@ class InfoCarController extends Controller
         // renverrait NAN.
         $kmEtendue = max(1, $kmMax - $kmMin);
 
+        $largeurTrace = $width - $margeGauche - $margeDroite;
+        $hauteurTrace = $height - $margeHaut - $margeBas;
+
         $points = [];
 
         foreach ($series as $i => $point) {
-            $x = $marge + ($instants[$i] - $tempsMin) / $tempsEtendue * ($width - 2 * $marge);
-            $y = $height - $marge - ($point['km'] - $kmMin) / $kmEtendue * ($height - 2 * $marge);
+            $x = $margeGauche + ($instants[$i] - $tempsMin) / $tempsEtendue * $largeurTrace;
+            $y = $margeHaut + $hauteurTrace - ($point['km'] - $kmMin) / $kmEtendue * $hauteurTrace;
             $points[] = round($x, 1).','.round($y, 1);
         }
 
@@ -111,6 +122,13 @@ class InfoCarController extends Controller
             'height' => $height,
             'km_min' => $kmMin,
             'km_max' => $kmMax,
+            // Coordonnees des etiquettes, calculees ici plutot que devinees
+            // dans le gabarit : la vue n'a pas a connaitre les marges.
+            'km_max_y' => round($margeHaut + 4, 1),
+            'km_min_y' => round($margeHaut + $hauteurTrace, 1),
+            'label_x' => round($margeGauche, 1),
+            'temps_y' => round($height - 8, 1),
+            'temps_fin_x' => round($width - $margeDroite, 1),
             'debut' => $series[0]['at'],
             'fin' => end($series)['at'],
         ];

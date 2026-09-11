@@ -347,16 +347,27 @@
                 (consommation non renseignée sur la fiche du véhicule, ou historique insuffisant).
             </p>
         @else
+            {{-- Etiquettes dans le dessin lui-meme, pas dans un sous-titre a
+                 part : un texte hors du SVG s'est revele repousse hors ecran
+                 par le graphique, qui s'etire pour prendre toute la hauteur
+                 disponible (flex: 1 1 auto) sur l'ecran sans defilement de la
+                 voiture. fill="currentColor" suit la couleur du texte de la
+                 page, y compris en mode sombre. --}}
             <svg id="courbe-autonomie" viewBox="0 0 {{ $rangeChart['width'] }} {{ $rangeChart['height'] }}"
-                 preserveAspectRatio="none" role="img"
-                 aria-label="Autonomie estimée entre {{ $rangeChart['km_min'] }} et {{ $rangeChart['km_max'] }} km sur les dernières 24 heures">
+                 role="img"
+                 aria-label="Autonomie estimée entre {{ $rangeChart['km_min'] }} et {{ $rangeChart['km_max'] }} km, de {{ $rangeChart['debut']->timezone(config('app.timezone'))->format('H:i') }} à {{ $rangeChart['fin']->timezone(config('app.timezone'))->format('H:i') }}">
                 <polyline points="{{ $rangeChart['points'] }}" fill="none" stroke="#2ea36b"
                           stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+                <text x="{{ $rangeChart['label_x'] }}" y="{{ $rangeChart['km_max_y'] }}"
+                      font-size="15" fill="currentColor" dominant-baseline="hanging">{{ $rangeChart['km_max'] }} km</text>
+                <text x="{{ $rangeChart['label_x'] }}" y="{{ $rangeChart['km_min_y'] }}"
+                      font-size="15" fill="currentColor">{{ $rangeChart['km_min'] }} km</text>
+                <text x="{{ $rangeChart['label_x'] }}" y="{{ $rangeChart['temps_y'] }}"
+                      font-size="15" fill="currentColor" opacity=".7">{{ $rangeChart['debut']->timezone(config('app.timezone'))->format('H:i') }}</text>
+                <text x="{{ $rangeChart['temps_fin_x'] }}" y="{{ $rangeChart['temps_y'] }}"
+                      font-size="15" fill="currentColor" opacity=".7" text-anchor="end">{{ $rangeChart['fin']->timezone(config('app.timezone'))->format('H:i') }}</text>
             </svg>
             <p class="note">
-                Autonomie estimée de {{ $rangeChart['km_min'] }} à {{ $rangeChart['km_max'] }} km,
-                de {{ $rangeChart['debut']->timezone(config('app.timezone'))->format('H:i') }}
-                à {{ $rangeChart['fin']->timezone(config('app.timezone'))->format('H:i') }}.
                 Une pente montante en fin de courbe signale une charge en cours.
             </p>
         @endif
