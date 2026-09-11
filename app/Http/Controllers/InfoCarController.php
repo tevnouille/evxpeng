@@ -41,42 +41,6 @@ class InfoCarController extends Controller
     /** Niveaux vises. */
     private const CIBLES = [80, 90, 100];
 
-    /** Bornes plausibles d'une limite de charge, en pourcentage. */
-    private const LIMITE_MIN = 30;
-
-    private const LIMITE_MAX = 100;
-
-    /**
-     * Valeur brute remontee par le boitier, si elle est numerique.
-     */
-    private static function brut(mixed $releve, string $cle): ?float
-    {
-        $valeur = $releve->raw['telemetry'][$cle] ?? null;
-
-        return is_numeric($valeur) ? (float) $valeur : null;
-    }
-
-    /**
-     * Limite de charge reglee dans la voiture, en pourcentage.
-     *
-     * Le boitier renvoie par moments des valeurs absurdes — 5 940 releve sur la
-     * derniere semaine. On retient donc le dernier releve **plausible** plutot
-     * que le dernier tout court.
-     *
-     * @param  \Illuminate\Support\Collection<int, \App\Models\VehicleTelemetry>  $history
-     */
-    private function limiteCharge(\Illuminate\Support\Collection $history): ?int
-    {
-        $limite = $history
-            ->reverse()
-            ->map(fn ($releve) => self::brut($releve, 'CHG_LIMIT'))
-            ->first(fn (?float $valeur) => $valeur !== null
-                && $valeur >= self::LIMITE_MIN
-                && $valeur <= self::LIMITE_MAX);
-
-        return $limite === null ? null : (int) round($limite);
-    }
-
     /**
      * Temps de charge depuis le niveau actuel, par puissance de borne.
      *
@@ -169,7 +133,6 @@ class InfoCarController extends Controller
             'rangeKm' => $rangeKm,
             'position' => $position,
             'ecartCellules' => $this->battery->medianGap($history),
-            'limiteCharge' => $this->limiteCharge($history),
             'refreshSeconds' => VehicleState::REFRESH_SECONDS[$state['state'] ?? VehicleState::PARKED]
                 ?? VehicleState::REFRESH_SECONDS[VehicleState::PARKED],
             'cibles' => self::CIBLES,

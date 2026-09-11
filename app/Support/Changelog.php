@@ -41,6 +41,12 @@ class Changelog
 
     private const DATA = [
         [
+            'date' => '2026-09-11',
+            'entries' => [
+                ['type' => 'correction', 'text' => "La tuile « Limite de charge » disparaît d'« Info voiture ». Le champ que le boîtier remonte pour ce réglage (`CHG_LIMIT`) s'est révélé figé sur une ancienne valeur (80 %) alors que la voiture chargeait déjà au-delà, preuve qu'une limite plus haute était bien appliquée : ce n'est pas l'application qui se trompait, c'est ce champ-là qui ne se met pas à jour côté véhicule. Plutôt que d'afficher un chiffre dont on sait qu'il peut mentir, la tuile est retirée. « Écart entre cellules », à côté, n'est pas concerné."],
+            ],
+        ],
+        [
             'date' => '2026-09-10',
             'entries' => [
                 ['type' => 'nouveaute', 'text' => "Le tableau quotidien de « Ma voiture » (« Kilomètres et recharges ») gagne deux colonnes, consommation apparente et température. La température vient d'Open-Meteo (historique gratuit, sans clé) : le boîtier OBD ne l'a jamais remontée malgré la colonne prévue pour — vérifié sur l'historique complet, aucun des 4079 relevés ne porte de température extérieure. Une position par véhicule pour tout le mois affiché, pas une par jour : indicatif, pour expliquer une autonomie plus courte par le froid plutôt que laisser croire à un problème de batterie."],

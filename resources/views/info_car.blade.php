@@ -264,25 +264,15 @@
                 </div>
             @endif
 
-            @if ($ecartCellules !== null || $limiteCharge !== null)
+            @if ($ecartCellules !== null)
                 <div class="alterne" data-periode="5">
-                    @if ($ecartCellules !== null)
-                        <div>
-                            <p class="titre">Écart entre cellules</p>
-                            <p class="valeur">{{ $ecartCellules }}<span class="unite"> mV</span></p>
-                            {{-- La mediane est dite, parce qu'elle change le sens du
-                                 chiffre : ce n'est pas l'ecart de l'instant. --}}
-                            <p class="note">médiane des dernières 24 h</p>
-                        </div>
-                    @endif
-
-                    @if ($limiteCharge !== null)
-                        <div @if ($ecartCellules !== null) hidden @endif>
-                            <p class="titre">Limite de charge</p>
-                            <p class="valeur">{{ $limiteCharge }}<span class="unite"> %</span></p>
-                            <p class="note">réglée dans la voiture</p>
-                        </div>
-                    @endif
+                    <div>
+                        <p class="titre">Écart entre cellules</p>
+                        <p class="valeur">{{ $ecartCellules }}<span class="unite"> mV</span></p>
+                        {{-- La mediane est dite, parce qu'elle change le sens du
+                             chiffre : ce n'est pas l'ecart de l'instant. --}}
+                        <p class="note">médiane des dernières 24 h</p>
+                    </div>
                 </div>
             @endif
 
