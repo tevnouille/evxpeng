@@ -424,6 +424,83 @@
         </div>
 
         <div class="box">
+            <h2 class="title is-5 mb-2">Amortissement face à une thermique équivalente</h2>
+
+            @if (! $payback)
+                <p class="has-text-grey">
+                    Renseignez le prix d'achat, sa date, et le prix d'une thermique de comparaison sur la
+                    <a href="{{ route('reference-data.vehicles.index') }}">fiche du véhicule</a> pour voir ce calcul.
+                </p>
+            @else
+                <p class="has-text-grey is-size-7 mb-4">
+                    Comparé à {{ $payback['thermal_label'] ?: 'la thermique équivalente' }}
+                    ({{ number_format($payback['thermal_price'], 0, ',', ' ') }} €), sur
+                    {{ number_format($payback['km_driven'], 0, ',', ' ') }} km parcourus depuis le
+                    {{ $payback['purchase_date']->format('d/m/Y') }}. Électricité et carburant sont estimés au
+                    prix moyen réellement payé (électricité) ou relevé (carburant), appliqué à l'ensemble de la
+                    distance — l'application ne trace les recharges que depuis qu'elle existe, pas depuis l'achat.
+                </p>
+
+                <div class="columns is-mobile is-multiline mb-2">
+                    <div class="column">
+                        <p class="heading">Dépensé (électrique)</p>
+                        <p class="title is-4">{{ number_format($payback['ev_total_cost'], 0, ',', ' ') }} €</p>
+                        <p class="has-text-grey is-size-7">
+                            achat + {{ number_format($payback['electricity_cost'], 0, ',', ' ') }} € électricité
+                            + {{ number_format($payback['ev_maintenance'], 0, ',', ' ') }} € entretien
+                        </p>
+                    </div>
+                    <div class="column">
+                        <p class="heading">Aurait coûté (thermique)</p>
+                        <p class="title is-4">{{ number_format($payback['thermal_total_cost'], 0, ',', ' ') }} €</p>
+                        <p class="has-text-grey is-size-7">
+                            achat + {{ number_format($payback['fuel_cost'], 0, ',', ' ') }} € carburant
+                            + {{ number_format($payback['thermal_maintenance'], 0, ',', ' ') }} € entretien
+                        </p>
+                    </div>
+                    <div class="column">
+                        <p class="heading">{{ $payback['savings_to_date'] >= 0 ? 'Économisé à ce jour' : 'Surcoût à ce jour' }}</p>
+                        <p class="title is-4 {{ $payback['savings_to_date'] >= 0 ? 'has-text-success' : 'has-text-danger' }}">
+                            {{ number_format(abs($payback['savings_to_date']), 0, ',', ' ') }} €
+                        </p>
+                    </div>
+                </div>
+
+                <div class="notification {{ $payback['is_profitable'] ? 'is-success is-light' : 'is-warning is-light' }}">
+                    @if ($payback['break_even_km'] === 0)
+                        <strong>Rentable dès le premier kilomètre</strong> : le prix d'achat de la thermique de
+                        comparaison était déjà proche ou supérieur à celui de l'électrique
+                        ({{ number_format($payback['thermal_price'], 0, ',', ' ') }} € contre
+                        {{ number_format($payback['ev_price'], 0, ',', ' ') }} €).
+                    @elseif ($payback['is_profitable'])
+                        <strong>Rentable depuis environ {{ number_format($payback['break_even_km'], 0, ',', ' ') }} km</strong>
+                        @if ($payback['break_even_date'])
+                            (~{{ $payback['break_even_date']->format('d/m/Y') }})
+                        @endif
+                        .
+                    @elseif ($payback['break_even_km'] !== null)
+                        <strong>Pas encore rentable</strong> : au rythme actuel, encore environ
+                        {{ number_format($payback['km_remaining_to_break_even'], 0, ',', ' ') }} km avant le seuil
+                        @if ($payback['break_even_date'])
+                            (~{{ $payback['break_even_date']->format('d/m/Y') }})
+                        @endif
+                        .
+                    @else
+                        <strong>Jamais rentable à ce rythme</strong> : l'écart à l'achat dépasse ce que
+                        l'électricité et l'entretien moins cher permettent de rattraper.
+                    @endif
+                </div>
+
+                <p class="has-text-grey is-size-7">
+                    Prix moyen payé :
+                    {{ $payback['avg_price_per_kwh'] !== null ? number_format($payback['avg_price_per_kwh'], 3, ',', ' ').' €/kWh' : '—' }},
+                    carburant à {{ number_format($payback['avg_fuel_price'], 3, ',', ' ') }} €/L
+                    {{ $payback['fuel_price_known'] ? '(moyenne relevée)' : '(estimation par défaut, aucun relevé en base)' }}.
+                </p>
+            @endif
+        </div>
+
+        <div class="box">
             <div class="columns is-vcentered mb-2">
                 <div class="column">
                     <h2 class="title is-5 mb-0">Kilomètres et recharges au quotidien</h2>

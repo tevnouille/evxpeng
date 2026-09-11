@@ -20,6 +20,25 @@ use Illuminate\View\View;
 
 class ReferenceDataController extends Controller
 {
+    /**
+     * Regles communes aux deux formulaires (ajout et modification) pour les
+     * champs de la carte « Amortissement » de Ma voiture. Repetees ici plutot
+     * qu'extraites en Form Request : le reste du controleur ne suit pas ce
+     * decoupage, introduire une seule classe pour ces huit champs aurait
+     * casse la coherence sans que rien d'autre ne le justifie.
+     */
+    private const PAYBACK_RULES = [
+        'purchase_price' => ['nullable', 'numeric', 'min:0'],
+        'purchase_date' => ['nullable', 'date'],
+        'purchase_odometer_km' => ['nullable', 'integer', 'min:0'],
+        'thermal_equivalent_label' => ['nullable', 'string', 'max:255'],
+        'thermal_equivalent_price' => ['nullable', 'numeric', 'min:0'],
+        'ev_maintenance_cost' => ['nullable', 'numeric', 'min:0'],
+        'ev_maintenance_interval_km' => ['nullable', 'integer', 'min:1'],
+        'thermal_maintenance_cost' => ['nullable', 'numeric', 'min:0'],
+        'thermal_maintenance_interval_km' => ['nullable', 'integer', 'min:1'],
+    ];
+
     public function index(DataSourceInventory $inventory): View
     {
         $sources = $inventory->all();
@@ -68,6 +87,7 @@ class ReferenceDataController extends Controller
             'kwh_per_100km' => ['nullable', 'numeric', 'min:0'],
             'essence_l_per_100km' => ['nullable', 'numeric', 'min:0'],
             'diesel_l_per_100km' => ['nullable', 'numeric', 'min:0'],
+            ...self::PAYBACK_RULES,
         ]);
 
         $vehicle = Vehicle::create($data);
@@ -88,6 +108,7 @@ class ReferenceDataController extends Controller
             'kwh_per_100km' => ['nullable', 'numeric', 'min:0'],
             'essence_l_per_100km' => ['nullable', 'numeric', 'min:0'],
             'diesel_l_per_100km' => ['nullable', 'numeric', 'min:0'],
+            ...self::PAYBACK_RULES,
         ]);
 
         $vehicle->update($data);

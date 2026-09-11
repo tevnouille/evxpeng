@@ -13,6 +13,7 @@ use App\Services\DailyVehicleActivity;
 use App\Services\TelemetrySessionDetector;
 use App\Services\TelemetrySources;
 use App\Services\VehicleState;
+use App\Services\PaybackCalculator;
 use App\Services\WeatherService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -45,6 +46,7 @@ class MyVehicleController extends Controller
         private readonly MeasuredChargingSessions $measured,
         private readonly BatteryHealth $battery,
         private readonly WeatherService $weather,
+        private readonly PaybackCalculator $payback,
     ) {
     }
 
@@ -118,6 +120,16 @@ class MyVehicleController extends Controller
         // "planifier" une recharge, mais voir le rythme actuel reste un repere.
         $nextCharge = $this->nextChargeEstimate($history, $rangeKm);
 
+        // Le dernier odometre connu, pas celui de $history (bornee aux $days
+        // affiches) : l'amortissement porte sur toute la duree de possession.
+        $currentOdometer = $vehicle
+            ? $vehicle->telemetries()->whereNotNull('odometer')->orderByDesc('recorded_at')->value('odometer')
+            : null;
+
+        $payback = $vehicle
+            ? $this->payback->forVehicle($vehicle, $currentOdometer !== null ? (int) $currentOdometer : null)
+            : null;
+
         return view('my_vehicle.index', [
             'months' => $months,
             'month' => $month,
@@ -166,6 +178,7 @@ class MyVehicleController extends Controller
             'healthLabels' => collect($healthTrend)->map(fn ($d) => CarbonImmutable::createFromFormat('Y-m-d', $d['date'])->format('d/m'))->values(),
             'healthGapMv' => collect($healthTrend)->pluck('median')->values(),
             'costPerKm' => $costPerKm,
+            'payback' => $payback,
             'nextCharge' => $nextCharge,
         ]);
     }

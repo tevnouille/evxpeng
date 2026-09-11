@@ -79,7 +79,90 @@
                             </label>
                         </div>
                     </div>
-                    <button type="submit" class="button is-primary is-fullwidth">Ajouter</button>
+                </div>
+            </div>
+
+            <hr>
+            <p class="label is-small mb-2">Amortissement face à une thermique équivalente</p>
+            <div class="columns is-multiline">
+                <div class="column is-3">
+                    <div class="field">
+                        <label class="label is-small">Prix d'achat (€)</label>
+                        <div class="control">
+                            <input class="input" type="number" step="1" min="0" name="purchase_price" placeholder="ex. 50000">
+                        </div>
+                    </div>
+                </div>
+                <div class="column is-3">
+                    <div class="field">
+                        <label class="label is-small">Date d'achat</label>
+                        <div class="control">
+                            <input class="input" type="date" name="purchase_date">
+                        </div>
+                    </div>
+                </div>
+                <div class="column is-3">
+                    <div class="field">
+                        <label class="label is-small">Kilométrage à l'achat</label>
+                        <div class="control">
+                            <input class="input" type="number" step="1" min="0" name="purchase_odometer_km" placeholder="0 si neuve">
+                        </div>
+                    </div>
+                </div>
+                <div class="column is-3">
+                    <div class="field">
+                        <label class="label is-small">Thermique de comparaison</label>
+                        <div class="control">
+                            <input class="input" type="text" name="thermal_equivalent_label" placeholder="ex. Škoda Kodiaq 2.0 TDI">
+                        </div>
+                    </div>
+                </div>
+                <div class="column is-3">
+                    <div class="field">
+                        <label class="label is-small">Prix thermique (€)</label>
+                        <div class="control">
+                            <input class="input" type="number" step="1" min="0" name="thermal_equivalent_price" placeholder="ex. 50000">
+                        </div>
+                    </div>
+                </div>
+                <div class="column is-2">
+                    <div class="field">
+                        <label class="label is-small">Entretien EV (€)</label>
+                        <div class="control">
+                            <input class="input" type="number" step="1" min="0" name="ev_maintenance_cost" placeholder="180">
+                        </div>
+                    </div>
+                </div>
+                <div class="column is-2">
+                    <div class="field">
+                        <label class="label is-small">…tous les (km)</label>
+                        <div class="control">
+                            <input class="input" type="number" step="1" min="1" name="ev_maintenance_interval_km" placeholder="20000">
+                        </div>
+                    </div>
+                </div>
+                <div class="column is-2">
+                    <div class="field">
+                        <label class="label is-small">Entretien thermique (€)</label>
+                        <div class="control">
+                            <input class="input" type="number" step="1" min="0" name="thermal_maintenance_cost" placeholder="350">
+                        </div>
+                    </div>
+                </div>
+                <div class="column is-3">
+                    <div class="field">
+                        <label class="label is-small">…tous les (km)</label>
+                        <div class="control">
+                            <input class="input" type="number" step="1" min="1" name="thermal_maintenance_interval_km" placeholder="25000">
+                        </div>
+                    </div>
+                </div>
+                <div class="column is-2 is-flex is-align-items-flex-end">
+                    <div class="field">
+                        <div class="control">
+                            <button type="submit" class="button is-primary is-fullwidth">Ajouter</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </form>
@@ -195,7 +278,90 @@
                                 </label>
                             </div>
                         </div>
-                        <button type="submit" class="button is-info is-light is-fullwidth">Enregistrer</button>
+                    </div>
+                </div>
+
+                <hr>
+                <p class="label is-small mb-2">Amortissement face à une thermique équivalente</p>
+                <div class="columns is-multiline">
+                    <div class="column is-3">
+                        <div class="field">
+                            <label class="label is-small">Prix d'achat (€)</label>
+                            <div class="control">
+                                <input class="input" type="number" step="1" min="0" name="purchase_price" value="{{ $vehicle->purchase_price }}" placeholder="ex. 50000">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column is-3">
+                        <div class="field">
+                            <label class="label is-small">Date d'achat</label>
+                            <div class="control">
+                                <input class="input" type="date" name="purchase_date" value="{{ $vehicle->purchase_date?->format('Y-m-d') }}">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column is-3">
+                        <div class="field">
+                            <label class="label is-small">Kilométrage à l'achat</label>
+                            <div class="control">
+                                <input class="input" type="number" step="1" min="0" name="purchase_odometer_km" value="{{ $vehicle->purchase_odometer_km }}" placeholder="0 si neuve">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column is-3">
+                        <div class="field">
+                            <label class="label is-small">Thermique de comparaison</label>
+                            <div class="control">
+                                <input class="input" type="text" name="thermal_equivalent_label" value="{{ $vehicle->thermal_equivalent_label }}" placeholder="ex. Škoda Kodiaq 2.0 TDI">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column is-3">
+                        <div class="field">
+                            <label class="label is-small">Prix thermique (€)</label>
+                            <div class="control">
+                                <input class="input" type="number" step="1" min="0" name="thermal_equivalent_price" value="{{ $vehicle->thermal_equivalent_price }}" placeholder="ex. 50000">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column is-2">
+                        <div class="field">
+                            <label class="label is-small">Entretien EV (€)</label>
+                            <div class="control">
+                                <input class="input" type="number" step="1" min="0" name="ev_maintenance_cost" value="{{ $vehicle->ev_maintenance_cost }}" placeholder="180">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column is-2">
+                        <div class="field">
+                            <label class="label is-small">…tous les (km)</label>
+                            <div class="control">
+                                <input class="input" type="number" step="1" min="1" name="ev_maintenance_interval_km" value="{{ $vehicle->ev_maintenance_interval_km }}" placeholder="20000">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column is-2">
+                        <div class="field">
+                            <label class="label is-small">Entretien thermique (€)</label>
+                            <div class="control">
+                                <input class="input" type="number" step="1" min="0" name="thermal_maintenance_cost" value="{{ $vehicle->thermal_maintenance_cost }}" placeholder="350">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column is-3">
+                        <div class="field">
+                            <label class="label is-small">…tous les (km)</label>
+                            <div class="control">
+                                <input class="input" type="number" step="1" min="1" name="thermal_maintenance_interval_km" value="{{ $vehicle->thermal_maintenance_interval_km }}" placeholder="25000">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column is-2 is-flex is-align-items-flex-end">
+                        <div class="field">
+                            <div class="control">
+                                <button type="submit" class="button is-info is-light is-fullwidth">Enregistrer</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </form>

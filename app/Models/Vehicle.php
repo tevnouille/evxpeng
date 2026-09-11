@@ -12,13 +12,25 @@ class Vehicle extends Model
 {
     use BelongsToUser, HasFactory;
 
-    protected $fillable = ['name', 'charging_curve', 'mqtt_client_id', 'is_default', 'kwh_per_100km', 'essence_l_per_100km', 'diesel_l_per_100km'];
+    protected $fillable = [
+        'name', 'charging_curve', 'mqtt_client_id', 'is_default',
+        'kwh_per_100km', 'essence_l_per_100km', 'diesel_l_per_100km',
+        'purchase_price', 'purchase_date', 'purchase_odometer_km',
+        'thermal_equivalent_label', 'thermal_equivalent_price',
+        'ev_maintenance_cost', 'ev_maintenance_interval_km',
+        'thermal_maintenance_cost', 'thermal_maintenance_interval_km',
+    ];
 
     protected $casts = [
         'is_default' => 'boolean',
         'kwh_per_100km' => 'decimal:2',
         'essence_l_per_100km' => 'decimal:2',
         'diesel_l_per_100km' => 'decimal:2',
+        'purchase_price' => 'decimal:2',
+        'purchase_date' => 'date',
+        'thermal_equivalent_price' => 'decimal:2',
+        'ev_maintenance_cost' => 'decimal:2',
+        'thermal_maintenance_cost' => 'decimal:2',
     ];
 
     public function chargingSessions(): HasMany
