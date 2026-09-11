@@ -33,7 +33,6 @@
             gap: 2vw; margin-bottom: .8vh; flex: 0 0 auto;
         }
         h1 { font-size: clamp(.9rem, 4vh, 1.8rem); margin: 0; }
-        .droite { display: flex; align-items: center; gap: 1.5vw; }
         .etat {
             font-size: clamp(.7rem, 2.4vh, 1rem); font-weight: 600;
             padding: .25em .8em; border-radius: 999px; white-space: nowrap;
@@ -42,8 +41,10 @@
         .etat.route    { background: #d9ecfb; color: #14568a; }
         .etat.arret    { background: #ececec; color: #4a4a4a; }
         .etat.silence  { background: #fdf0d5; color: #7a5200; }
-        /* Cibles tactiles : on les vise d'un doigt, en conduisant si besoin. */
-        .onglets { display: flex; gap: 1vw; }
+        /* Cibles tactiles : on les vise d'un doigt, en conduisant si besoin.
+           A la ligne sous le titre : quatre onglets ne tenaient plus a cote du
+           badge d'etat sans se comprimer illisiblement. */
+        .onglets { display: flex; flex-wrap: wrap; gap: 1vw; margin: 0 0 1.2vh; flex: 0 0 auto; }
         .onglets button {
             font: inherit; font-size: clamp(.75rem, 2.6vh, 1.05rem); font-weight: 600;
             padding: .5em 1.4em; border: 1px solid #d0d0d0; border-radius: 999px;
@@ -169,6 +170,7 @@
         tbody tr + tr td { border-top: 1px solid #efefef; }
         #carte { height: 100%; min-height: 55vh; }
         #carte iframe { width: 100%; height: 100%; min-height: 55vh; border: 1px solid #dcdcdc; border-radius: 8px; }
+        #courbe-autonomie { width: 100%; flex: 1 1 auto; min-height: 0; }
         .atteint { color: #2ea36b; font-weight: 600; }
         .inconnu { color: #9a9a9a; font-weight: 400; }
         @media (prefers-color-scheme: dark) {
@@ -200,17 +202,17 @@
     @endphp
     <header>
         <h1>{{ $vehicle->name }}</h1>
-        <div class="droite">
-            <span class="etat {{ $classes[$state['state']] ?? 'arret' }}">{{ $state['label'] }}</span>
-            <div class="onglets">
-                <button type="button" data-vue="info" aria-current="page">Info</button>
-                <button type="button" data-vue="recharge">Recharge</button>
-                @if ($position)
-                    <button type="button" data-vue="position">Position</button>
-                @endif
-            </div>
-        </div>
+        <span class="etat {{ $classes[$state['state']] ?? 'arret' }}">{{ $state['label'] }}</span>
     </header>
+
+    <div class="onglets">
+        <button type="button" data-vue="info" aria-current="page">Info</button>
+        <button type="button" data-vue="recharge">Recharge</button>
+        <button type="button" data-vue="courbe">Courbe</button>
+        @if ($position)
+            <button type="button" data-vue="position">Position</button>
+        @endif
+    </div>
 
     {{-- Sous le titre et non en pied de page : sur un ecran qu'on ne peut ni
          defiler ni dezoomer, la fraicheur du releve doit se lire d'emblee.
@@ -338,6 +340,28 @@
         @endif
     </div>
 
+    <div class="vue" id="vue-courbe" hidden>
+        @if ($rangeChart === null)
+            <p class="note">
+                Pas assez de données pour tracer l'autonomie
+                (consommation non renseignée sur la fiche du véhicule, ou historique insuffisant).
+            </p>
+        @else
+            <svg id="courbe-autonomie" viewBox="0 0 {{ $rangeChart['width'] }} {{ $rangeChart['height'] }}"
+                 preserveAspectRatio="none" role="img"
+                 aria-label="Autonomie estimée entre {{ $rangeChart['km_min'] }} et {{ $rangeChart['km_max'] }} km sur les dernières 24 heures">
+                <polyline points="{{ $rangeChart['points'] }}" fill="none" stroke="#2ea36b"
+                          stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+            </svg>
+            <p class="note">
+                Autonomie estimée de {{ $rangeChart['km_min'] }} à {{ $rangeChart['km_max'] }} km,
+                de {{ $rangeChart['debut']->timezone(config('app.timezone'))->format('H:i') }}
+                à {{ $rangeChart['fin']->timezone(config('app.timezone'))->format('H:i') }}.
+                Une pente montante en fin de courbe signale une charge en cours.
+            </p>
+        @endif
+    </div>
+
     @if ($position)
         {{-- La carte n'est inseree qu'a l'ouverture de l'onglet : sans ce
              garde-fou, chaque affichage — et la page se recharge seule —
@@ -379,7 +403,8 @@
             boutons[i].addEventListener('click', function (e) { afficher(e.currentTarget.dataset.vue); });
         }
 
-        afficher(window.location.hash === '#recharge' ? 'recharge' : 'info');
+        var ongletDepuisAncre = window.location.hash.replace('#', '');
+        afficher(['recharge', 'courbe', 'position'].indexOf(ongletDepuisAncre) !== -1 ? ongletDepuisAncre : 'info');
     })();
 
     (function () {

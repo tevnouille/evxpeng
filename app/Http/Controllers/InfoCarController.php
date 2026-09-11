@@ -42,6 +42,81 @@ class InfoCarController extends Controller
     private const CIBLES = [80, 90, 100];
 
     /**
+     * Serie temporelle de l'autonomie estimee, pour le graphique de l'onglet
+     * « Courbe ». Aucun signal de charge separe n'est ajoute : une pente
+     * montante en fin de courbe le dit deja aussi clairement qu'un badge.
+     *
+     * @param  \Illuminate\Support\Collection<int, \App\Models\VehicleTelemetry>  $history
+     * @return array<int, array{at: \Illuminate\Support\Carbon, km: int}>
+     */
+    private function rangeSeries(\Illuminate\Support\Collection $history, ?float $netCapacity, ?float $consumption): array
+    {
+        if (! $netCapacity || ! $consumption) {
+            return [];
+        }
+
+        return $history
+            ->filter(fn ($releve) => $releve->soc !== null)
+            ->map(fn ($releve) => [
+                'at' => $releve->recorded_at,
+                'km' => (int) round((float) $releve->soc / 100 * $netCapacity / $consumption * 100),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Coordonnees SVG pretes a l'emploi pour tracer la serie ci-dessus, sans
+     * bibliotheque de graphique : la page reste une seule requete, condition
+     * deja posee pour le reste d'« Info voiture ».
+     *
+     * @param  array<int, array{at: \Illuminate\Support\Carbon, km: int}>  $series
+     * @return array<string, mixed>|null
+     */
+    private function rangeChart(array $series): ?array
+    {
+        if (count($series) < 2) {
+            return null;
+        }
+
+        $width = 600;
+        $height = 220;
+        $marge = 12;
+
+        $instants = array_map(fn ($point) => $point['at']->getTimestamp(), $series);
+        $valeurs = array_column($series, 'km');
+
+        $tempsMin = min($instants);
+        // Jamais nulle : un seul instant sur toute la serie ne tracerait rien.
+        $tempsEtendue = max(1, max($instants) - $tempsMin);
+
+        $kmMin = min($valeurs);
+        $kmMax = max($valeurs);
+        // Autonomie parfaitement stable sur la fenetre : sans ce plancher, tous
+        // les points tomberaient sur la meme ligne et la division par zero
+        // renverrait NAN.
+        $kmEtendue = max(1, $kmMax - $kmMin);
+
+        $points = [];
+
+        foreach ($series as $i => $point) {
+            $x = $marge + ($instants[$i] - $tempsMin) / $tempsEtendue * ($width - 2 * $marge);
+            $y = $height - $marge - ($point['km'] - $kmMin) / $kmEtendue * ($height - 2 * $marge);
+            $points[] = round($x, 1).','.round($y, 1);
+        }
+
+        return [
+            'points' => implode(' ', $points),
+            'width' => $width,
+            'height' => $height,
+            'km_min' => $kmMin,
+            'km_max' => $kmMax,
+            'debut' => $series[0]['at'],
+            'fin' => end($series)['at'],
+        ];
+    }
+
+    /**
      * Temps de charge depuis le niveau actuel, par puissance de borne.
      *
      * Le calcul est celui du planificateur et de la page « Courbe de recharge »
@@ -122,6 +197,8 @@ class InfoCarController extends Controller
             ? $this->geocoder->city($position['lat'], $position['lon'])
             : null;
 
+        $rangeChart = $this->rangeChart($this->rangeSeries($history, $netCapacity, $consumption));
+
         return view('info_car', [
             'vehicle' => $vehicle,
             'ville' => $ville,
@@ -137,6 +214,7 @@ class InfoCarController extends Controller
                 ?? VehicleState::REFRESH_SECONDS[VehicleState::PARKED],
             'cibles' => self::CIBLES,
             'recharges' => $this->recharges($courbe, $soc),
+            'rangeChart' => $rangeChart,
         ]);
     }
 }
