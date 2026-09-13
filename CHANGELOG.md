@@ -12,6 +12,10 @@ Le journal est rédigé pour qui se sert de l'application, pas depuis l'historiq
 Git : les messages de commit parlent de code, et une bonne moitié d'entre eux ne
 change rien de visible. La même liste s'affiche sur `/changelog`.
 
+## 13 septembre 2026
+
+- **Amélioration** — Sur « Partager ma position », un bouton « Copier » apparaît à côté du lien de chaque partage actif : jusqu'ici il fallait cliquer dans le champ puis faire Ctrl+C soi-même. Le bouton affiche « Copié ! » un instant pour confirmer, et si le navigateur refuse la copie automatique, le champ se sélectionne comme avant — la copie manuelle reste possible dans tous les cas.
+
 ## 11 septembre 2026
 
 - **Nouveauté** — « Ma voiture » affiche une carte « Amortissement face à une thermique équivalente » : ce que la voiture électrique a coûté (achat, électricité, entretien) contre ce qu'aurait coûté une thermique comparable sur les mêmes kilomètres, avec le kilomètre — et la date — où la balance a basculé. Le prix d'achat, sa date, le véhicule de comparaison et son prix, ainsi que les taux d'entretien des deux, se règlent sur la fiche du véhicule (Administration → Véhicules) ; sans eux, la carte n'affiche rien plutôt que d'inventer une valeur. Électricité et carburant sont estimés au prix moyen réellement payé ou relevé, appliqué à l'ensemble de la distance parcourue depuis l'achat — l'application ne trace les recharges que depuis qu'elle existe, pas depuis l'achat du véhicule.

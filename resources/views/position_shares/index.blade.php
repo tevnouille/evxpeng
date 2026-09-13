@@ -91,10 +91,23 @@
                                         <span class="tag is-success is-light">actif</span>
                                     @endif
                                 </td>
-                                <td style="min-width: 16rem;">
+                                <td style="min-width: 20rem;">
                                     @if (! $share->isExpired())
-                                        <input class="input is-small" type="text" value="{{ $share->url() }}"
-                                               readonly onclick="this.select()">
+                                        {{-- `has-addons` : le bouton colle au champ, comme un seul controle. --}}
+                                        <div class="field has-addons mb-0">
+                                            <div class="control is-expanded">
+                                                <input id="share-url-{{ $share->id }}" class="input is-small"
+                                                       type="text" value="{{ $share->url() }}"
+                                                       readonly onclick="this.select()">
+                                            </div>
+                                            <div class="control">
+                                                <button type="button" class="button is-small"
+                                                        data-copy-target="#share-url-{{ $share->id }}"
+                                                        data-copy-label="Copier" data-copy-done="Copié !">
+                                                    Copier
+                                                </button>
+                                            </div>
+                                        </div>
                                     @else
                                         <span class="has-text-grey is-size-7">—</span>
                                     @endif

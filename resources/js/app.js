@@ -545,6 +545,55 @@ function setupNearbySearch() {
     });
 }
 
+/**
+ * Boutons "Copier" generiques : `data-copy-target` designe le champ dont il
+ * faut copier la valeur (ex. le lien d'un partage de position). Attribut et
+ * non un id fixe par bouton, pour que la meme fonction serve n'importe quelle
+ * page qui en aurait besoin plus tard, sans y toucher.
+ *
+ * `navigator.clipboard` exige un contexte securise (https, ou localhost en
+ * developpement) : en son absence on se rabat sur la selection du texte,
+ * comme le faisait deja le champ avant ce bouton — l'utilisateur garde un
+ * Ctrl+C possible plutot qu'un bouton qui ne ferait rien.
+ */
+function setupCopyButtons() {
+    document.querySelectorAll('[data-copy-target]').forEach((button) => {
+        const target = document.querySelector(button.dataset.copyTarget);
+
+        if (!target) {
+            return;
+        }
+
+        const label = button.dataset.copyLabel || button.textContent.trim();
+        const done = button.dataset.copyDone || 'Copié !';
+        let restoreTimer = null;
+
+        const showDone = () => {
+            clearTimeout(restoreTimer);
+            button.textContent = done;
+            button.classList.add('is-success');
+            restoreTimer = setTimeout(() => {
+                button.textContent = label;
+                button.classList.remove('is-success');
+            }, 1500);
+        };
+
+        button.addEventListener('click', () => {
+            const value = target.value ?? target.textContent;
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(value).then(showDone, () => {
+                    target.select();
+                });
+
+                return;
+            }
+
+            target.select();
+        });
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('select[data-searchable]').forEach(makeSearchable);
 
@@ -713,4 +762,5 @@ document.addEventListener('DOMContentLoaded', () => {
     setupChargerSuggestions();
     setupGeolocationButton();
     setupNearbySearch();
+    setupCopyButtons();
 });
