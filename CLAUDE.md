@@ -253,8 +253,10 @@ nécessaires** :
    `/etc/nginx/sites-available/ev.lolinux.org` — hors de ce dépôt, convention
    du VPS (plusieurs projets y partagent le même nginx, aucun n'y versionne son
    vhost). **Depuis la migration du 2026-09-10** : sur l'ancien hébergement
-   hostingtools, cette exemption vivait dans un conteneur dédié `ev-gate`
-   (trace dans `docker/gate/`, aujourd'hui historique — voir son README) ;
+   hostingtools, cette exemption vivait dans un conteneur dédié `ev-gate`,
+   décommissionné avec le reste de l'ancienne pile — `docker/gate/`, qui en
+   gardait une copie de référence, est retiré du dépôt le 2026-09-13 (plus
+   rien à quoi la comparer) ; l'historique complet reste dans `git log` ;
 2. `App\Http\Middleware\IdentifyUser::PUBLIC_PATHS` — sinon ce middleware,
    appliqué à tout le groupe `web`, répond 403.
 

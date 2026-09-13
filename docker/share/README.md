@@ -4,10 +4,12 @@ Copie de référence de la configuration réellement servie, montée en bind dep
 `/etc/nginx/sites-available/s.lolinux.fr` — **hors du dépôt**, donc jamais
 versionnée jusqu'ici. Ce fichier n'est pas lu par nginx : il existe pour qu'une
 modification du vhost laisse une trace dans l'historique, à côté du code qu'il
-sert. `docker/gate/` suivait le même principe pour `ev.lolinux.org`, mais ce
-répertoire est aujourd'hui **historique** — la migration sur le VPS Hostinger
-(2026-09-10) a fait disparaître le conteneur qu'il documentait ; voir son
-propre README.
+sert. `docker/gate/` suivait le même principe pour `ev.lolinux.org`, mais le
+conteneur qu'il documentait a disparu avec la migration sur le VPS Hostinger
+(2026-09-10) — retiré du dépôt le 2026-09-13, plus rien à quoi le comparer.
+L'exemption de `ev.lolinux.org` vit désormais dans le vhost du nginx de
+l'hôte du VPS, hors de ce dépôt (voir la section « Page publique `/infoCar` »
+de `CLAUDE.md`).
 
 Après toute modification du fichier réel :
 

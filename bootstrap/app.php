@@ -14,8 +14,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // App uniquement joignable via le nginx qui termine le TLS (l'hote du VPS
         // Hostinger depuis le 2026-09-10 ; HAProxy + ev-gate sur l'ancien
-        // hebergement hostingtools) ; sans ca, isSecure() renvoie false et les
-        // assets/redirections sont generes en http:// (mixed content).
+        // hebergement hostingtools, decommissionne) ; sans ca, isSecure()
+        // renvoie false et les assets/redirections sont generes en http://
+        // (mixed content).
         //
         // On ne truste QUE les reseaux Docker internes, pas `*` ni tout le
         // prive. Subtilite mesuree sur l'ancien hebergement, TOUJOURS VALABLE
@@ -30,20 +31,13 @@ return Application::configure(basePath: dirname(__DIR__))
         // entrant partage alors une seule limite de 60/min, exactement le but
         // pour une appli mono-utilisateur exposee.
         //
-        // '192.168.48/64/80.0/20' : reseaux Docker de l'ANCIEN hebergement
-        // hostingtools (ev_default, ev-net, bridge HAProxy -> ev-gate).
-        // Aucune correspondance sur le VPS aujourd'hui — laisses tels quels,
-        // sans effet sur le trafic reel, plutot que retires a la faveur d'un
-        // passage de documentation : les retirer est un changement de
-        // configuration relevant de securite, pas de doc, a faire
-        // deliberement si besoin.
-        //
-        // '172.16.0.0/12' couvre bien le VPS : le reseau Docker `ev_default`
-        // y est verifie a '172.16.4.0/24' (sudo docker network inspect).
+        // '172.16.0.0/12' couvre le reseau Docker `ev_default` du VPS, verifie
+        // a '172.16.4.0/24' (sudo docker network inspect). Les trois /20 de
+        // l'ancien hebergement hostingtools (ev_default, ev-net, bridge
+        // HAProxy -> ev-gate) sont retires le 2026-09-13 : ce sont les memes
+        // reseaux que ceux decommissionnes avec ev-gate, plus aucune
+        // correspondance possible sur le VPS.
         $middleware->trustProxies(at: [
-            '192.168.48.0/20',   // ev_default (hostingtools, perime)
-            '192.168.64.0/20',   // ev-net (hostingtools, perime)
-            '192.168.80.0/20',   // bridge d'acces HAProxy -> ev-gate (hostingtools, perime)
             '172.16.0.0/12',     // pool Docker : couvre ev_default sur le VPS (172.16.4.0/24)
             '10.0.0.0/8',
         ]);
