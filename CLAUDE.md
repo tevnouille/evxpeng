@@ -5,7 +5,8 @@ le projet ; ce fichier décrit **comment y travailler** et les pièges rencontr�
 
 ## Déploiement : pas de build d'image à chaque modification
 
-L'app tourne sur hostingtools dans `/var/docker/ev`, et l'arbre source est
+L'app tourne sur le **VPS Hostinger** (depuis le 2026-09-10 ; auparavant sur
+hostingtools) dans `/var/docker/ev`, et l'arbre source est
 **monté en bind** dans le conteneur (`app/`, `config/`, `database/`,
 `resources/`, `routes/`, `bootstrap/app.php`, `public/build`). Modifier un
 fichier PHP ou Blade est donc pris en compte immédiatement, sans reconstruire
@@ -74,34 +75,40 @@ sudo docker compose up -d app && sudo docker restart ev-nginx
 
 ## Tester une page sans passer par le passkey
 
-`ev-gate` (la passerelle passkey) écoute sur `127.0.0.1:8096` et redirige en 302
-tout ce qui n'est pas authentifié — donc un `curl` direct ne teste rien d'utile.
-Pour obtenir le HTML réellement rendu, taper le nginx applicatif dans le réseau
-`ev-net` :
-
-```bash
-sudo docker run --rm --network ev-net curlimages/curl:latest -s http://ev-nginx/ma-page > /tmp/page.html
-```
-
-Attention : `curl -o fichier` écrirait **dans le conteneur jetable**. Toujours
-utiliser une redirection shell (`> /tmp/...`) pour récupérer le fichier sur
-l'hôte.
+**Depuis le 2026-09-10 (VPS Hostinger)**, `ev-nginx` publie directement sur
+`127.0.0.1:8098` (port choisi côté hôte car 8095-8097 étaient déjà pris par
+d'autres projets du VPS — voir `docker-compose.yml`) : plus besoin de rejoindre
+un réseau Docker, un `curl` local suffit. La ligne ci-dessous décrivait
+l'ancien hébergement hostingtools, où rien n'était publié et où il fallait
+taper `ev-nginx` dans le réseau `ev-net` — méthode encore possible aujourd'hui
+(`ev-net` existe toujours sur le VPS) mais inutilement détournée quand le port
+est directement accessible.
 
 L'application exige l'en-tête posé par la passerelle : sans lui, `IdentifyUser`
 répond 403. Pour obtenir une page rendue comme pour un utilisateur :
 
 ```bash
-sudo docker run --rm --network ev-net curlimages/curl -s \
-  -H "X-SSO-Email: atran@lolinux.org" http://ev-nginx/ma-page
+curl -s -H "Host: ev.lolinux.org" -H "X-SSO-Email: atran@lolinux.org" \
+  http://127.0.0.1:8098/ma-page
 ```
+
+`Host:` est nécessaire même en local : `trustProxies` et les URL générées par
+Laravel (`route()`, `asset()`...) en dépendent, et un `Host` absent ou faux
+produirait des liens cassés dans la page rendue — piège rencontré en vérifiant
+le point de données `?flux=batterie` de `/infoCar` (2026-09-13).
 
 ### Vue dans un vrai navigateur
 
-Un conteneur nginx jetable qui pose l'en-tête à la place de la passerelle,
-publié sur le port 8099 (`proxy_set_header Host $http_host` est indispensable,
-sinon les redirections cassent). **Ce conteneur contourne l'authentification du
-site : le supprimer dès la vérification finie**, dans le même enchaînement de
-commandes.
+Pour une page protégée par la passkey (contrairement à `/infoCar`, seule
+adresse qui s'en passe déjà et se visite directement dans
+`https://ev.lolinux.org/infoCar`) : un conteneur nginx jetable qui pose
+l'en-tête à la place de la passerelle. **Éviter le port 8099** sur ce VPS,
+utilisé par le projet `patrimoine` (`127.0.0.1:8099`) — un choix de port en
+conflit ferait simplement échouer le démarrage du conteneur jetable, sans rien
+casser côté patrimoine, mais autant en changer plutôt que de tomber dessus par
+surprise. `proxy_set_header Host $http_host` est indispensable, sinon les
+redirections cassent. **Ce conteneur contourne l'authentification du site : le
+supprimer dès la vérification finie**, dans le même enchaînement de commandes.
 
 ```bash
 sudo docker rm -f ev-devproxy && sudo rm -rf /var/docker/ev-devproxy
@@ -242,8 +249,12 @@ Seule adresse servie **sans passkey**, pour le navigateur embarqué de la
 voiture. **L'exemption se déclare à deux endroits, et les deux sont
 nécessaires** :
 
-1. `/var/docker/ev-gate/nginx/gate.conf` — une `location` sans `auth_request`
-   (copie de référence dans `docker/gate/`, à resynchroniser après modification) ;
+1. Le vhost du **nginx de l'hôte du VPS Hostinger**,
+   `/etc/nginx/sites-available/ev.lolinux.org` — hors de ce dépôt, convention
+   du VPS (plusieurs projets y partagent le même nginx, aucun n'y versionne son
+   vhost). **Depuis la migration du 2026-09-10** : sur l'ancien hébergement
+   hostingtools, cette exemption vivait dans un conteneur dédié `ev-gate`
+   (trace dans `docker/gate/`, aujourd'hui historique — voir son README) ;
 2. `App\Http\Middleware\IdentifyUser::PUBLIC_PATHS` — sinon ce middleware,
    appliqué à tout le groupe `web`, répond 403.
 
@@ -255,7 +266,37 @@ Vérifier toute exemption en forgeant l'en-tête depuis l'extérieur.
 
 La page est **entièrement autonome** : aucune feuille de style ni script
 externe, les assets étant eux aussi derrière la passerelle. Elle doit tenir dans
-un écran qu'on ne peut ni défiler ni dézoomer.
+un écran qu'on ne peut ni défiler ni dézoomer. Sans build ni transpilation, le
+JS embarqué est volontairement **ES5** (`var`, pas d'arrow functions ni de
+`forEach` sur les NodeList) : le navigateur de la voiture est de provenance
+inconnue, mieux vaut ne rien supposer de récent.
+
+Elle expose délibérément plus que la seule batterie — position, communes
+traversées — comme le détaille le docblock d'`InfoCarController`. Protégée en
+plus par un code à 6 chiffres (`config('services.info_car.pin')`), un filtre
+contre qui tomberait sur l'adresse sans la connaître, pas une vraie identité.
+
+### Poser un point de données sans casser l'exemption
+
+**L'exemption nginx ne matche que le chemin exact `^/infocar/?$`, jamais un
+préfixe.** Une sous-route (`/infoCar/quelquechose`) retomberait derrière la
+passkey — la requête n'atteindrait même pas Laravel avec l'en-tête d'identité
+vidé, elle serait redirigée vers `pk.lolinux.org`.
+
+Le graphique de batterie du jour (2026-09-13) a donc besoin de données fraîches
+sans en ajouter : il réutilise le **même chemin** `GET /infoCar`, différencié
+par une chaîne de requête (`?flux=batterie`) plutôt qu'une route à part — le
+chemin ne change pas, donc l'exemption s'applique toujours, et
+`IdentifyUser::PUBLIC_PATHS` compare `$request->path()`, qui ignore lui aussi
+la chaîne de requête. **Vérifié sur le domaine public**, pas seulement en
+interne : `403 {"erreur":"verrouille"}` sans le cookie du code, `200` en JSON
+avec — jamais de redirection vers la passerelle passkey dans un cas comme dans
+l'autre.
+
+Le contrôle du code à 6 chiffres est extrait dans une méthode dédiée
+(`deverrouille()`), réutilisée par la vue HTML et par ce point de données :
+sans ce doublon, le second aurait été une porte laissée grande ouverte à côté
+de la première.
 
 ## Télémétrie : aucune rétention, jamais
 
@@ -420,7 +461,11 @@ Le tri met en tete les communes qui commencent par le premier mot.
 
 ## Alertes
 
-Pas de SMTP fonctionnel sur hostingtools (`MAIL_MAILER=log`). Pour notifier
+Pas de SMTP configure pour ce projet (`MAIL_MAILER` absent du `.env`, la
+valeur par defaut de Laravel etant `log`) -- vrai sur hostingtools, toujours
+vrai depuis la migration sur le VPS, bien qu'un Postfix fonctionnel y tourne
+deja pour d'autres projets du meme serveur : ce serait a configurer pour
+ev si on voulait vraiment l'utiliser. Pour notifier
 l'utilisateur, utiliser l'API SMS Free Mobile **en GET** (le POST renvoie 400
 malgré la documentation).
 

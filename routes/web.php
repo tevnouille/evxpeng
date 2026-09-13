@@ -44,17 +44,27 @@ Route::post('/recharges-detectees/ignorer', [DetectedChargeController::class, 'i
 Route::post('/recharges-detectees/retablir', [DetectedChargeController::class, 'restore'])->name('detected-charges.restore');
 
 // Etat du vehicule sans authentification, pour le navigateur de la voiture.
-// La passerelle passkey laisse passer cette adresse et cette adresse seule ;
-// elle n'expose que la batterie, jamais la position. Limitee en debit : elle
-// est ouverte a tous, elle ne doit pas devenir un levier de charge.
+// Le nginx de l'hote laisse passer cette adresse et cette adresse seule ;
+// elle expose deliberement plus que la seule batterie -- position, communes
+// traversees -- comme le detaille le docblock d'InfoCarController. Limitee en
+// debit : elle est ouverte a tous, elle ne doit pas devenir un levier de
+// charge.
+//
+// GET /infoCar?flux=batterie (meme route, differenciee par la chaine de
+// requete) sert les donnees du graphique de batterie en JSON. Reutilise
+// deliberement ce chemin plutot qu'une sous-route : l'exemption ci-dessus, au
+// niveau du nginx de l'hote, ne matche que le chemin EXACT (^/infocar/?$),
+// pas un prefixe -- une sous-route y retomberait derriere la passkey. Verifie
+// sur le domaine public : la chaine de requete traverse la reecriture sans
+// probleme.
 Route::get('/infoCar', [InfoCarController::class, 'show'])
     ->middleware('throttle:60,1')
     ->name('info-car');
 
 // Meme chemin que la page elle-meme (GET/POST distincts sur /infoCar) : la
-// location nginx dediee (docker/gate/gate.conf) ne filtre que sur le chemin,
-// pas sur la methode, donc rien a resynchroniser cote passerelle pour ce
-// second verbe. Idem pour IdentifyUser::PUBLIC_PATHS, qui compare le chemin.
+// location nginx dediee (vhost de l'hote, ev.lolinux.org) ne filtre que sur le
+// chemin, pas sur la methode, donc rien a resynchroniser cote passerelle pour
+// ce second verbe. Idem pour IdentifyUser::PUBLIC_PATHS, qui compare le chemin.
 Route::post('/infoCar', [InfoCarController::class, 'unlock'])
     ->middleware('throttle:10,1')
     ->name('info-car.unlock');

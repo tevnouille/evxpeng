@@ -4,7 +4,10 @@ Copie de référence de la configuration réellement servie, montée en bind dep
 `/etc/nginx/sites-available/s.lolinux.fr` — **hors du dépôt**, donc jamais
 versionnée jusqu'ici. Ce fichier n'est pas lu par nginx : il existe pour qu'une
 modification du vhost laisse une trace dans l'historique, à côté du code qu'il
-sert. Même principe que `docker/gate/` pour `ev.lolinux.org`.
+sert. `docker/gate/` suivait le même principe pour `ev.lolinux.org`, mais ce
+répertoire est aujourd'hui **historique** — la migration sur le VPS Hostinger
+(2026-09-10) a fait disparaître le conteneur qu'il documentait ; voir son
+propre README.
 
 Après toute modification du fichier réel :
 
@@ -18,7 +21,7 @@ sudo cat /etc/nginx/sites-available/s.lolinux.fr > /var/docker/ev/docker/share/s
 Le lien de partage de position (`/partager-ma-position`, `App\Models\PositionShare`)
 doit être ouvrable par un destinataire qui n'a ni compte ni passkey sur cette
 application — contrairement à `/infoCar`, qui reste sur `ev.lolinux.org` et
-s'appuie sur une exemption *dans* la passerelle passkey. Un domaine séparé,
+s'appuie sur une exemption *dans* le nginx de l'hôte qui sert ce domaine. Un domaine séparé,
 entièrement public, évite d'avoir à faire cette même exemption pour chaque
 nouvelle adresse publique et rend le périmètre plus lisible : tout ce qui
 répond sur `s.lolinux.fr` est public par construction.

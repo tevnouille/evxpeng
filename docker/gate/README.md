@@ -1,30 +1,28 @@
-# Passerelle passkey (`ev-gate`)
+# Passerelle passkey (`ev-gate`) — HISTORIQUE, ne décrit plus rien de servi
 
-Copie de référence de la configuration réellement servie, montée en bind depuis
-`/var/docker/ev-gate/nginx/gate.conf` — **hors du dépôt**, donc jamais versionnée
-jusqu'ici. Ce fichier n'est pas lu par le conteneur : il existe pour qu'une
-modification de la passerelle laisse une trace dans l'historique, à côté du code
-qu'elle protège.
+**Ce répertoire ne protège plus aucun trafic depuis la migration du projet sur
+le VPS Hostinger, le 2026-09-10.** Le conteneur `ev-gate` a été décommissionné
+avec le reste de l'ancienne pile hostingtools ; il n'existe plus nulle part.
 
-Après toute modification du fichier réel :
+`gate.conf` reste ici tel quel, comme trace de ce qu'était le mécanisme sur
+l'ancien hébergement — copie de référence d'un fichier qui n'est plus monté en
+bind par rien, plus jamais synchronisé. Les commandes qu'il documentait
+(`docker exec ev-gate ...`) échoueraient aujourd'hui : ce conteneur n'existe
+pas.
 
-```bash
-docker exec ev-gate nginx -t && docker exec ev-gate nginx -s reload
-cp /var/docker/ev-gate/nginx/gate.conf /var/docker/ev/docker/gate/gate.conf
-```
+## Où vit vraiment l'exemption aujourd'hui
 
-## Ce que la passerelle garantit
+Sur le VPS, c'est le **nginx de l'hôte** qui termine le TLS et pose l'exemption,
+directement dans son vhost — `/etc/nginx/sites-available/ev.lolinux.org`, hors
+de ce dépôt (convention du VPS : plusieurs projets y partagent le même nginx,
+rien n'y est versionné par projet). Voir la section « Page publique `/infoCar` »
+de `CLAUDE.md` à la racine du dépôt pour le détail à jour.
+
+## ce que garantissait la passerelle (toujours vrai côté nginx de l'hôte)
 
 `proxy_set_header X-SSO-Email $sso_email` **écrase** systématiquement l'en-tête
 envoyé par le client : l'identité ne peut pas être forgée depuis l'extérieur.
 Toute nouvelle `location` doit poser cet en-tête elle aussi — à vide si elle est
 publique — faute de quoi nginx transmettrait celui du client et n'importe qui
-pourrait se déclarer propriétaire d'un compte.
-
-## Adresses publiques
-
-`/infoCar` (casse indifférente) est la seule adresse servie sans passkey : l'état
-de la batterie pour le navigateur embarqué de la voiture. Elle n'expose ni
-position, ni historique, ni coûts. L'exemption est déclarée à deux endroits, et
-les deux sont nécessaires : ici pour la passerelle, et dans
-`App\Http\Middleware\IdentifyUser::PUBLIC_PATHS` pour l'application.
+pourrait se déclarer propriétaire d'un compte. Ce principe n'a pas changé avec
+la migration, seul son emplacement a bougé.

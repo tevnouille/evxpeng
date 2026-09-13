@@ -183,9 +183,11 @@ n'est nécessaire.
 
 ## 11. Ouvrir l'application à plusieurs utilisateurs
 
-L'identité est fournie par la passerelle passkey. Dans sa configuration nginx
-(`/var/docker/ev-gate/nginx/gate.conf`), le `location /` doit transmettre l'email
-de la session à l'application :
+L'identité est fournie par la passerelle passkey. Sur l'hébergement actuel (VPS
+Hostinger), c'est le **nginx de l'hôte** qui la sert, dans son vhost
+(`/etc/nginx/sites-available/ev.lolinux.org`, hors de ce dépôt — voir la section
+« Page publique `/infoCar` » de `CLAUDE.md`). Le `location /` doit y transmettre
+l'email de la session à l'application :
 
 ```nginx
 auth_request_set $sso_email $upstream_http_x_sso_email;
