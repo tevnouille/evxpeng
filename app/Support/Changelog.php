@@ -44,6 +44,9 @@ class Changelog
             'date' => '2026-09-13',
             'entries' => [
                 ['type' => 'amelioration', 'text' => "Sur « Partager ma position », un bouton « Copier » apparaît à côté du lien de chaque partage actif : jusqu'ici il fallait cliquer dans le champ puis faire Ctrl+C soi-même. Le bouton affiche « Copié ! » un instant pour confirmer, et si le navigateur refuse la copie automatique, le champ se sélectionne comme avant — la copie manuelle reste possible dans tous les cas."],
+                ['type' => 'nouveaute', 'text' => "Sur « Info voiture », toucher le nom du véhicule bascule l'écran en plein écran — utile sur l'écran embarqué de la voiture, où rien n'est jamais tenté pour ça. Fonctionne ou pas selon le navigateur qui l'affiche : en cas de refus, rien ne se passe, pas d'erreur visible."],
+                ['type' => 'nouveaute', 'text' => "Toucher la case « Batterie » d'Info voiture ouvre un graphique du niveau de charge depuis le début de la journée, mis à jour chaque minute tant qu'il reste affiché. Le rechargement automatique de la page se met en pause pendant ce temps, comme il le fait déjà pour la carte de l'onglet Position — sinon le graphique disparaîtrait toutes les 5 à 20 secondes."],
+                ['type' => 'nouveaute', 'text' => "Toucher la case « Commune » d'Info voiture affiche les dix dernières communes traversées, chacune avec l'heure du dernier passage. Deux relevés consécutifs dans la même commune ne comptent que pour une ligne — sans quoi la liste ne montrerait souvent qu'un seul lieu, répété."],
             ],
         ],
         [

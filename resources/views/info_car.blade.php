@@ -51,6 +51,44 @@
             background: #f4f4f4; color: #4a4a4a; cursor: pointer;
         }
         .onglets button[aria-current="page"] { background: #2ea36b; border-color: #2ea36b; color: #fff; }
+        /* Le titre ouvre le plein ecran : pas garanti sur le navigateur
+           embarque de la voiture ("on verra bien"), mais gratuit a tenter et
+           sans consequence en cas d'echec silencieux. */
+        header h1 { cursor: pointer; display: flex; align-items: center; gap: .3em; }
+        header h1 svg { width: .55em; height: .55em; flex: 0 0 auto; opacity: .55; }
+        /* Tuiles ouvrant un ecran par-dessus (batterie du jour, communes
+           traversees) : memes cibles tactiles genereuses que le reste de la
+           page, doigt sur ecran en roulant compris. */
+        .tuile-cliquable { cursor: pointer; }
+        .recouvrement {
+            position: fixed; inset: 0; z-index: 20;
+            display: none; align-items: center; justify-content: center;
+            padding: 4vw; background: rgba(0, 0, 0, .55);
+        }
+        .recouvrement:not([hidden]) { display: flex; }
+        .recouvrement .carte {
+            background: #fff; border-radius: 12px; padding: 3.5vw 4vw;
+            width: 100%; max-width: 640px; max-height: 90vh; overflow: auto;
+            display: flex; flex-direction: column; gap: 1vh;
+        }
+        .recouvrement .entete {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 1em;
+        }
+        .recouvrement h2 { font-size: clamp(.9rem, 3.4vh, 1.3rem); margin: 0; }
+        .recouvrement button.fermer {
+            font: inherit; font-size: clamp(.9rem, 3vh, 1.2rem); line-height: 1;
+            border: 1px solid #d0d0d0; border-radius: 999px; background: #f4f4f4;
+            color: #4a4a4a; padding: .35em .7em; cursor: pointer;
+        }
+        #graphe-batterie { width: 100%; height: 36vh; }
+        .liste-villes { list-style: none; margin: 0; padding: 0; }
+        .liste-villes li {
+            display: flex; justify-content: space-between; gap: 1em;
+            padding: .5em 0; font-size: clamp(.85rem, 2.6vh, 1.1rem);
+        }
+        .liste-villes li + li { border-top: 1px solid #efefef; }
+        .liste-villes .heure { color: #6b6b6b; font-weight: 400; white-space: nowrap; }
         .fraicheur {
             flex: 0 0 auto; margin: 0 0 .7vh;
             font-size: clamp(.55rem, 1.8vh, .85rem); color: #6b6b6b;
@@ -182,6 +220,10 @@
             thead th { border-bottom-color: #3a3f47; }
             #carte iframe { border-color: #3a3f47; }
             tbody tr + tr td { border-top-color: #24272d; }
+            .recouvrement .carte { background: #20232a; }
+            .recouvrement button.fermer { background: #24272d; border-color: #3a3f47; color: #d5d8dd; }
+            .liste-villes li + li { border-top-color: #2c3037; }
+            .liste-villes .heure { color: #a0a4ab; }
         }
     </style>
 </head>
@@ -201,7 +243,16 @@
         };
     @endphp
     <header>
-        <h1>{{ $vehicle->name }}</h1>
+        {{-- data-plein-ecran plutot qu'un id : coherent avec data-ouvre plus
+             bas, un seul mecanisme generique en JS pour tout ce qui reagit au
+             toucher sur cette page. --}}
+        <h1 data-plein-ecran>
+            {{ $vehicle->name }}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/>
+            </svg>
+        </h1>
         <span class="etat {{ $classes[$state['state']] ?? 'arret' }}">{{ $state['label'] }}</span>
     </header>
 
@@ -226,7 +277,9 @@
 
     <div class="vue" id="vue-info">
         <div class="grille">
-            <div>
+            {{-- Ouvre le graphique horodate du jour par-dessus. La tuile entiere
+                 est la cible tactile, pas seulement le chiffre. --}}
+            <div class="tuile-cliquable" data-ouvre="batterie" role="button" tabindex="0">
                 <p class="titre">Batterie</p>
                 <p class="valeur">
                     {{ $soc !== null ? rtrim(rtrim(number_format($soc, 1, ',', ' '), '0'), ',') : '—' }}<span class="unite"> %</span>
@@ -259,7 +312,7 @@
             </div>
 
             @if ($ville !== null)
-                <div>
+                <div @if (! empty($dernieresVilles)) class="tuile-cliquable" data-ouvre="villes" role="button" tabindex="0" @endif>
                     <p class="titre">Commune</p>
                     <p class="moyenne texte">{{ $ville }}</p>
                     <p class="note">d'après la position relevée</p>
@@ -387,6 +440,41 @@
                 <a target="_blank" rel="noopener"
                    href="https://www.openstreetmap.org/?mlat={{ $position['lat'] }}&mlon={{ $position['lon'] }}#map=15/{{ $position['lat'] }}/{{ $position['lon'] }}">ouvrir dans OpenStreetMap</a>
             </p>
+        </div>
+    @endif
+
+    {{-- Ecran de batterie du jour : contenu vide au chargement, rempli en
+         JS des l'ouverture puis toutes les minutes tant qu'il reste affiche.
+         Pas de rendu cote serveur ici -- contrairement a l'onglet Courbe --
+         le premier affichage a l'ouverture appelle de toute facon le meme
+         point d'entree, autant n'avoir qu'un seul chemin qui dessine. --}}
+    <div class="recouvrement" id="recouvrement-batterie" hidden>
+        <div class="carte" role="dialog" aria-label="Batterie aujourd'hui">
+            <div class="entete">
+                <h2>Batterie aujourd'hui</h2>
+                <button type="button" class="fermer" data-ferme="batterie" aria-label="Fermer">✕</button>
+            </div>
+            <svg id="graphe-batterie" viewBox="0 0 600 220" role="img" aria-label="Chargement…"></svg>
+            <p class="note" id="graphe-batterie-etat">Chargement…</p>
+        </div>
+    </div>
+
+    @if (! empty($dernieresVilles))
+        <div class="recouvrement" id="recouvrement-villes" hidden>
+            <div class="carte" role="dialog" aria-label="Dernières communes traversées">
+                <div class="entete">
+                    <h2>Dernières communes</h2>
+                    <button type="button" class="fermer" data-ferme="villes" aria-label="Fermer">✕</button>
+                </div>
+                <ul class="liste-villes">
+                    @foreach ($dernieresVilles as $entree)
+                        <li>
+                            <span>{{ $entree['ville'] }}</span>
+                            <span class="heure">{{ $entree['vu_a']->timezone(config('app.timezone'))->format('d/m H:i') }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
         </div>
     @endif
 @endif
@@ -524,6 +612,206 @@
             },
         };
     })();
+
+    (function () {
+        var titre = document.querySelector('[data-plein-ecran]');
+
+        if (!titre || !document.documentElement.requestFullscreen) { return; }
+
+        titre.addEventListener('click', function () {
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+                return;
+            }
+
+            // Promesse ignoree volontairement : rien ne garantit que l'API
+            // existe vraiment sur le navigateur embarque de la voiture, ni
+            // qu'elle l'accepte. Un refus doit rester silencieux, pas
+            // remonter en erreur sur l'ecran du conducteur.
+            var p = document.documentElement.requestFullscreen();
+            if (p && p.catch) { p.catch(function () {}); }
+        });
+    })();
+
+    /*
+     * Ecrans qui s'ouvrent par-dessus tout le reste (batterie du jour,
+     * communes traversees). Un seul mecanisme generique par attribut
+     * data-ouvre/data-ferme plutot qu'un gestionnaire par ecran : la
+     * suspension du rechargement automatique doit valoir pour n'importe
+     * lequel des deux, et un troisieme s'ajouterait sans rien dupliquer ici.
+     */
+    var recouvrements = (function () {
+        var rafraichisseurBatterie = null;
+
+        function ferme(nom) {
+            var ecran = document.getElementById('recouvrement-' + nom);
+            if (!ecran) { return; }
+            ecran.hidden = true;
+            rechargement.reprendre();
+
+            if (nom === 'batterie' && rafraichisseurBatterie) {
+                clearInterval(rafraichisseurBatterie);
+                rafraichisseurBatterie = null;
+            }
+        }
+
+        function ouvre(nom) {
+            var ecran = document.getElementById('recouvrement-' + nom);
+            if (!ecran) { return; }
+
+            // Le rechargement complet de la page couperait l'ecran ouvert
+            // toutes les 5 a 20 s : il est suspendu tant qu'on regarde, comme
+            // deja fait pour la carte de l'onglet Position.
+            rechargement.suspendre();
+            ecran.hidden = false;
+
+            if (nom === 'batterie') {
+                rafraichirBatterie();
+                rafraichisseurBatterie = setInterval(rafraichirBatterie, 60000);
+            }
+        }
+
+        var declencheurs = document.querySelectorAll('[data-ouvre]');
+        for (var i = 0; i < declencheurs.length; i++) {
+            (function (declencheur) {
+                declencheur.addEventListener('click', function () { ouvre(declencheur.dataset.ouvre); });
+                // Cible tactile activable au clavier aussi (role="button").
+                declencheur.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        ouvre(declencheur.dataset.ouvre);
+                    }
+                });
+            })(declencheurs[i]);
+        }
+
+        var boutonsFermeture = document.querySelectorAll('[data-ferme]');
+        for (var j = 0; j < boutonsFermeture.length; j++) {
+            (function (bouton) {
+                bouton.addEventListener('click', function () { ferme(bouton.dataset.ferme); });
+            })(boutonsFermeture[j]);
+        }
+
+        // Toucher le fond assombri ferme aussi, sans avoir a viser le bouton.
+        var ecrans = document.querySelectorAll('.recouvrement');
+        for (var k = 0; k < ecrans.length; k++) {
+            (function (ecran) {
+                ecran.addEventListener('click', function (e) {
+                    if (e.target === ecran) { ferme(ecran.id.replace('recouvrement-', '')); }
+                });
+            })(ecrans[k]);
+        }
+
+        return { ferme: ferme };
+    })();
+
+    function rafraichirBatterie() {
+        var svg = document.getElementById('graphe-batterie');
+        var etat = document.getElementById('graphe-batterie-etat');
+
+        if (!svg || typeof fetch !== 'function') {
+            if (etat) { etat.textContent = "Actualisation automatique indisponible sur ce navigateur."; }
+            return;
+        }
+
+        fetch('{{ route('info-car') }}?flux=batterie', { headers: { 'Accept': 'application/json' } })
+            .then(function (reponse) {
+                if (!reponse.ok) { throw new Error('reponse ' + reponse.status); }
+                return reponse.json();
+            })
+            .then(function (donnees) { dessineBatterie(donnees.points || []); })
+            .catch(function () {
+                if (etat) { etat.textContent = 'Impossible de récupérer les relevés.'; }
+            });
+    }
+
+    function dessineBatterie(points) {
+        var svg = document.getElementById('graphe-batterie');
+        var etat = document.getElementById('graphe-batterie-etat');
+
+        if (!svg) { return; }
+
+        while (svg.firstChild) { svg.removeChild(svg.firstChild); }
+
+        if (points.length < 2) {
+            if (etat) { etat.textContent = "Pas encore assez de relevés aujourd'hui."; }
+            return;
+        }
+
+        var width = 600, height = 220;
+        var margeHaut = 16, margeBas = 30, margeGauche = 34, margeDroite = 10;
+        var largeur = width - margeGauche - margeDroite;
+        var hauteur = height - margeHaut - margeBas;
+
+        var debut = points[0].t;
+        var fin = points[points.length - 1].t;
+        var etendue = Math.max(1, fin - debut);
+
+        var ns = 'http://www.w3.org/2000/svg';
+
+        function ligne(y, pointilles) {
+            var l = document.createElementNS(ns, 'line');
+            l.setAttribute('x1', margeGauche); l.setAttribute('x2', width - margeDroite);
+            l.setAttribute('y1', y); l.setAttribute('y2', y);
+            l.setAttribute('stroke', 'currentColor');
+            l.setAttribute('stroke-opacity', '.15');
+            if (pointilles) { l.setAttribute('stroke-dasharray', '4 4'); }
+            svg.appendChild(l);
+        }
+
+        function texte(x, y, contenu, ancrage, base) {
+            var tEl = document.createElementNS(ns, 'text');
+            tEl.setAttribute('x', x); tEl.setAttribute('y', y);
+            tEl.setAttribute('font-size', '13'); tEl.setAttribute('fill', 'currentColor');
+            tEl.setAttribute('opacity', '.7');
+            if (ancrage) { tEl.setAttribute('text-anchor', ancrage); }
+            if (base) { tEl.setAttribute('dominant-baseline', base); }
+            tEl.textContent = contenu;
+            svg.appendChild(tEl);
+        }
+
+        // Reperes a 0, 50 et 100 % : sans eux le trace seul ne dit pas contre
+        // quelle echelle le lire. Fixe et non ajustee aux valeurs du jour --
+        // une batterie se lit contre sa capacite totale, un axe qui
+        // s'etirerait sur les seules valeurs vues exagererait une variation
+        // de quelques points.
+        var reperes = [0, 50, 100];
+        for (var r = 0; r < reperes.length; r++) {
+            var yRepere = margeHaut + hauteur - (reperes[r] / 100) * hauteur;
+            ligne(yRepere, reperes[r] !== 0 && reperes[r] !== 100);
+            texte(margeGauche - 6, yRepere, reperes[r] + ' %', 'end',
+                reperes[r] === 100 ? 'hanging' : (reperes[r] === 0 ? 'auto' : 'middle'));
+        }
+
+        var coords = [];
+        for (var i = 0; i < points.length; i++) {
+            var x = margeGauche + (points[i].t - debut) / etendue * largeur;
+            var y = margeHaut + hauteur - (points[i].soc / 100) * hauteur;
+            coords.push(x.toFixed(1) + ',' + y.toFixed(1));
+        }
+
+        var poly = document.createElementNS(ns, 'polyline');
+        poly.setAttribute('points', coords.join(' '));
+        poly.setAttribute('fill', 'none');
+        poly.setAttribute('stroke', '#2ea36b');
+        poly.setAttribute('stroke-width', '3');
+        poly.setAttribute('stroke-linejoin', 'round');
+        poly.setAttribute('stroke-linecap', 'round');
+        svg.appendChild(poly);
+
+        function formateHeure(ms) {
+            var d = new Date(ms);
+            var h = d.getHours(), m = d.getMinutes();
+            return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+        }
+
+        texte(margeGauche, height - 8, formateHeure(debut));
+        texte(width - margeDroite, height - 8, formateHeure(fin), 'end');
+
+        if (etat) {
+            etat.textContent = 'Dernier relevé ' + formateHeure(fin) + ' \u00b7 mise à jour chaque minute';
+        }
+    }
 
     (function () {
         var vue = document.getElementById('vue-position');

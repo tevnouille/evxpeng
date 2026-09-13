@@ -8,6 +8,7 @@ use App\Services\ChargeCurveSimulator;
 use App\Services\ChargingCurveRepository;
 use App\Services\ReverseGeocoder;
 use App\Services\VehicleState;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -182,11 +183,109 @@ class InfoCarController extends Controller
         return $lignes;
     }
 
-    public function show(Request $request): View
+    /**
+     * Le PIN protege aussi bien la page que le flux de donnees consomme par
+     * le graphique de batterie : sans ce doublon de controle, ce dernier
+     * serait une porte laissee grande ouverte a cote de la premiere.
+     */
+    private function deverrouille(Request $request): bool
     {
         $pin = config('services.info_car.pin');
 
-        if ($pin !== null && $request->cookie(self::UNLOCK_COOKIE) !== (string) $pin) {
+        return $pin === null || $request->cookie(self::UNLOCK_COOKIE) === (string) $pin;
+    }
+
+    /**
+     * Dix dernieres communes distinctes traversees, la plus recente d'abord.
+     *
+     * Fenetre volontairement plus large que les 24h de `$history` : une
+     * voiture qui reste garee plusieurs jours au meme endroit ne doit pas
+     * amputer la liste, elle doit simplement remonter plus loin pour la
+     * remplir. Parcours du plus recent au plus ancien ; deux releves
+     * consecutifs dans la meme commune prolongent le meme segment plutot que
+     * d'en ouvrir un nouveau — sans quoi la liste ne montrerait que des
+     * variantes du meme lieu, jamais dix endroits differents.
+     *
+     * @return array<int, array{ville: string, vu_a: \Illuminate\Support\Carbon}>
+     */
+    private function dernieresVilles(?Vehicle $vehicle): array
+    {
+        if (! $vehicle) {
+            return [];
+        }
+
+        $positions = $vehicle->telemetries()
+            ->whereNotNull('lat')->whereNotNull('lon')
+            ->where('recorded_at', '>=', now()->subDays(30))
+            ->orderByDesc('recorded_at')
+            // Borne dure contre un scan sans fin si la voiture n'a change de
+            // commune qu'une poignee de fois sur tout le mois : la boucle
+            // ci-dessous s'arrete de toute facon des dix segments trouves.
+            ->limit(3000)
+            ->get(['lat', 'lon', 'recorded_at']);
+
+        $connues = $this->geocoder->known($positions);
+
+        $villes = [];
+        $courante = null;
+
+        foreach ($positions as $point) {
+            $cle = $this->geocoder->key((float) $point->lat, (float) $point->lon);
+            $ville = $connues[$cle]->city ?? null;
+
+            if ($ville === null || $ville === '') {
+                // Position non geocodee (autoroute isolee, aire...) : on ne
+                // clot pas le segment en cours pour autant, on passe au point
+                // suivant.
+                continue;
+            }
+
+            if ($ville === $courante) {
+                continue;
+            }
+
+            $villes[] = ['ville' => $ville, 'vu_a' => $point->recorded_at];
+            $courante = $ville;
+
+            if (count($villes) >= 10) {
+                break;
+            }
+        }
+
+        return $villes;
+    }
+
+    public function show(Request $request): View|JsonResponse
+    {
+        // Le graphique de batterie a son propre cycle de rafraichissement
+        // (chaque minute), independant du rechargement complet de la page
+        // (5 a 20 s selon l'etat du vehicule) : le rouvrir a chaque fois
+        // ferait clignoter le reste de l'ecran. Meme chemin public que la
+        // page elle-meme -- voir routes/web.php -- pour beneficier sans rien
+        // dupliquer de l'exemption passkey du nginx de l'hote, qui ne filtre
+        // que sur le chemin et ignore la chaine de requete.
+        if ($request->query('flux') === 'batterie') {
+            if (! $this->deverrouille($request)) {
+                return response()->json(['erreur' => 'verrouille'], 403);
+            }
+
+            $vehicle = Vehicle::whereNotNull('mqtt_client_id')
+                ->orderByDesc('is_default')->orderBy('id')->first();
+
+            $points = $vehicle
+                ? $vehicle->telemetries()
+                    ->whereNotNull('soc')
+                    ->whereDate('recorded_at', now()->toDateString())
+                    ->orderBy('recorded_at')
+                    ->get(['soc', 'recorded_at'])
+                    ->map(fn ($r) => ['t' => $r->recorded_at->timestamp * 1000, 'soc' => (float) $r->soc])
+                    ->values()
+                : collect();
+
+            return response()->json(['points' => $points]);
+        }
+
+        if (! $this->deverrouille($request)) {
             return view('info_car_gate');
         }
 
@@ -252,6 +351,7 @@ class InfoCarController extends Controller
             'cibles' => self::CIBLES,
             'recharges' => $this->recharges($courbe, $soc),
             'rangeChart' => $rangeChart,
+            'dernieresVilles' => $this->dernieresVilles($vehicle),
         ]);
     }
 
