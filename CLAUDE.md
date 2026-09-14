@@ -26,8 +26,19 @@ directement dans `/var/docker/ev` sur le serveur.
 Le conteneur `ev-app` n'a **pas** npm. Le build passe par un conteneur jetable :
 
 ```bash
-cd /var/docker/ev && sudo docker run --rm -v "$(pwd)":/app -w /app node:20-alpine npm run build
+cd /var/docker/ev && sudo docker run --rm -v "$(pwd)":/app -w /app \
+  -u "$(id -u):$(id -g)" -e HOME=/tmp -e npm_config_cache=/tmp/.npm \
+  node:20-alpine npm run build
 ```
+
+**Toujours avec `-u "$(id -u):$(id -g)"`.** Sans lui, le conteneur écrit
+`public/build` en root — constaté le 2026-09-13 après un rebuild manuel sans
+ce flag : les fichiers restent lisibles (le site continue de fonctionner) mais
+`server-update.py` (voir plus bas), qui tourne sans privilèges, ne peut plus
+les effacer pour reconstruire à son tour. L'échec ne dit pas pourquoi — il
+faut aller vérifier `ls -la public/build`. `HOME` et `npm_config_cache` sont
+nécessaires pour la même raison : l'uid emprunté n'a pas de répertoire
+personnel dans l'image, npm y écrirait sinon son cache dans `/` et échouerait.
 
 `public/build` est dans `.gitignore` : les assets compilés ne sont pas
 versionnés, il faut donc rebuilder après un clone.
@@ -71,6 +82,41 @@ nginx** — il garde en cache l'adresse IP de l'upstream et renverrait 502 :
 
 ```bash
 sudo docker compose up -d app && sudo docker restart ev-nginx
+```
+
+### Mise à jour depuis `/admin/serveur`
+
+Page réservée admin qui montre l'inventaire des dépendances (composer/npm/apt,
+relevé par `scripts/server-inventory.py`) et permet de déclencher une montée
+npm ou apt directement depuis le navigateur. Composer en est exclu : la montée
+suppose de reconstruire l'image, et l'outillage de cet hôte ne sait pas le
+faire sans couper le site (voir plus haut) — ces montées-là restent manuelles.
+
+Le conteneur ne peut rien exécuter sur l'hôte : il dépose un fichier témoin
+dans `storage/app/system/` (`server-update.request`), qu'une tâche cron de
+l'hôte (`server-update.py`, chaque minute) ramasse et applique, en écrivant
+son résultat dans `server-update.log`. Ce découplage a un prix : **tout ce que
+le script touche dans `storage/app/system/` (le journal, `backup/`,
+`public/build/`) doit appartenir à l'utilisateur qui exécute le cron
+(`claudecode`), pas à un autre.** Constaté le 2026-09-14 : trois de ces
+fichiers appartenaient encore à un autre uid (résidu d'avant la migration du
+2026-09-10, plus `public/build` cassé par un rebuild manuel sans `-u`, voir
+plus haut) — la montée de react restait indéfiniment "en attente" sans qu'
+aucune erreur ne remonte nulle part, le script échouant en silence à chaque
+tentative avant même d'avoir pu écrire pourquoi dans son propre journal.
+
+Diagnostic si une demande reste bloquée :
+
+```bash
+# Rien ne doit tourner : sinon la mise a jour est reellement en cours, pas bloquee.
+sudo docker ps | grep node
+
+# Fichiers qui n'appartiennent pas au bon utilisateur : cause la plus probable.
+find /var/docker/ev/storage/app/system -not -user claudecode
+
+# Le verrou se considere perime au bout de 10 minutes (STEP_TIMEOUT) : au-dela,
+# sans processus reellement en cours, il est sans risque de le supprimer a la main.
+rm /var/docker/ev/storage/app/system/server-update.lock
 ```
 
 ## Tester une page sans passer par le passkey
