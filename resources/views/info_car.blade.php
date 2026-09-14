@@ -176,11 +176,13 @@
             to   { background-position: -100% 0; }
         }
         /* Couleur de la jauge Batterie selon le niveau -- verte au-dessus de
-           80 %, orange entre 20 et 80, rouge en dessous : les seuils des
-           cibles de charge (CIBLES, plus bas) et de l'alerte batterie faible,
-           deja ceux qui font foi ailleurs sur cette page. Seules les deux
-           couleurs du degrade changent : la classe .charge continue de les
-           ecraser par-dessus pour les rayures, qu'elle qu'en soit la couleur. */
+           80 %, bleue entre 50 et 80, orange entre 20 et 50, rouge en dessous.
+           Le bleu reprend celui deja utilise par le badge d'etat "route" plus
+           haut, plutot qu'une nouvelle teinte propre a la jauge. Seules les
+           deux couleurs du degrade changent : la classe .charge continue de
+           les ecraser par-dessus pour les rayures, qu'elle qu'en soit la
+           couleur. */
+        .jauge span.jauge-mediane { --jauge-base: #14568a; --jauge-clair: #7cc0ea; }
         .jauge span.jauge-moyenne { --jauge-base: #cf8a12; --jauge-clair: #f4c869; }
         .jauge span.jauge-basse   { --jauge-base: #c0392b; --jauge-clair: #ef8a7d; }
         /* En charge, les rayures remplacent le degrade : elles vont plus vite et
@@ -253,7 +255,7 @@
         };
         $niveauBatterie = $soc === null
             ? ''
-            : ($soc >= 80 ? 'jauge-haute' : ($soc >= 20 ? 'jauge-moyenne' : 'jauge-basse'));
+            : ($soc >= 80 ? 'jauge-haute' : ($soc >= 50 ? 'jauge-mediane' : ($soc >= 20 ? 'jauge-moyenne' : 'jauge-basse')));
     @endphp
     <header>
         {{-- data-plein-ecran plutot qu'un id : coherent avec data-ouvre plus
