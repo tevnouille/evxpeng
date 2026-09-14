@@ -41,6 +41,13 @@ class Changelog
 
     private const DATA = [
         [
+            'date' => '2026-09-14',
+            'entries' => [
+                ['type' => 'correction', 'text' => "Sur « Info voiture », le plein écran se coupait à chaque rechargement automatique de la page (toutes les 5 à 20 secondes) : en sortir n'était donc plus la peine, il fallait le refaire sans arrêt. La page retente désormais d'y rentrer toute seule après chaque rechargement si l'écran l'était juste avant — en silence, comme la première fois : rien ne garantit que le navigateur de la voiture l'accepte hors d'un geste explicite."],
+                ['type' => 'amelioration', 'text' => "La jauge de la case « Batterie » d'Info voiture change de couleur avec le niveau : verte au-dessus de 80 %, orange entre 20 et 80, rouge en dessous — les mêmes seuils que les cibles de charge et l'ancienne alerte batterie faible. Le chiffre reste affiché à côté dans tous les cas, la couleur n'est jamais la seule information."],
+            ],
+        ],
+        [
             'date' => '2026-09-13',
             'entries' => [
                 ['type' => 'amelioration', 'text' => "Sur « Partager ma position », un bouton « Copier » apparaît à côté du lien de chaque partage actif : jusqu'ici il fallait cliquer dans le champ puis faire Ctrl+C soi-même. Le bouton affiche « Copié ! » un instant pour confirmer, et si le navigateur refuse la copie automatique, le champ se sélectionne comme avant — la copie manuelle reste possible dans tous les cas."],

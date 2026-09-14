@@ -158,12 +158,14 @@
            le navigateur embarque de la voiture n'a pas a etre recent. */
         .jauge span {
             display: block; height: 100%;
-            background-color: #2ea36b;
+            --jauge-base: #2ea36b;
+            --jauge-clair: #7ee2b0;
+            background-color: var(--jauge-base);
             background-image: linear-gradient(
                 100deg,
-                #2ea36b 0%, #2ea36b 38%,
-                #7ee2b0 50%,
-                #2ea36b 62%, #2ea36b 100%
+                var(--jauge-base) 0%, var(--jauge-base) 38%,
+                var(--jauge-clair) 50%,
+                var(--jauge-base) 62%, var(--jauge-base) 100%
             );
             background-size: 300% 100%;
             background-repeat: no-repeat;
@@ -173,6 +175,14 @@
             from { background-position: 200% 0; }
             to   { background-position: -100% 0; }
         }
+        /* Couleur de la jauge Batterie selon le niveau -- verte au-dessus de
+           80 %, orange entre 20 et 80, rouge en dessous : les seuils des
+           cibles de charge (CIBLES, plus bas) et de l'alerte batterie faible,
+           deja ceux qui font foi ailleurs sur cette page. Seules les deux
+           couleurs du degrade changent : la classe .charge continue de les
+           ecraser par-dessus pour les rayures, qu'elle qu'en soit la couleur. */
+        .jauge span.jauge-moyenne { --jauge-base: #cf8a12; --jauge-clair: #f4c869; }
+        .jauge span.jauge-basse   { --jauge-base: #c0392b; --jauge-clair: #ef8a7d; }
         /* En charge, les rayures remplacent le degrade : elles vont plus vite et
            portent une information de plus — l'energie entre. Elles ecrasent les
            trois proprietes du degrade, aucune superposition a gerer. */
@@ -241,6 +251,9 @@
                 ? $minutes . ' min'
                 : intdiv($minutes, 60) . ' h ' . str_pad((string) ($minutes % 60), 2, '0', STR_PAD_LEFT);
         };
+        $niveauBatterie = $soc === null
+            ? ''
+            : ($soc >= 80 ? 'jauge-haute' : ($soc >= 20 ? 'jauge-moyenne' : 'jauge-basse'));
     @endphp
     <header>
         {{-- data-plein-ecran plutot qu'un id : coherent avec data-ouvre plus
@@ -284,7 +297,7 @@
                 <p class="valeur">
                     {{ $soc !== null ? rtrim(rtrim(number_format($soc, 1, ',', ' '), '0'), ',') : '—' }}<span class="unite"> %</span>
                 </p>
-                <div class="jauge"><span class="{{ ($state['state'] ?? null) === 'charging' ? 'charge' : '' }}" style="width: {{ max(0, min(100, (int) round($soc ?? 0))) }}%"></span></div>
+                <div class="jauge"><span class="{{ $niveauBatterie }} {{ ($state['state'] ?? null) === 'charging' ? 'charge' : '' }}" style="width: {{ max(0, min(100, (int) round($soc ?? 0))) }}%"></span></div>
             </div>
 
             {{-- Deux informations pour une seule case, alternees toutes les cinq
@@ -618,6 +631,8 @@
 
         if (!titre || !document.documentElement.requestFullscreen) { return; }
 
+        var CLE_PLEIN_ECRAN = 'infocar-plein-ecran';
+
         titre.addEventListener('click', function () {
             if (document.fullscreenElement) {
                 document.exitFullscreen();
@@ -631,6 +646,33 @@
             var p = document.documentElement.requestFullscreen();
             if (p && p.catch) { p.catch(function () {}); }
         });
+
+        document.addEventListener('fullscreenchange', function () {
+            try {
+                if (document.fullscreenElement) {
+                    sessionStorage.setItem(CLE_PLEIN_ECRAN, '1');
+                } else {
+                    sessionStorage.removeItem(CLE_PLEIN_ECRAN);
+                }
+            } catch (e) {}
+        });
+
+        /*
+         * Le rechargement periodique (voir `rechargement` plus haut) charge
+         * un document tout neuf a chaque fois, et sortir du plein ecran a
+         * cette occasion est un comportement du navigateur qu'aucune API ne
+         * permet de court-circuiter. On retente donc l'entree au chargement
+         * si l'ecran l'etait juste avant -- en silence, comme au-dessus : la
+         * plupart des navigateurs exigent un geste utilisateur recent pour
+         * l'accorder, et rien ne garantit que celui de la voiture le fasse
+         * ici hors d'un clic.
+         */
+        try {
+            if (sessionStorage.getItem(CLE_PLEIN_ECRAN) === '1') {
+                var p2 = document.documentElement.requestFullscreen();
+                if (p2 && p2.catch) { p2.catch(function () {}); }
+            }
+        } catch (e) {}
     })();
 
     /*
