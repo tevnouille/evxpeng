@@ -522,8 +522,6 @@
     })();
 
     (function () {
-        var cases = document.querySelectorAll('.alterne');
-
         /*
          * Le rang de la face se calcule sur l'heure absolue plutot que sur un
          * compteur local : la page se recharge toute seule, parfois toutes les
@@ -535,8 +533,16 @@
          * les releves s'etalent au lieu de tomber toutes ensemble. Le decalage
          * vient du rang dans le document : il ne bouge pas d'un chargement a
          * l'autre, une case ne se met donc pas a battre de travers.
+         *
+         * Les cases sont recherchees a chaque appel plutot qu'une seule fois :
+         * en plein ecran, `rechargement` remplace le contenu de l'onglet Info
+         * sans jamais naviguer (voir plus bas), ce qui remplacerait aussi ces
+         * elements. Une liste mise en cache continuerait de faire battre des
+         * cases devenues invisibles, sans plus rien animer a l'ecran.
          */
         function afficher() {
+            var cases = document.querySelectorAll('.alterne');
+
             for (var i = 0; i < cases.length; i++) {
                 var faces = cases[i].children;
 
@@ -565,6 +571,13 @@
         var texte = cadence ? cadence.textContent : '';
         var suspendu = false;
         var lance = false;
+
+        // Zones dont le contenu doit rester a jour quand le rechargement se
+        // fait sur place (voir rafraichirSurPlace) plutot que par navigation.
+        // L'onglet Position n'y figure pas : il suspend deja lui-meme le
+        // rechargement des qu'on l'affiche (carte OpenStreetMap), le plein
+        // ecran ne peut donc jamais s'y heurter au probleme resolu ici.
+        var ZONES_A_RAFRAICHIR = ['vue-info', 'vue-recharge', 'vue-courbe'];
 
         /*
          * Le rechargement se decide sur l'horloge et non sur un delai pose une
@@ -597,8 +610,60 @@
             if (reste <= 0 && ! lance) {
                 lance = true;
                 clearInterval(battement);
-                window.location.reload();
+
+                // Une navigation sort systematiquement du plein ecran, sans
+                // qu'aucune API ne permette de l'en empecher -- le redemander
+                // apres coup echoue silencieusement, faute du geste utilisateur
+                // recent que les navigateurs exigent (constate sur la voiture).
+                // Tant que l'ecran y est, on se met donc a jour sur place : on
+                // va chercher la meme page et on replace seulement ce qui peut
+                // avoir change, sans jamais naviguer.
+                if (document.fullscreenElement) {
+                    rafraichirSurPlace();
+                } else {
+                    window.location.reload();
+                }
             }
+        }
+
+        function rafraichirSurPlace() {
+            fetch(window.location.href, { cache: 'no-store' })
+                .then(function (reponse) {
+                    if (! reponse.ok) { throw new Error('reponse ' + reponse.status); }
+                    return reponse.text();
+                })
+                .then(function (html) {
+                    var frais = new DOMParser().parseFromString(html, 'text/html');
+
+                    // Si le document frais n'a plus les zones attendues --
+                    // code d'acces expire entre-temps, ou toute autre raison
+                    // -- mieux vaut une vraie navigation, qui affichera la
+                    // realite (l'ecran de code au besoin), qu'une page figee
+                    // indefiniment sur des donnees perimees.
+                    if (! frais.getElementById('vue-info')) {
+                        throw new Error('page inattendue');
+                    }
+
+                    var etatFrais = frais.querySelector('.etat');
+                    var etatActuel = document.querySelector('.etat');
+                    if (etatFrais && etatActuel) {
+                        etatActuel.className = etatFrais.className;
+                        etatActuel.textContent = etatFrais.textContent;
+                    }
+
+                    for (var i = 0; i < ZONES_A_RAFRAICHIR.length; i++) {
+                        var actuelle = document.getElementById(ZONES_A_RAFRAICHIR[i]);
+                        var neuve = frais.getElementById(ZONES_A_RAFRAICHIR[i]);
+                        if (actuelle && neuve) { actuelle.innerHTML = neuve.innerHTML; }
+                    }
+
+                    lance = false;
+                    echeance = Date.now() + duree;
+                    battement = setInterval(battre, 200);
+                })
+                .catch(function () {
+                    window.location.reload();
+                });
         }
 
         var battement = setInterval(battre, 200);
@@ -715,19 +780,23 @@
             }
         }
 
-        var declencheurs = document.querySelectorAll('[data-ouvre]');
-        for (var i = 0; i < declencheurs.length; i++) {
-            (function (declencheur) {
-                declencheur.addEventListener('click', function () { ouvre(declencheur.dataset.ouvre); });
-                // Cible tactile activable au clavier aussi (role="button").
-                declencheur.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        ouvre(declencheur.dataset.ouvre);
-                    }
-                });
-            })(declencheurs[i]);
-        }
+        // Delegue sur document plutot qu'un ecouteur par declencheur : la
+        // tuile Batterie vit dans l'onglet Info, que rafraichirSurPlace
+        // remplace en entier pendant le plein ecran (voir `rechargement` plus
+        // haut). Un ecouteur pose sur l'ancien element ne suivrait pas.
+        document.addEventListener('click', function (e) {
+            var declencheur = e.target.closest('[data-ouvre]');
+            if (declencheur) { ouvre(declencheur.dataset.ouvre); }
+        });
+        // Cible tactile activable au clavier aussi (role="button").
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Enter' && e.key !== ' ') { return; }
+            var declencheur = e.target.closest('[data-ouvre]');
+            if (declencheur) {
+                e.preventDefault();
+                ouvre(declencheur.dataset.ouvre);
+            }
+        });
 
         var boutonsFermeture = document.querySelectorAll('[data-ferme]');
         for (var j = 0; j < boutonsFermeture.length; j++) {

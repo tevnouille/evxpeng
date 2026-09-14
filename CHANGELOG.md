@@ -14,7 +14,7 @@ change rien de visible. La même liste s'affiche sur `/changelog`.
 
 ## 14 septembre 2026
 
-- **Correction** — Sur « Info voiture », le plein écran se coupait à chaque rechargement automatique de la page (toutes les 5 à 20 secondes) : en sortir n'était donc plus la peine, il fallait le refaire sans arrêt. La page retente désormais d'y rentrer toute seule après chaque rechargement si l'écran l'était juste avant — en silence, comme la première fois : rien ne garantit que le navigateur de la voiture l'accepte hors d'un geste explicite.
+- **Correction** — Sur « Info voiture », le plein écran se coupait à chaque rechargement automatique de la page (toutes les 5 à 20 secondes) : en sortir n'était donc plus la peine, il fallait le refaire sans arrêt. Tant que l'écran y est, la page se met désormais à jour sur place plutôt que de recharger entièrement — les chiffres suivent toujours la même cadence, mais sans jamais quitter le plein écran.
 - **Amélioration** — La jauge de la case « Batterie » d'Info voiture change de couleur avec le niveau : verte au-dessus de 80 %, bleue entre 50 et 80, orange entre 20 et 50, rouge en dessous. Le chiffre reste affiché à côté dans tous les cas, la couleur n'est jamais la seule information.
 
 ## 13 septembre 2026
