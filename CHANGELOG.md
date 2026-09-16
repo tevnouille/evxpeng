@@ -15,6 +15,7 @@ change rien de visible. La même liste s'affiche sur `/changelog`.
 ## 16 septembre 2026
 
 - **Nouveauté** — Nouvelle page « Données Xpeng » dans le menu Ma voiture : batterie, vitesse, puissance de charge, température batterie et pression des quatre pneus, en graphiques sur les 30 derniers jours. Source distincte du boîtier OBD — l'API officielle du constructeur, alimentée une fois par jour.
+- **Nouveauté** — Sur cette même page, la liste des recharges détectées sur la période : dates, durée, batterie de début à fin, puissance maximale et énergie estimée.
 
 ## 14 septembre 2026
 

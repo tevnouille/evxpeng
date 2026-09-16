@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\XpengDataExport;
 use App\Models\XpengTelemetry;
+use App\Services\XpengChargeDetector;
 use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
@@ -36,7 +37,7 @@ class XpengDataController extends Controller
      */
     private const JOURS_AFFICHES = 30;
 
-    public function index(): View
+    public function index(XpengChargeDetector $detecteur): View
     {
         $exports = XpengDataExport::orderByDesc('requested_at')->limit(30)->get();
 
@@ -49,6 +50,7 @@ class XpengDataController extends Controller
             'exports' => $exports,
             'releves' => $releves,
             'mesures' => $releves->isEmpty() ? [] : $this->mesures($releves),
+            'recharges' => $releves->isEmpty() ? [] : $detecteur->detecter($releves),
         ]);
     }
 

@@ -350,6 +350,18 @@ Depuis le 2026-09-16, Xpeng expose une API officielle
   générique, déjà éprouvé, rien à dupliquer. Fenêtre affichée limitée à 30
   jours (`XpengDataController::JOURS_AFFICHES`) — la table grossit chaque
   jour, contrairement à Statistiques OBD qui navigue par mois/jour.
+- **Pas d'indicateur de charge direct et fiable dans l'export** : les
+  recharges (`App\Services\XpengChargeDetector`) sont déduites — vitesse à 0
+  km/h et, sur la même minute, puissance de charge positive et/ou SoC en
+  hausse vs la minute précédente. Le SoC seul est bruyant (une variation
+  infime se lit comme une hausse sans charge réelle) ; en pratique la
+  puissance porte l'essentiel de la détection.
+  **Piège rencontré en écrivant ce détecteur** : `Carbon::diffInMinutes()`
+  n'est pas absolu par défaut dans ce sens d'appel — `$plusRecent->diffInMinutes($plusAncien)`
+  renvoie un nombre **négatif** en itérant vers l'avant dans le temps. Sans
+  `abs()`, la comparaison au seuil de tolérance (`> 10`) n'était jamais
+  vraie, et tout le mois fusionnait en une seule "recharge" de 39 612
+  minutes. `abs()` systématique sur cet appel dans ce fichier.
 - **`appId`/`appSecret` restent à renseigner** (`XPENG_APP_ID`/`XPENG_APP_SECRET`
   dans `.env`, vides au 2026-09-16) — obtenus par inscription développeur
   auprès de `glo.open@xpeng.com`, distincts des quatre champs d'autorisation

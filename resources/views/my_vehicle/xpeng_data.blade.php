@@ -34,6 +34,42 @@
         </div>
     @endif
 
+    @if (! empty($recharges))
+        <h2 class="title is-5 mt-5">Recharges détectées</h2>
+        <p class="has-text-grey is-size-7 mb-2">
+            Détectées à partir des relevés (pas d'indicateur de charge direct dans l'export
+            constructeur) : à l'arrêt (0 km/h), avec puissance de charge positive et/ou SoC en
+            hausse par rapport à la minute précédente.
+        </p>
+        <table class="table is-fullwidth is-striped">
+            <thead>
+                <tr>
+                    <th>Début</th>
+                    <th>Fin</th>
+                    <th>Durée</th>
+                    <th>Batterie</th>
+                    <th>Puissance max</th>
+                    <th>Énergie estimée</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($recharges as $recharge)
+                    <tr>
+                        <td>{{ $recharge['debut']->translatedFormat('d/m/Y H:i') }}</td>
+                        <td>{{ $recharge['fin']->translatedFormat('d/m/Y H:i') }}</td>
+                        <td>{{ $recharge['duree_minutes'] }} min</td>
+                        <td>
+                            {{ $recharge['soc_debut'] !== null ? round($recharge['soc_debut'], 1) : '?' }} %
+                            → {{ $recharge['soc_fin'] !== null ? round($recharge['soc_fin'], 1) : '?' }} %
+                        </td>
+                        <td>{{ round($recharge['puissance_max_kw'], 1) }} kW</td>
+                        <td>{{ round($recharge['energie_kwh'], 1) }} kWh</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
+
     @if (! $dernier)
         <div class="notification is-info is-light">
             Aucune synchronisation automatique pour l'instant. La première aura lieu à la prochaine
