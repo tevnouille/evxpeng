@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\XpengDataExport;
 use App\Services\XpengClient;
+use App\Services\XpengExportParser;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -35,7 +36,7 @@ class SyncXpengData extends Command
 
     private const DELAI_ENTRE_TENTATIVES = 8;
 
-    public function handle(XpengClient $client): int
+    public function handle(XpengClient $client, XpengExportParser $parser): int
     {
         if (! config('services.xpeng.app_id') || ! config('services.xpeng.app_secret')) {
             $this->error("Xpeng : appId/appSecret non configures (voir .env), rien a faire.");
@@ -89,6 +90,18 @@ class SyncXpengData extends Command
 
             if ($chemin) {
                 $this->info("Fichier Xpeng recupere : $chemin");
+
+                // L'archivage du fichier brut ne doit jamais echouer a cause
+                // d'un parsing qui casse -- le format n'est pas documente par
+                // Xpeng, une variation future (nouvelle colonne, structure
+                // differente) ne doit pas empecher de garder le fichier.
+                try {
+                    $nombre = $parser->importZip(storage_path('app/'.$chemin));
+                    $this->info("$nombre minute(s) agregee(s) dans xpeng_telemetries.");
+                } catch (\Throwable $e) {
+                    $this->warn("Fichier recupere, mais l'agregation a echoue : {$e->getMessage()}");
+                    report($e);
+                }
 
                 return self::SUCCESS;
             }

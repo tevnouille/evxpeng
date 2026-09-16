@@ -41,6 +41,12 @@ class Changelog
 
     private const DATA = [
         [
+            'date' => '2026-09-16',
+            'entries' => [
+                ['type' => 'nouveaute', 'text' => "Nouvelle page « Données Xpeng » dans le menu Ma voiture : batterie, vitesse, puissance de charge, température batterie et pression des quatre pneus, en graphiques sur les 30 derniers jours. Source distincte du boîtier OBD — l'API officielle du constructeur, alimentée une fois par jour."],
+            ],
+        ],
+        [
             'date' => '2026-09-14',
             'entries' => [
                 ['type' => 'correction', 'text' => "Sur « Info voiture », le plein écran se coupait à chaque rechargement automatique de la page (toutes les 5 à 20 secondes) : en sortir n'était donc plus la peine, il fallait le refaire sans arrêt. Tant que l'écran y est, la page se met désormais à jour sur place plutôt que de recharger entièrement — les chiffres suivent toujours la même cadence, mais sans jamais quitter le plein écran."],

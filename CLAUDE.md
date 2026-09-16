@@ -316,12 +316,40 @@ Depuis le 2026-09-16, Xpeng expose une API officielle
   de la doc pourrait laisser croire. `XpengClient::queryData()` construit la
   chaîne de signature à partir des mêmes octets que ceux réellement postés,
   jamais d'un objet ré-encodé séparément.
-- **Le format du fichier téléchargé n'est pas documenté** par Xpeng. La
-  commande le garde brut (`storage/app/xpeng/`), sans essayer de le parser à
-  l'aveugle — mieux vaut l'inspecter une fois obtenu que perdre des champs non
-  reconnus. La page n'affiche pour l'instant qu'un suivi des tentatives
-  (réussie/échec/en cours) et un lien de téléchargement du brut ; les
-  graphiques restent à construire une fois un fichier réel examiné.
+- **Le format du fichier n'est pas documenté par Xpeng, mais un export manuel
+  du portail (2026-09-16, avant l'obtention d'`appId`/`appSecret`) a permis de
+  le reverse-engineer** : un zip de 3 CSV par véhicule
+  (`..._veh_driving_operation_di`, `..._power_energy_di`, `..._status_di`),
+  chacun scindé en plusieurs fichiers `_partN` **au-delà d'un nombre de
+  lignes fixe** (constaté : 1 000 000, pas un découpage par date — un même
+  jour peut chevaucher le fichier principal et sa suite), à la **seconde**
+  (colonne `timer`, epoch Unix). `App\Services\XpengExportParser` lit ce
+  format ; `App\Console\Commands\ImportXpengExport` (`xpeng:import
+  <chemin_zip>`) permet de rejouer un export à la main.
+- **Plusieurs champs bruts portent une valeur-sentinelle** (« signal absent »)
+  plutôt que de rester vides — `255` pour les champs codés sur un octet
+  (`esp_vehspd`, `ldcu_bms_soc_disp`), des valeurs proches de `1638`/`1677`
+  ou `215` pour d'autres (`ldcu_chrgpwr`, `ldcu_dstbatdisp_dynamic`,
+  `bms_batttempmax_gb`…). Repérées à l'œil sur l'export du 2026-09-16, pas
+  documentées : `XpengExportParser::VALEURS_VALIDES` n'est qu'une
+  approximation prudente, à corriger si un futur export révèle d'autres
+  anomalies. `bms_battvolt`/`bms_battcurr` (tension/courant batterie) sont
+  restés **hors du schéma retenu** : leurs valeurs ne correspondaient à rien
+  de physiquement plausible (jusqu'à 1023 V) sans qu'un filtrage évident ne
+  se dégage.
+- **Stocké agrégé à la minute** (`xpeng_telemetries`), jamais à la seconde :
+  un mois d'export fait ~1 million de lignes par jeu de données, ce qui
+  romprait la règle « jamais purger » déjà en place pour `vehicle_telemetries`
+  (pensée pour un volume négligeable, une ligne/minute au plus). Les fichiers
+  bruts, eux, restent archivés tels quels (`storage/app/xpeng/`) : la finesse
+  seconde par seconde n'est jamais perdue, seulement pas mise en base.
+  Décision prise avec l'utilisateur le 2026-09-16.
+- **La page (`/ma-voiture/dataapixpeng`) réutilise le module de graphiques de
+  Statistiques OBD** (`resources/js/obd-stats.js`, `canvas.obd-chart` +
+  `data-labels`/`-values`/`-unit`) plutôt que d'en écrire un second :
+  générique, déjà éprouvé, rien à dupliquer. Fenêtre affichée limitée à 30
+  jours (`XpengDataController::JOURS_AFFICHES`) — la table grossit chaque
+  jour, contrairement à Statistiques OBD qui navigue par mois/jour.
 - **`appId`/`appSecret` restent à renseigner** (`XPENG_APP_ID`/`XPENG_APP_SECRET`
   dans `.env`, vides au 2026-09-16) — obtenus par inscription développeur
   auprès de `glo.open@xpeng.com`, distincts des quatre champs d'autorisation

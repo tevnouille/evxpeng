@@ -11,18 +11,39 @@
         trop serré pour le risquer sur une simple visite.
     </p>
 
+    @if (! empty($mesures))
+        <p class="has-text-grey is-size-7 mb-4">
+            {{ $releves->count() }} relevé(s), agrégés à la minute, sur les 30 derniers jours.
+        </p>
+        <div class="columns is-multiline">
+            @foreach ($mesures as $mesure)
+                <div class="column is-6">
+                    <p class="heading">
+                        {{ $mesure['label'] }}
+                        @if ($mesure['unit'])
+                            <span class="has-text-grey">({{ $mesure['unit'] }})</span>
+                        @endif
+                        <span class="has-text-grey is-size-7">— {{ $mesure['count'] }} point(s)</span>
+                    </p>
+                    <canvas class="obd-chart" height="150"
+                        data-labels='@json($mesure['labels'])'
+                        data-values='@json($mesure['values'])'
+                        data-unit="{{ $mesure['unit'] }}"></canvas>
+                </div>
+            @endforeach
+        </div>
+    @endif
+
     @if (! $dernier)
         <div class="notification is-info is-light">
-            Aucune synchronisation pour l'instant. La première aura lieu à la prochaine exécution
-            planifiée (<code>xpeng:sync</code>, une fois par jour).
+            Aucune synchronisation automatique pour l'instant. La première aura lieu à la prochaine
+            exécution planifiée (<code>xpeng:sync</code>, une fois par jour).
         </div>
     @elseif ($dernier->statut === 'ok')
         <div class="notification is-success is-light">
             Dernière synchronisation réussie le {{ $dernier->requested_at->translatedFormat('d F Y à H:i') }}.
             @if ($dernier->chemin_fichier)
                 <a href="{{ route('my-vehicle.xpeng.telecharger', $dernier) }}">Télécharger le fichier brut</a>
-                — le format n'est pas encore documenté ici : cette page sera complétée avec de vrais
-                graphiques une fois son contenu inspecté.
             @endif
         </div>
     @elseif ($dernier->statut === 'en_cours')
@@ -73,4 +94,8 @@
             </tbody>
         </table>
     @endif
+
+    {{-- Meme module que Statistiques OBD : generique (lit data-labels/-values/
+         -unit sur canvas.obd-chart), pas d'utilite a le dupliquer ici. --}}
+    @vite('resources/js/obd-stats.js')
 @endsection

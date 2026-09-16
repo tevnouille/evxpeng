@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\XpengDataExport;
+use App\Models\XpengTelemetry;
 use Illuminate\Http\Response;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
@@ -19,14 +21,93 @@ use Illuminate\View\View;
  */
 class XpengDataController extends Controller
 {
+    /**
+     * Au-dela, une courbe fige le navigateur sans rien montrer de plus (meme
+     * constat que ObdReadings::MAX_POINTS pour l'onglet Statistiques OBD).
+     */
+    private const MAX_POINTS = 600;
+
+    /**
+     * Fenetre affichee par defaut. Les releves plus anciens ne sont jamais
+     * purges (meme regle que vehicle_telemetries, CLAUDE.md) mais rester sur
+     * "toute la table" chargerait une collection qui grossit chaque jour,
+     * pour une page qui n'a pas de navigation par periode -- a ajouter le
+     * jour ou regarder plus loin que 30 jours devient un vrai besoin.
+     */
+    private const JOURS_AFFICHES = 30;
+
     public function index(): View
     {
         $exports = XpengDataExport::orderByDesc('requested_at')->limit(30)->get();
 
+        $releves = XpengTelemetry::where('horodatage', '>=', now()->subDays(self::JOURS_AFFICHES))
+            ->orderBy('horodatage')
+            ->get();
+
         return view('my_vehicle.xpeng_data', [
             'dernier' => $exports->first(),
             'exports' => $exports,
+            'releves' => $releves,
+            'mesures' => $releves->isEmpty() ? [] : $this->mesures($releves),
         ]);
+    }
+
+    /**
+     * @return array<int, array{label: string, unit: ?string, labels: array<int, string>, values: array<int, float>}>
+     */
+    private function mesures(Collection $releves): array
+    {
+        $definitions = [
+            ['champ' => 'soc_moy', 'label' => 'Batterie (SoC)', 'unite' => '%'],
+            ['champ' => 'vitesse_max_kmh', 'label' => 'Vitesse (max/minute)', 'unite' => 'km/h'],
+            ['champ' => 'puissance_charge_moy_kw', 'label' => 'Puissance de charge', 'unite' => 'kW'],
+            ['champ' => 'temp_batterie_max_c', 'label' => 'Température batterie (max)', 'unite' => '°C'],
+            ['champ' => 'pression_av_gauche_kpa', 'label' => 'Pression avant gauche', 'unite' => 'kPa'],
+            ['champ' => 'pression_av_droite_kpa', 'label' => 'Pression avant droite', 'unite' => 'kPa'],
+            ['champ' => 'pression_ar_gauche_kpa', 'label' => 'Pression arrière gauche', 'unite' => 'kPa'],
+            ['champ' => 'pression_ar_droite_kpa', 'label' => 'Pression arrière droite', 'unite' => 'kPa'],
+        ];
+
+        $mesures = [];
+
+        foreach ($definitions as $definition) {
+            $points = $releves
+                ->filter(fn (XpengTelemetry $r) => $r->{$definition['champ']} !== null)
+                ->values();
+
+            if ($points->isEmpty()) {
+                continue;
+            }
+
+            $echantillon = $this->echantillonner($points);
+
+            $mesures[] = [
+                'label' => $definition['label'],
+                'unit' => $definition['unite'],
+                'count' => $points->count(),
+                'labels' => $echantillon->map(fn (XpengTelemetry $r) => $r->horodatage->format('d/m H:i'))->all(),
+                'values' => $echantillon->map(fn (XpengTelemetry $r) => round((float) $r->{$definition['champ']}, 1))->all(),
+            ];
+        }
+
+        return $mesures;
+    }
+
+    /** @return Collection<int, XpengTelemetry> */
+    private function echantillonner(Collection $points): Collection
+    {
+        $total = $points->count();
+
+        if ($total <= self::MAX_POINTS) {
+            return $points;
+        }
+
+        $pas = (int) ceil($total / self::MAX_POINTS);
+        $garde = $points->filter(fn ($p, $i) => $i % $pas === 0)->values();
+
+        // Le dernier point est conserve d'office, sinon la courbe s'arrete
+        // avant la fin de la periode disponible.
+        return $garde->push($points->last());
     }
 
     public function telecharger(XpengDataExport $export): Response
