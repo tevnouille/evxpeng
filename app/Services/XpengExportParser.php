@@ -37,6 +37,11 @@ class XpengExportParser
         'ldcu_chrgpwr' => [0, 400],
         'bms_batttempmax_gb' => [-40, 100],
         'bms_batttempmin_gb' => [-40, 100],
+        // 63 revient des centaines de fois, largement au-dessus de tout
+        // numero de zone reellement observe (0-36) -- sentinelle probable
+        // d'un champ code sur 6 bits.
+        'bms_celltempmaxnum_gb' => [0, 62],
+        'bms_celltempminnum_gb' => [0, 62],
         'ldcu_tpmsprfl' => [100, 400],
         'ldcu_tpmsprfr' => [100, 400],
         'ldcu_tpmsprrl' => [100, 400],
@@ -168,6 +173,17 @@ class XpengExportParser
         }
 
         foreach ([
+            'bms_celltempmaxnum_gb' => 'cellule_temp_max_num',
+            'bms_celltempminnum_gb' => 'cellule_temp_min_num',
+        ] as $champ => $cle) {
+            $numero = $this->valeur($ligne, $entetes, $champ);
+            if ($numero !== null && $timer >= ($accu[$cle.'_timer'] ?? 0)) {
+                $accu[$cle.'_timer'] = $timer;
+                $accu[$cle] = (int) $numero;
+            }
+        }
+
+        foreach ([
             'ldcu_tpmsprfl' => 'pression_av_gauche',
             'ldcu_tpmsprfr' => 'pression_av_droite',
             'ldcu_tpmsprrl' => 'pression_ar_gauche',
@@ -250,6 +266,8 @@ class XpengExportParser
                         'puissance_charge_moy_kw' => $accu['puissance_n'] > 0 ? $accu['puissance_somme'] / $accu['puissance_n'] : null,
                         'temp_batterie_max_c' => $accu['temp_max'] ?? null,
                         'temp_batterie_min_c' => $accu['temp_min'] ?? null,
+                        'cellule_temp_max_num' => $accu['cellule_temp_max_num'] ?? null,
+                        'cellule_temp_min_num' => $accu['cellule_temp_min_num'] ?? null,
                         'pression_av_gauche_kpa' => $accu['pression_av_gauche'] ?? null,
                         'pression_av_droite_kpa' => $accu['pression_av_droite'] ?? null,
                         'pression_ar_gauche_kpa' => $accu['pression_ar_gauche'] ?? null,

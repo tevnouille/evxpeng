@@ -32,6 +32,8 @@ class XpengTelemetry extends Model
         'puissance_charge_moy_kw',
         'temp_batterie_max_c',
         'temp_batterie_min_c',
+        'cellule_temp_max_num',
+        'cellule_temp_min_num',
         'pression_av_gauche_kpa',
         'pression_av_droite_kpa',
         'pression_ar_gauche_kpa',

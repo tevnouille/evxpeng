@@ -336,7 +336,10 @@ Depuis le 2026-09-16, Xpeng expose une API officielle
   anomalies. `bms_battvolt`/`bms_battcurr` (tension/courant batterie) sont
   restés **hors du schéma retenu** : leurs valeurs ne correspondaient à rien
   de physiquement plausible (jusqu'à 1023 V) sans qu'un filtrage évident ne
-  se dégage.
+  se dégage. `bms_celltempmaxnum_gb`/`bms_celltempminnum_gb` (numéro de la
+  zone la plus chaude/froide, pas sa température — déjà dans
+  `temp_batterie_*_c`) ont leur propre sentinelle : `63`, largement au-dessus
+  de tout numéro réellement observé (0-36).
 - **Stocké agrégé à la minute** (`xpeng_telemetries`), jamais à la seconde :
   un mois d'export fait ~1 million de lignes par jeu de données, ce qui
   romprait la règle « jamais purger » déjà en place pour `vehicle_telemetries`

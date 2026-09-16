@@ -66,6 +66,11 @@ class XpengDataController extends Controller
             ['champ' => 'vitesse_max_kmh', 'label' => 'Vitesse (max/minute)', 'unite' => 'km/h'],
             ['champ' => 'puissance_charge_moy_kw', 'label' => 'Puissance de charge', 'unite' => 'kW'],
             ['champ' => 'temp_batterie_max_c', 'label' => 'Température batterie (max)', 'unite' => '°C'],
+            // Le numero de la zone la plus chaude/froide, pas sa temperature
+            // (deja ci-dessus) : utile pour reperer une zone durablement
+            // desequilibree plutot qu'un pic ponctuel.
+            ['champ' => 'cellule_temp_max_num', 'label' => 'Zone la plus chaude (n°)', 'unite' => null, 'decimales' => 0],
+            ['champ' => 'cellule_temp_min_num', 'label' => 'Zone la plus froide (n°)', 'unite' => null, 'decimales' => 0],
             // Stockees en kPa (unite brute de l'export), affichees en bar :
             // c'est l'unite lue sur un manometre de pneu, kPa ne s'y compare pas.
             ['champ' => 'pression_av_gauche_kpa', 'label' => 'Pression avant gauche', 'unite' => 'bar', 'facteur' => 0.01, 'decimales' => 2],
