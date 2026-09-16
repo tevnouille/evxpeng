@@ -16,6 +16,7 @@ use App\Http\Controllers\InfoCarController;
 use App\Http\Controllers\LogoutController;
 use App\Http\Controllers\MyVehicleController;
 use App\Http\Controllers\ObdStatsController;
+use App\Http\Controllers\XpengDataController;
 use App\Http\Controllers\PositionShareController;
 use App\Http\Controllers\PublicPositionShareController;
 use App\Http\Controllers\ReferenceDataController;
@@ -81,6 +82,17 @@ Route::get('/ma-voiture', [MyVehicleController::class, 'index'])
 Route::get('/ma-voiture/statistiques-obd', [ObdStatsController::class, 'index'])
     ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
     ->name('my-vehicle.obd');
+
+// API constructeur (App\Services\XpengClient), distincte du boitier OBD/MQTT
+// ci-dessus : pas de telemetrie en direct, juste le suivi d'un export
+// quotidien. Jamais d'appel a l'API xpeng.com depuis ces deux routes.
+Route::get('/ma-voiture/dataapixpeng', [XpengDataController::class, 'index'])
+    ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
+    ->name('my-vehicle.xpeng');
+
+Route::get('/ma-voiture/dataapixpeng/{export}/telecharger', [XpengDataController::class, 'telecharger'])
+    ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
+    ->name('my-vehicle.xpeng.telecharger');
 
 Route::get('/deplacements', [TripMapController::class, 'index'])
     ->middleware(\App\Http\Middleware\RequiresTelemetry::class)

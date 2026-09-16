@@ -77,4 +77,20 @@ return [
         'domain' => env('POSITION_SHARE_DOMAIN', 's.lolinux.fr'),
     ],
 
+    'xpeng' => [
+        // API Open Platform du constructeur (App\Services\XpengClient) :
+        // pas de telemetrie en direct, un fichier d'export recupere par la
+        // commande planifiee `xpeng:sync`. app_id/app_secret viennent de
+        // l'inscription developpeur (email a glo.open@xpeng.com) ; les
+        // quatre autres champs, de l'email d'autorisation envoye a
+        // l'utilisateur -- tous distincts, ne pas les confondre.
+        'base_url' => env('XPENG_BASE_URL', 'https://open.xpeng.com/open/oauth2/queryData'),
+        'app_id' => env('XPENG_APP_ID'),
+        'app_secret' => env('XPENG_APP_SECRET'),
+        'open_id' => env('XPENG_OPEN_ID'),
+        'access_token' => env('XPENG_ACCESS_TOKEN'),
+        'enterprise_name' => env('XPENG_ENTERPRISE_NAME'),
+        'scope_code' => env('XPENG_SCOPE_CODE'),
+    ],
+
 ];

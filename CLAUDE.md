@@ -289,6 +289,51 @@ Points à connaître avant de toucher à l'ingestion :
 énergie **mesurée** au compteur du BMS, courbe complète, position. Elle prime sur
 l'estimation par SoC × capacité, qui s'est révélée 29 % sous le compte.
 
+## API Xpeng (`/ma-voiture/dataapixpeng`) — donnée constructeur, pas de télémétrie
+
+Depuis le 2026-09-16, Xpeng expose une API officielle
+(`App\Services\XpengClient`, un seul endpoint `/oauth2/queryData`) —
+**totalement distincte** du boîtier OBD/MQTT ci-dessus. À ne pas confondre :
+
+- **Ce n'est pas une API de télémétrie en direct.** Un premier appel dépose
+  une tâche d'export chez Xpeng et répond `"DataFileExporting"` ; les appels
+  suivants (identiques côté appelant) interrogent son état via un `recordNo`
+  mis en cache **côté Xpeng**, jamais exposé ici, jusqu'à une URL de
+  téléchargement valable **~30 secondes seulement**.
+- **Quota strict : 5 soumissions/24h** par couple utilisateur-entreprise.
+  `App\Console\Commands\SyncXpengData` (`xpeng:sync`) ne se déclenche donc
+  qu'une fois par jour (`routes/console.php`, 06h15) — prudent tant que le
+  comportement réel d'une resoumission pendant un export « en cours » n'est
+  pas vérifié en conditions réelles (le guide suggère qu'elle est gratuite,
+  sans le garantir explicitement).
+- **La commande patiente sur place** (jusqu'à 10 relances, 8 s d'écart,
+  recommandation du guide d'intégration) plutôt que d'attendre le lendemain :
+  la fenêtre de 30 s pour télécharger le fichier ne survivrait pas à un
+  report au jour suivant.
+- **Piège de signature** : seules deux clés participent à la chaîne signée —
+  `body` (le JSON du corps **tel qu'envoyé**, pas re-sérialisé) et `nonce` —
+  pas chaque champ du corps un par un, contrairement à ce qu'un résumé rapide
+  de la doc pourrait laisser croire. `XpengClient::queryData()` construit la
+  chaîne de signature à partir des mêmes octets que ceux réellement postés,
+  jamais d'un objet ré-encodé séparément.
+- **Le format du fichier téléchargé n'est pas documenté** par Xpeng. La
+  commande le garde brut (`storage/app/xpeng/`), sans essayer de le parser à
+  l'aveugle — mieux vaut l'inspecter une fois obtenu que perdre des champs non
+  reconnus. La page n'affiche pour l'instant qu'un suivi des tentatives
+  (réussie/échec/en cours) et un lien de téléchargement du brut ; les
+  graphiques restent à construire une fois un fichier réel examiné.
+- **`appId`/`appSecret` restent à renseigner** (`XPENG_APP_ID`/`XPENG_APP_SECRET`
+  dans `.env`, vides au 2026-09-16) — obtenus par inscription développeur
+  auprès de `glo.open@xpeng.com`, distincts des quatre champs d'autorisation
+  utilisateur (`openId`, `accessToken`, `enterpriseName`, `scopeCode`) reçus
+  par email et déjà en place. Sans eux, `xpeng:sync` échoue proprement au
+  démarrage plutôt que de tenter un appel non signé.
+- **Piège déjà connu, retombé ici** : modifier `.env` ne suffit pas, il
+  injecte les variables via `env_file` au démarrage du conteneur — recréer
+  `ev-app` (`docker compose up -d --force-recreate app`) puis redémarrer
+  `ev-nginx`, sinon `config('services.xpeng.*')` reste sur les anciennes
+  valeurs (vues : `null` partout) malgré un `config:cache` refait.
+
 ## Page publique `/infoCar`
 
 Seule adresse servie **sans passkey**, pour le navigateur embarqué de la

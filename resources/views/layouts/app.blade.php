@@ -54,6 +54,9 @@
                             <a class="navbar-item {{ request()->routeIs('my-vehicle.obd') ? 'is-active' : '' }}" href="{{ route('my-vehicle.obd') }}">
                                 Statistiques OBD
                             </a>
+                            <a class="navbar-item {{ request()->routeIs('my-vehicle.xpeng*') ? 'is-active' : '' }}" href="{{ route('my-vehicle.xpeng') }}">
+                                Données Xpeng
+                            </a>
                             {{-- Adresse servie sans passkey : ouverte dans un
                                  onglet a part, pour ne pas donner a croire qu'on
                                  quitte la session, et signalee comme publique. --}}

@@ -42,3 +42,11 @@ Schedule::command('irve:import')->weeklyOn(1, '04:30')->withoutOverlapping();
 // ou le bouton admin : un jour sans visite ne comparait le prix a personne.
 // Le matin, avant que quiconque ne prenne la route.
 Schedule::command('fuel-prices:check')->dailyAt('07:30')->withoutOverlapping();
+
+// Quota Xpeng strict (5 soumissions/24h) : une fois par jour pour commencer,
+// tant que le comportement reel d'une resoumission pendant un export "en
+// cours" n'est pas verifie (voir App\Console\Commands\SyncXpengData). Peut
+// prendre jusqu'a 80 s (la commande patiente sur place tant que l'export
+// n'est pas pret) : sans consequence a cette cadence, ce n'est pas un
+// declenchement a la sous-minute comme telemetry:ingest-mqtt plus haut.
+Schedule::command('xpeng:sync')->dailyAt('06:15')->withoutOverlapping();
