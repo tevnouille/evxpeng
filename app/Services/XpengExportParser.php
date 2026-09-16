@@ -225,8 +225,19 @@ class XpengExportParser
 
         foreach ($agregats as $vin => $minutes) {
             foreach ($minutes as $minuteEpoch => $accu) {
+                // `timer` est un epoch Unix, donc UTC sans ambiguite -- mais
+                // MariaDB n'a pas de notion de fuseau sur ses colonnes de type
+                // date/heure : la valeur est relue plus tard comme si elle
+                // etait deja dans le fuseau de l'appli (Europe/Paris), sans
+                // conversion. Sans setTimezone() ici, l'horodatage stocke
+                // reste en UTC mais s'affiche comme si il etait local, avec
+                // deux heures de retard en ete -- meme piege deja documente
+                // dans IngestMqttTelemetry::timestamp().
+                $horodatage = CarbonImmutable::createFromTimestampUTC($minuteEpoch)
+                    ->setTimezone(config('app.timezone'));
+
                 XpengTelemetry::updateOrCreate(
-                    ['vin' => $vin, 'horodatage' => CarbonImmutable::createFromTimestampUTC($minuteEpoch)],
+                    ['vin' => $vin, 'horodatage' => $horodatage],
                     [
                         'nb_releves' => $accu['nb_releves'],
                         'vitesse_moy_kmh' => $accu['vitesse_n'] > 0 ? $accu['vitesse_somme'] / $accu['vitesse_n'] : null,

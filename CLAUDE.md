@@ -362,6 +362,21 @@ Depuis le 2026-09-16, Xpeng expose une API officielle
   `abs()`, la comparaison au seuil de tolérance (`> 10`) n'était jamais
   vraie, et tout le mois fusionnait en une seule "recharge" de 39 612
   minutes. `abs()` systématique sur cet appel dans ce fichier.
+- **`timer` (epoch Unix, donc UTC) doit être converti en `config('app.timezone')`
+  avant d'être stocké** (`XpengExportParser::enregistrer()`), sinon l'heure
+  affichée retarde de deux heures en été : MariaDB n'a pas de notion de
+  fuseau sur ses colonnes date/heure, la valeur est relue plus tard comme si
+  elle était déjà locale, sans conversion. Même piège, déjà documenté pour
+  `IngestMqttTelemetry::timestamp()` — cause différente (là, une heure locale
+  sans fuseau ; ici, un epoch UTC sans ambiguïté), même symptôme, même
+  correctif (`->setTimezone(config('app.timezone'))` avant l'écriture).
+  Repéré le 2026-09-16 après une première mise en ligne fausse ; corrigé par
+  ré-import complet (`xpeng:import`, la table est jetable et se reconstruit
+  entièrement depuis les fichiers archivés dans `storage/app/xpeng/`).
+- **Pression des pneus affichée en bar, stockée en kPa** — c'est l'unité lue
+  sur un manomètre, kPa ne s'y compare pas pour l'utilisateur. Conversion
+  faite à l'affichage seulement (`XpengDataController::mesures()`, facteur
+  0,01), la colonne `pression_*_kpa` en base garde l'unité brute de l'export.
 - **`appId`/`appSecret` restent à renseigner** (`XPENG_APP_ID`/`XPENG_APP_SECRET`
   dans `.env`, vides au 2026-09-16) — obtenus par inscription développeur
   auprès de `glo.open@xpeng.com`, distincts des quatre champs d'autorisation

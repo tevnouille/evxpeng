@@ -61,13 +61,17 @@ class XpengDataController extends Controller
     {
         $definitions = [
             ['champ' => 'soc_moy', 'label' => 'Batterie (SoC)', 'unite' => '%'],
+            ['champ' => 'autonomie_km', 'label' => 'Autonomie estimée', 'unite' => 'km'],
+            ['champ' => 'odometre_km', 'label' => 'Kilométrage', 'unite' => 'km'],
             ['champ' => 'vitesse_max_kmh', 'label' => 'Vitesse (max/minute)', 'unite' => 'km/h'],
             ['champ' => 'puissance_charge_moy_kw', 'label' => 'Puissance de charge', 'unite' => 'kW'],
             ['champ' => 'temp_batterie_max_c', 'label' => 'Température batterie (max)', 'unite' => '°C'],
-            ['champ' => 'pression_av_gauche_kpa', 'label' => 'Pression avant gauche', 'unite' => 'kPa'],
-            ['champ' => 'pression_av_droite_kpa', 'label' => 'Pression avant droite', 'unite' => 'kPa'],
-            ['champ' => 'pression_ar_gauche_kpa', 'label' => 'Pression arrière gauche', 'unite' => 'kPa'],
-            ['champ' => 'pression_ar_droite_kpa', 'label' => 'Pression arrière droite', 'unite' => 'kPa'],
+            // Stockees en kPa (unite brute de l'export), affichees en bar :
+            // c'est l'unite lue sur un manometre de pneu, kPa ne s'y compare pas.
+            ['champ' => 'pression_av_gauche_kpa', 'label' => 'Pression avant gauche', 'unite' => 'bar', 'facteur' => 0.01, 'decimales' => 2],
+            ['champ' => 'pression_av_droite_kpa', 'label' => 'Pression avant droite', 'unite' => 'bar', 'facteur' => 0.01, 'decimales' => 2],
+            ['champ' => 'pression_ar_gauche_kpa', 'label' => 'Pression arrière gauche', 'unite' => 'bar', 'facteur' => 0.01, 'decimales' => 2],
+            ['champ' => 'pression_ar_droite_kpa', 'label' => 'Pression arrière droite', 'unite' => 'bar', 'facteur' => 0.01, 'decimales' => 2],
         ];
 
         $mesures = [];
@@ -82,13 +86,15 @@ class XpengDataController extends Controller
             }
 
             $echantillon = $this->echantillonner($points);
+            $facteur = $definition['facteur'] ?? 1;
+            $decimales = $definition['decimales'] ?? 1;
 
             $mesures[] = [
                 'label' => $definition['label'],
                 'unit' => $definition['unite'],
                 'count' => $points->count(),
                 'labels' => $echantillon->map(fn (XpengTelemetry $r) => $r->horodatage->format('d/m H:i'))->all(),
-                'values' => $echantillon->map(fn (XpengTelemetry $r) => round((float) $r->{$definition['champ']}, 1))->all(),
+                'values' => $echantillon->map(fn (XpengTelemetry $r) => round((float) $r->{$definition['champ']} * $facteur, $decimales))->all(),
             ];
         }
 
