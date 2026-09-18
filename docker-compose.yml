@@ -22,6 +22,9 @@ services:
       - ./vendor:/var/www/html/vendor
       - ./composer.json:/var/www/html/composer.json
       - ./composer.lock:/var/www/html/composer.lock
+      # upload_max_filesize/post_max_size par defaut de l'image (2M/8M) sont
+      # trop bas pour l'import manuel d'un export Xpeng (my-vehicle.xpeng.importer).
+      - ./docker/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
     env_file:
       - .env
     depends_on:

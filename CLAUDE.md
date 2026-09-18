@@ -386,6 +386,24 @@ Depuis le 2026-09-16, Xpeng expose une API officielle
   utilisateur (`openId`, `accessToken`, `enterpriseName`, `scopeCode`) reçus
   par email et déjà en place. Sans eux, `xpeng:sync` échoue proprement au
   démarrage plutôt que de tenter un appel non signé.
+- **Dépôt manuel d'un export** (`/ma-voiture/dataapixpeng`, formulaire en bas
+  de page → `XpengDataController::importer()`), pour ne pas attendre
+  `appId`/`appSecret` : nécessite `client_max_body_size`/`upload_max_filesize`
+  relevés à trois niveaux distincts (nginx de l'hôte, nginx du conteneur —
+  `docker/nginx/default.conf`, chacun avec sa propre limite par défaut — et
+  PHP via `docker/php/uploads.ini`, monté en volume, `upload_max_filesize`
+  par défaut de l'image n'étant que 2 Mo), plus `proxy_read_timeout`/
+  `fastcgi_read_timeout` à 300 s aux deux étages nginx (l'import le plus
+  long observé a pris ~2 min, le défaut de 60 s aurait coupé la réponse).
+  **Piège rencontré en l'écrivant** : `Storage::disk('local')` a pour racine
+  `storage/app/private/` depuis Laravel 11, alors que `XpengExportParser`/
+  `SyncXpengData` travaillent en chemins relatifs à `storage/app/` tout court
+  (`chemin_fichier` en base). Le fichier uploadé atterrissait au bon endroit
+  pour le disque, au mauvais pour le reste de la fonctionnalité — import et
+  téléchargement échouaient tous les deux en silence côté chemin. Corrigé en
+  n'utilisant plus le disque abstrait ici : `UploadedFile::move()` et
+  `storage_path('app/'.$chemin)` directement, comme partout ailleurs dans
+  cette fonctionnalité.
 - **Piège déjà connu, retombé ici** : modifier `.env` ne suffit pas, il
   injecte les variables via `env_file` au démarrage du conteneur — recréer
   `ev-app` (`docker compose up -d --force-recreate app`) puis redémarrer

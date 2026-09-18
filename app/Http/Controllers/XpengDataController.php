@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\XpengDataExport;
 use App\Models\XpengTelemetry;
 use App\Services\XpengChargeDetector;
+use App\Services\XpengExportParser;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 /**
@@ -52,6 +54,50 @@ class XpengDataController extends Controller
             'mesures' => $releves->isEmpty() ? [] : $this->mesures($releves),
             'recharges' => $releves->isEmpty() ? [] : $detecteur->detecter($releves),
         ]);
+    }
+
+    /**
+     * Depot manuel d'un export deja telecharge sur le portail Xpeng --
+     * en attendant que xpeng:sync (appId/appSecret) prenne le relais, ou
+     * pour completer une periode que l'automatisation n'aurait pas couverte.
+     *
+     * Traite en synchrone (pas de file d'attente sur ce projet) : le plus
+     * gros import vu a ce jour (un mois complet) prend environ deux minutes,
+     * d'ou les delais augmentes cote nginx (docker/nginx/default.conf et le
+     * vhost de l'hote) plutot qu'une reponse coupee en cours de route.
+     */
+    public function importer(Request $request, XpengExportParser $parser): RedirectResponse
+    {
+        $request->validate([
+            // 100 Mo : le plus gros export vu (30 jours) pesait 15 Mo compresses.
+            'fichier' => ['required', 'file', 'mimes:zip', 'max:102400'],
+        ]);
+
+        $nom = now()->format('Y-m-d_His').'_'.$request->file('fichier')->getClientOriginalName();
+        $dossier = storage_path('app/xpeng/imports');
+
+        if (! is_dir($dossier)) {
+            mkdir($dossier, 0775, true);
+        }
+
+        // Deplacement direct plutot que Storage::disk('local') : ce disque a
+        // pour racine storage/app/private/ depuis Laravel 11, alors que
+        // XpengExportParser/SyncXpengData travaillent en chemins relatifs a
+        // storage/app/ tout court (chemin_fichier en base). Utiliser le
+        // disque ici aurait ecrit au bon endroit pour lui, au mauvais pour
+        // tout le reste de cette fonctionnalite.
+        $request->file('fichier')->move($dossier, $nom);
+        $chemin = 'xpeng/imports/'.$nom;
+
+        try {
+            $nombre = $parser->importZip(storage_path('app/'.$chemin));
+        } catch (\Throwable $e) {
+            report($e);
+
+            return back()->with('error', "Le fichier a bien ete recu, mais l'import a echoue : {$e->getMessage()}");
+        }
+
+        return back()->with('success', "$nombre minute(s) importee(s)/mises a jour depuis $nom.");
     }
 
     /**
@@ -126,8 +172,11 @@ class XpengDataController extends Controller
     public function telecharger(XpengDataExport $export): Response
     {
         abort_unless($export->chemin_fichier, 404);
-        abort_unless(Storage::disk('local')->exists($export->chemin_fichier), 404);
 
-        return Storage::disk('local')->download($export->chemin_fichier);
+        $chemin = storage_path('app/'.$export->chemin_fichier);
+
+        abort_unless(is_file($chemin), 404);
+
+        return response()->download($chemin);
     }
 }

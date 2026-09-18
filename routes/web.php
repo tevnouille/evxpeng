@@ -94,6 +94,14 @@ Route::get('/ma-voiture/dataapixpeng/{export}/telecharger', [XpengDataController
     ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
     ->name('my-vehicle.xpeng.telecharger');
 
+// Depot manuel d'un export deja telecharge sur le portail Xpeng, en
+// attendant appId/appSecret (xpeng:sync). Throttle par IP comme les autres
+// formulaires de ce projet : un import prend deux minutes, pas de raison
+// d'en laisser lancer plusieurs a la suite.
+Route::post('/ma-voiture/dataapixpeng/importer', [XpengDataController::class, 'importer'])
+    ->middleware([\App\Http\Middleware\RequiresTelemetry::class, 'throttle:5,1'])
+    ->name('my-vehicle.xpeng.importer');
+
 Route::get('/deplacements', [TripMapController::class, 'index'])
     ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
     ->name('trips.index');

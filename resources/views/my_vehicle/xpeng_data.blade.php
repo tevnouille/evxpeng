@@ -95,6 +95,24 @@
         </div>
     @endif
 
+    <h2 class="title is-5 mt-5">Déposer un export manuellement</h2>
+    <p class="has-text-grey is-size-7 mb-2">
+        En attendant que la synchronisation automatique fonctionne (<code>appId</code>/<code>appSecret</code>),
+        un export téléchargé à la main sur le portail Xpeng — un .zip.
+    </p>
+    <form method="POST" action="{{ route('my-vehicle.xpeng.importer') }}" enctype="multipart/form-data" class="field has-addons">
+        @csrf
+        <div class="control">
+            <input class="input" type="file" name="fichier" accept=".zip" required>
+        </div>
+        <div class="control">
+            <button type="submit" class="button is-primary">Importer</button>
+        </div>
+    </form>
+    @error('fichier')
+        <p class="help is-danger">{{ $message }}</p>
+    @enderror
+
     @if ($exports->isNotEmpty())
         <h2 class="title is-5 mt-5">Historique</h2>
         <table class="table is-fullwidth is-striped">
