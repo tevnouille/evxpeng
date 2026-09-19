@@ -12,6 +12,10 @@ Le journal est rédigé pour qui se sert de l'application, pas depuis l'historiq
 Git : les messages de commit parlent de code, et une bonne moitié d'entre eux ne
 change rien de visible. La même liste s'affiche sur `/changelog`.
 
+## 19 septembre 2026
+
+- **Correction** — Sur « Info voiture » en plein écran, cliquer sur la case « Commune » rouvrait toujours la même liste de dernières communes traversées, même après plusieurs minutes — il fallait recharger la page à la main pour la voir à jour. Cette liste fait maintenant partie de ce que la mise à jour sur place (voir la correction du 14 septembre) rafraîchit, comme le reste de l'onglet Info.
+
 ## 16 septembre 2026
 
 - **Nouveauté** — Nouvelle page « Données Xpeng » dans le menu Ma voiture : batterie, vitesse, puissance de charge, température batterie et pression des quatre pneus, en graphiques sur les 30 derniers jours. Source distincte du boîtier OBD — l'API officielle du constructeur, alimentée une fois par jour.

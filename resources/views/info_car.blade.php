@@ -577,7 +577,18 @@
         // L'onglet Position n'y figure pas : il suspend deja lui-meme le
         // rechargement des qu'on l'affiche (carte OpenStreetMap), le plein
         // ecran ne peut donc jamais s'y heurter au probleme resolu ici.
-        var ZONES_A_RAFRAICHIR = ['vue-info', 'vue-recharge', 'vue-courbe'];
+        //
+        // recouvrement-villes y figure en revanche : contrairement au
+        // recouvrement Batterie (qui se redessine lui-meme en JS a chaque
+        // ouverture, voir rafraichirBatterie), la liste des communes est
+        // rendue une seule fois cote serveur. Rester hors de cette liste la
+        // figeait des l'entree en plein ecran -- cliquer sur la tuile
+        // Commune rouvrait toujours le meme contenu, perime, jusqu'a un
+        // rechargement manuel de la page (signale par l'utilisateur). Le
+        // panneau reste cache pendant l'echange (ouvre() suspend deja le
+        // rechargement tant qu'il est affiche), le remplacement est donc
+        // invisible pour qui le regarde.
+        var ZONES_A_RAFRAICHIR = ['vue-info', 'vue-recharge', 'vue-courbe', 'recouvrement-villes'];
 
         /*
          * Le rechargement se decide sur l'horloge et non sur un delai pose une

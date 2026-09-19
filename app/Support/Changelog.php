@@ -41,6 +41,12 @@ class Changelog
 
     private const DATA = [
         [
+            'date' => '2026-09-19',
+            'entries' => [
+                ['type' => 'correction', 'text' => "Sur « Info voiture » en plein écran, cliquer sur la case « Commune » rouvrait toujours la même liste de dernières communes traversées, même après plusieurs minutes — il fallait recharger la page à la main pour la voir à jour. Cette liste fait maintenant partie de ce que la mise à jour sur place (voir la correction du 14 septembre) rafraîchit, comme le reste de l'onglet Info."],
+            ],
+        ],
+        [
             'date' => '2026-09-16',
             'entries' => [
                 ['type' => 'nouveaute', 'text' => "Nouvelle page « Données Xpeng » dans le menu Ma voiture : batterie, vitesse, puissance de charge, température batterie et pression des quatre pneus, en graphiques sur les 30 derniers jours. Source distincte du boîtier OBD — l'API officielle du constructeur, alimentée une fois par jour."],
