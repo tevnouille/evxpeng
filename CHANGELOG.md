@@ -15,6 +15,7 @@ change rien de visible. La même liste s'affiche sur `/changelog`.
 ## 19 septembre 2026
 
 - **Correction** — Sur « Info voiture » en plein écran, cliquer sur la case « Commune » rouvrait toujours la même liste de dernières communes traversées, même après plusieurs minutes — il fallait recharger la page à la main pour la voir à jour. Cette liste fait maintenant partie de ce que la mise à jour sur place (voir la correction du 14 septembre) rafraîchit, comme le reste de l'onglet Info.
+- **Correction** — Sur « Administration » → « SMS », les flèches précédent/suivant en bas de la liste s'affichaient démesurément grandes.
 
 ## 16 septembre 2026
 
