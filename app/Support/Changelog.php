@@ -43,6 +43,7 @@ class Changelog
         [
             'date' => '2026-09-21',
             'entries' => [
+                ['type' => 'nouveaute', 'text' => "« Ma voiture » gagne une page « Kilométrage » : la distance parcourue, déduite de l'odomètre du boîtier OBD, mois par mois et année par année sur toute la durée connue du véhicule."],
                 ['type' => 'nouveaute', 'text' => "La tuile « Gain vs valeur réelle » du tableau de bord affiche désormais le nombre de kWh reçus sans être facturés (recharges à 0 €), avec son équivalent en « pleins » du véhicule par défaut du compte."],
                 ['type' => 'correction', 'text' => "Cette même tuile affichait « Surcoût » alors qu'il s'agissait en réalité d'une économie (payé moins que la valeur des recharges reçues) — le libellé était inversé."],
             ],

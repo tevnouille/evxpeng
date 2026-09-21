@@ -70,6 +70,49 @@ class DailyVehicleActivity
     }
 
     /**
+     * Kilometres parcourus par mois, sur toute la duree connue du vehicule.
+     *
+     * Meme regle que forMonth() (ecart negatif ou superieur a MAX_JUMP_KM
+     * ignore, changement de source ou remise a zero), mais un seul passage sur
+     * l'historique complet plutot qu'un mois a la fois : l'agregation ne porte
+     * que sur l'odometre, pas les recharges, bien moins couteux.
+     *
+     * @return array<int, array{month: string, km: int}>  Le plus recent d'abord.
+     */
+    public function perMonth(Vehicle $vehicle): array
+    {
+        $rows = $vehicle->telemetries()
+            ->whereNotNull('odometer')
+            ->orderBy('recorded_at')
+            ->get(['recorded_at', 'odometer']);
+
+        $totals = [];
+        $previousOdometer = null;
+
+        foreach ($rows as $row) {
+            $odometer = (int) $row->odometer;
+
+            if ($previousOdometer !== null) {
+                $delta = $odometer - $previousOdometer;
+
+                if ($delta > 0 && $delta <= self::MAX_JUMP_KM) {
+                    $key = $row->recorded_at->timezone(config('app.timezone'))->format('Y-m');
+                    $totals[$key] = ($totals[$key] ?? 0) + $delta;
+                }
+            }
+
+            $previousOdometer = $odometer;
+        }
+
+        krsort($totals);
+
+        return collect($totals)
+            ->map(fn ($km, $month) => ['month' => $month, 'km' => $km])
+            ->values()
+            ->all();
+    }
+
+    /**
      * @return array{days: array<int, array<string, mixed>>, totals: array<string, mixed>}
      */
     public function forMonth(Vehicle $vehicle, CarbonImmutable $month, ?float $netCapacityKwh): array

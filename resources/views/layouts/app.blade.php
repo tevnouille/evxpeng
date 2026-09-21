@@ -54,6 +54,9 @@
                             <a class="navbar-item {{ request()->routeIs('my-vehicle.obd') ? 'is-active' : '' }}" href="{{ route('my-vehicle.obd') }}">
                                 Statistiques OBD
                             </a>
+                            <a class="navbar-item {{ request()->routeIs('my-vehicle.mileage') ? 'is-active' : '' }}" href="{{ route('my-vehicle.mileage') }}">
+                                Kilométrage
+                            </a>
                             <a class="navbar-item {{ request()->routeIs('my-vehicle.xpeng*') ? 'is-active' : '' }}" href="{{ route('my-vehicle.xpeng') }}">
                                 Données Xpeng
                             </a>

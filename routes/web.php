@@ -14,6 +14,7 @@ use App\Http\Controllers\FuelPriceController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\InfoCarController;
 use App\Http\Controllers\LogoutController;
+use App\Http\Controllers\MileageController;
 use App\Http\Controllers\MyVehicleController;
 use App\Http\Controllers\ObdStatsController;
 use App\Http\Controllers\XpengDataController;
@@ -82,6 +83,10 @@ Route::get('/ma-voiture', [MyVehicleController::class, 'index'])
 Route::get('/ma-voiture/statistiques-obd', [ObdStatsController::class, 'index'])
     ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
     ->name('my-vehicle.obd');
+
+Route::get('/ma-voiture/kilometrage', [MileageController::class, 'index'])
+    ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
+    ->name('my-vehicle.mileage');
 
 // API constructeur (App\Services\XpengClient), distincte du boitier OBD/MQTT
 // ci-dessus : pas de telemetrie en direct, juste le suivi d'un export
