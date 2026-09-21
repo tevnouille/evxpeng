@@ -12,6 +12,11 @@ Le journal est rédigé pour qui se sert de l'application, pas depuis l'historiq
 Git : les messages de commit parlent de code, et une bonne moitié d'entre eux ne
 change rien de visible. La même liste s'affiche sur `/changelog`.
 
+## 21 septembre 2026
+
+- **Nouveauté** — La tuile « Gain vs valeur réelle » du tableau de bord affiche désormais le nombre de kWh reçus sans être facturés (recharges à 0 €), avec son équivalent en « pleins » du véhicule par défaut du compte.
+- **Correction** — Cette même tuile affichait « Surcoût » alors qu'il s'agissait en réalité d'une économie (payé moins que la valeur des recharges reçues) — le libellé était inversé.
+
 ## 19 septembre 2026
 
 - **Correction** — Sur « Info voiture » en plein écran, cliquer sur la case « Commune » rouvrait toujours la même liste de dernières communes traversées, même après plusieurs minutes — il fallait recharger la page à la main pour la voir à jour. Cette liste fait maintenant partie de ce que la mise à jour sur place (voir la correction du 14 septembre) rafraîchit, comme le reste de l'onglet Info.
