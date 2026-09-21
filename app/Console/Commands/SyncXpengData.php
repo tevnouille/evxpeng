@@ -53,7 +53,7 @@ class SyncXpengData extends Command
         for ($tentative = 1; $tentative <= self::TENTATIVES_MAX; $tentative++) {
             $resultat = $client->queryData();
 
-            if ($resultat['code'] !== 0) {
+            if ($resultat['code'] !== 200) {
                 $this->echoue($export, $resultat, $resultat['desc'] ?? $resultat['msg'] ?? ('code '.$resultat['code']));
 
                 return self::FAILURE;
