@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ChargingSession;
 use App\Models\Vehicle;
+use App\Services\ChargingCurveRepository;
 use App\Services\FuelPriceService;
 use App\Support\CurrentUser;
 use Illuminate\Http\JsonResponse;
@@ -12,7 +13,7 @@ use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function index(FuelPriceService $fuelPriceService): View
+    public function index(FuelPriceService $fuelPriceService, ChargingCurveRepository $curves): View
     {
         $currentYear = (int) now()->year;
 
@@ -33,7 +34,7 @@ class DashboardController extends Controller
             // Toujours sur l'ensemble du compte, independamment des filtres
             // annee/vehicule du reste du tableau de bord : "depuis le debut"
             // n'a pas a etre redecouvert en choisissant "Toutes les annees".
-            'lifetime' => $this->lifetime($fuelPriceService),
+            'lifetime' => $this->lifetime($fuelPriceService, $curves),
             'showFuelEquivalent' => (bool) (CurrentUser::get()?->show_fuel_equivalent ?? true),
         ]);
     }
@@ -43,13 +44,25 @@ class DashboardController extends Controller
      *
      * @return array<string, mixed>
      */
-    private function lifetime(FuelPriceService $fuelPriceService): array
+    private function lifetime(FuelPriceService $fuelPriceService, ChargingCurveRepository $curves): array
     {
         $sessions = ChargingSession::with('vehicle')->get();
 
         $totalKwh = (float) $sessions->sum('quantity_kwh');
         $totalCost = (float) $sessions->sum('total_cost');
         $totalRealCost = (float) $sessions->sum('real_cost');
+
+        // Litteralement les kWh de recharges facturees a 0 € : pas une part
+        // proportionnelle du gain (qui melangerait remises partielles et
+        // recharges vraiment gratuites), juste ce qui n'a rien coute.
+        $unpaidKwh = (float) $sessions
+            ->filter(fn ($session) => (float) $session->total_cost === 0.0)
+            ->sum('quantity_kwh');
+
+        // "Un plein" se rapporte au vehicule du compte, pas a une capacite
+        // inventee : celui par defaut, ou le seul s'il n'y en a qu'un.
+        $referenceVehicle = Vehicle::where('is_default', true)->first() ?? Vehicle::orderBy('name')->first();
+        $tankKwh = $referenceVehicle ? ($curves->find($referenceVehicle->charging_curve)['battery_net_kwh'] ?? null) : null;
 
         // Meme regle que partout ailleurs (App\Services\FuelPriceService) :
         // prix du jour de chaque recharge, consommation du vehicule de chaque
@@ -69,6 +82,9 @@ class DashboardController extends Controller
             'cost' => round($totalCost, 2),
             'real_cost' => round($totalRealCost, 2),
             'gain' => round($totalCost - $totalRealCost, 2),
+            'unpaid_kwh' => round($unpaidKwh, 1),
+            'tank_kwh' => $tankKwh,
+            'tank_count' => $tankKwh ? round($unpaidKwh / (float) $tankKwh, 1) : null,
             'sessions_count' => $sessions->count(),
             'first_date' => $sessions->min('session_date'),
             'essence_liters' => $fuelEquivalent['essence_liters'],

@@ -29,8 +29,20 @@
                     <p class="title is-4">{{ number_format($lifetime['cost'], 2, ',', ' ') }} €</p>
                 </div>
                 <div class="column">
-                    <p class="heading">{{ $lifetime['gain'] >= 0 ? 'Gain vs valeur réelle' : 'Surcoût vs valeur réelle' }}</p>
+                    {{-- Gain = facture - valeur reelle : negatif quand on a paye
+                         moins que la valeur recue (recharge offerte, remise...),
+                         donc le libelle "Gain" va avec une valeur <= 0. --}}
+                    <p class="heading">{{ $lifetime['gain'] <= 0 ? 'Gain vs valeur réelle' : 'Surcoût vs valeur réelle' }}</p>
                     <p class="title is-4">{{ number_format(abs($lifetime['gain']), 2, ',', ' ') }} €</p>
+                    @if ($lifetime['unpaid_kwh'] > 0)
+                        <p class="has-text-grey is-size-7">
+                            {{ number_format($lifetime['unpaid_kwh'], 0, ',', ' ') }} kWh non payé(s)
+                            @if ($lifetime['tank_count'])
+                                (soit {{ number_format($lifetime['tank_count'], 1, ',', ' ') }}
+                                {{ $lifetime['tank_count'] <= 1 ? 'plein' : 'pleins' }})
+                            @endif
+                        </p>
+                    @endif
                 </div>
             </div>
 
