@@ -73,7 +73,13 @@ class FordAuthController extends Controller
             'scope' => 'openid offline_access',
         ]);
 
-        if (! $reponse->successful() || ! $reponse->json('access_token')) {
+        // Particularite de cette politique B2C (B2C_1A_FCON_AUTHORIZE, scope
+        // openid+offline_access) : elle ne renvoie jamais de champ
+        // access_token, seulement id_token -- verifie le 22/09/2026 en
+        // testant ce jeton en Bearer sur /fcon-query/v1/garage, qui repond
+        // bien avec les donnees du vehicule. C'est donc lui la valeur a
+        // utiliser pour les appels a l'API, malgre son nom.
+        if (! $reponse->successful() || ! $reponse->json('id_token') || ! $reponse->json('refresh_token')) {
             report(new \RuntimeException('Ford OAuth callback : echange du code echoue - '.$reponse->body()));
 
             return redirect()->route('my-vehicle.index')
@@ -85,11 +91,9 @@ class FordAuthController extends Controller
         FordOAuthToken::updateOrCreate(
             ['vin' => config('services.ford.vin')],
             [
-                'access_token' => $donnees['access_token'],
+                'access_token' => $donnees['id_token'],
                 'refresh_token' => $donnees['refresh_token'],
-                // 3600 s par defaut si Ford omet expires_in : marge prudente,
-                // le prochain appel rafraichira de toute facon si perime.
-                'expires_at' => now()->addSeconds((int) ($donnees['expires_in'] ?? 3600)),
+                'expires_at' => now()->addSeconds((int) ($donnees['id_token_expires_in'] ?? 1200)),
             ]
         );
 
