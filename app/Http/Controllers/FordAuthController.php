@@ -39,6 +39,11 @@ class FordAuthController extends Controller
             'client_id' => config('services.ford.client_id'),
             'redirect_uri' => config('services.ford.redirect_uri'),
             'state' => Str::random(32),
+            // evData : sans lui, tout /v1/electric/* (autonomie, charge,
+            // branchement, plages programmees) repond 403 "Required scopes
+            // missing: evData" -- constate le 22/09/2026 sur /v1/telemetry
+            // et /v1/electric/departure-times.
+            'scope' => 'openid offline_access evData',
         ]);
 
         return redirect(config('services.ford.authorize_url').'?'.$query);
@@ -70,7 +75,7 @@ class FordAuthController extends Controller
             'client_secret' => config('services.ford.client_secret'),
             'code' => $request->query('code'),
             'redirect_uri' => config('services.ford.redirect_uri'),
-            'scope' => 'openid offline_access',
+            'scope' => 'openid offline_access evData',
         ]);
 
         // Particularite de cette politique B2C (B2C_1A_FCON_AUTHORIZE, scope

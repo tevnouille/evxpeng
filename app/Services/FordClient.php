@@ -79,7 +79,7 @@ class FordClient
             'client_id' => $this->clientId,
             'client_secret' => $this->clientSecret,
             'refresh_token' => $token->refresh_token,
-            'scope' => 'openid offline_access',
+            'scope' => 'openid offline_access evData',
         ]);
 
         if (! $reponse->successful() || ! $reponse->json('id_token') || ! $reponse->json('refresh_token')) {
