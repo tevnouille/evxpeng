@@ -362,17 +362,32 @@
                 </div>
             @endif
 
-            <div>
-                <p class="titre">Autonomie estimée</p>
-                <p class="valeur">{{ $rangeKm !== null ? $rangeKm : '—' }}<span class="unite"> km</span></p>
-                @if ($availableKwh !== null)
-                    <p class="note">{{ str_replace('.', ',', (string) $availableKwh) }} kWh disponibles</p>
-                @endif
+            {{-- Trois estimations distinctes, alternees plutot qu'empilees :
+                 pas la place de les montrer toutes a la fois sans rogner sur
+                 le reste de la grille. --}}
+            <div class="alterne" data-periode="5">
+                <div>
+                    <p class="titre">Autonomie estimée</p>
+                    <p class="valeur">{{ $rangeKm !== null ? $rangeKm : '—' }}<span class="unite"> km</span></p>
+                    @if ($availableKwh !== null)
+                        <p class="note">{{ str_replace('.', ',', (string) $availableKwh) }} kWh disponibles</p>
+                    @endif
+                </div>
+
                 @if ($cltcRange !== null)
-                    <p class="note">{{ (int) $cltcRange }} km annoncés par le véhicule (CLTC)</p>
+                    <div hidden>
+                        <p class="titre">Autonomie (véhicule)</p>
+                        <p class="valeur">{{ (int) $cltcRange }}<span class="unite"> km</span></p>
+                        <p class="note">annoncée par le véhicule (CLTC)</p>
+                    </div>
                 @endif
+
                 @if ($rangeDynamique !== null)
-                    <p class="note">{{ $rangeDynamique }} km d'après la consommation récente</p>
+                    <div hidden>
+                        <p class="titre">Autonomie dynamique</p>
+                        <p class="valeur">{{ $rangeDynamique }}<span class="unite"> km</span></p>
+                        <p class="note">d'après la consommation récente</p>
+                    </div>
                 @endif
             </div>
 
