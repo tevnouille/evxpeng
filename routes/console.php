@@ -65,4 +65,4 @@ Schedule::command('xpeng:sync')
 // interroger comme Xpeng) : aucun quota publie pour ce point d'entree, mais
 // rien ne le confirme non plus -- cadence prudente pour commencer, a
 // resserrer si l'usage reel le permet.
-Schedule::command('ford:sync')->everyFifteenMinutes()->withoutOverlapping();
+Schedule::command('ford:sync')->everyThirtyMinutes()->withoutOverlapping();
