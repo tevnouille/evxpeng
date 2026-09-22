@@ -60,3 +60,9 @@ Schedule::command('xpeng:sync')
     ->dailyAt('08:15')
     ->withoutOverlapping()
     ->when(fn () => ! XpengDataExport::whereDate('requested_at', today())->where('statut', 'ok')->exists());
+
+// FordConnect Query repond l'etat courant a chaque appel (pas d'export a
+// interroger comme Xpeng) : aucun quota publie pour ce point d'entree, mais
+// rien ne le confirme non plus -- cadence prudente pour commencer, a
+// resserrer si l'usage reel le permet.
+Schedule::command('ford:sync')->everyFifteenMinutes()->withoutOverlapping();

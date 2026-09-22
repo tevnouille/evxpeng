@@ -11,6 +11,7 @@ use App\Http\Controllers\DetectedChargeController;
 use App\Http\Controllers\DataSourceController;
 use App\Http\Controllers\FavoriteRouteController;
 use App\Http\Controllers\FordAuthController;
+use App\Http\Controllers\FordDataController;
 use App\Http\Controllers\FuelPriceController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\InfoCarController;
@@ -88,6 +89,10 @@ Route::get('/ma-voiture/statistiques-obd', [ObdStatsController::class, 'index'])
 Route::get('/ma-voiture/kilometrage', [MileageController::class, 'index'])
     ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
     ->name('my-vehicle.mileage');
+
+Route::get('/ma-voiture/donnees-ford', [FordDataController::class, 'index'])
+    ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
+    ->name('my-vehicle.ford');
 
 // Lance l'autorisation FordConnect : reconstruit le lien de connexion Ford
 // faute de le trouver expose sur developer.ford.com (voir le docblock de

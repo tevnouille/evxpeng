@@ -43,6 +43,7 @@ class Changelog
         [
             'date' => '2026-09-22',
             'entries' => [
+                ['type' => 'nouveaute', 'text' => "Nouvelle page « Données Ford » dans le menu Ma voiture : batterie, kilométrage, tension 12V et températures, en graphiques sur les 30 derniers jours. Source distincte du boîtier OBD et de l'API Xpeng — l'API officielle FordConnect, interrogée toutes les 15 minutes. Nécessite d'autoriser l'accès une fois avec le compte Ford/FordPass propriétaire du véhicule, depuis un lien sur cette même page."],
                 ['type' => 'amelioration', 'text' => "La récupération quotidienne des données Xpeng retente désormais à 8h15 si le passage de 6h15 n'a pas rapporté de fichier (export encore en cours de génération chez Xpeng au-delà des 80 secondes d'attente) — jusqu'ici il fallait attendre le lendemain."],
             ],
         ],
