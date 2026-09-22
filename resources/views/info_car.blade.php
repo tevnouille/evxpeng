@@ -134,13 +134,22 @@
             font-size: clamp(.55rem, 1.6vh, .75rem); text-transform: uppercase;
             letter-spacing: .06em; color: #6b6b6b; margin: 0 0 .15em;
         }
-        .valeur { font-size: clamp(1.1rem, 7.5vh, 2.8rem); font-weight: 700; line-height: 1.05; margin: 0; }
+        /* white-space nowrap : une valeur qui passe a la ligne change la
+           hauteur de sa tuile, et pour les tuiles alternantes (.alterne),
+           dont les faces se succedent par un simple attribut hidden sans
+           hauteur reservee, ce changement de hauteur decale toute la ligne
+           de la grille au moment ou la face passe. Deja vu avec l'icone et
+           l'emoji ci-dessous, trop larges pour tenir sur une seule ligne a
+           cote d'un grand chiffre dans une colonne etroite. */
+        .valeur { font-size: clamp(1.1rem, 7.5vh, 2.8rem); font-weight: 700; line-height: 1.05; margin: 0; white-space: nowrap; }
         .valeur .unite { font-size: .45em; font-weight: 400; color: #6b6b6b; }
         /* Meme taille pour l'icone SVG (trait) et les emoji colores (glyphe
            de police, drapeau ou coeur) : deux techniques differentes, mais
-           qui doivent occuper visuellement la meme place a cote du chiffre. */
-        .valeur .icone-valeur { width: .6em; height: .6em; vertical-align: .05em; margin-right: .1em; }
-        .valeur .emoji-valeur { font-size: .55em; vertical-align: .08em; margin-right: .1em; }
+           qui doivent occuper visuellement la meme place a cote du chiffre.
+           Sensiblement plus petites qu'au premier essai (.6em/.55em) : voir
+           la note white-space plus haut. */
+        .valeur .icone-valeur { width: .35em; height: .35em; vertical-align: .05em; margin-right: .05em; }
+        .valeur .emoji-valeur { font-size: .35em; vertical-align: .12em; margin-right: .05em; }
         .moyenne { font-size: clamp(.95rem, 5.2vh, 2.1rem); font-weight: 600; line-height: 1.1; margin: 0; }
         /* Un nom de commune se coupe plutot que de deborder : « Corbeil-
            Essonnes » ne tient pas sur un tiers d'ecran etroit, et rien ici ne
