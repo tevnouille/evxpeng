@@ -35,15 +35,16 @@ class FordAuthController extends Controller
                 ->with('error', "Ford : client_id ou redirect_uri non configures (voir .env).");
         }
 
+        // Pas de parametre `scope` ici : essaye le 22/09/2026 pour obtenir
+        // evData (necessaire a /v1/electric/*), sans effet -- le jeton
+        // obtenu portait quand meme scope=vehicleBasicInfo,vehicleData
+        // (verifie en decodant le JWT). Cette permission Ford, distincte des
+        // scopes OIDC standard envoyes ici, se decide ailleurs : ecran de
+        // consentement Ford et/ou droits de l'app sur developer.ford.com.
         $query = http_build_query([
             'client_id' => config('services.ford.client_id'),
             'redirect_uri' => config('services.ford.redirect_uri'),
             'state' => Str::random(32),
-            // evData : sans lui, tout /v1/electric/* (autonomie, charge,
-            // branchement, plages programmees) repond 403 "Required scopes
-            // missing: evData" -- constate le 22/09/2026 sur /v1/telemetry
-            // et /v1/electric/departure-times.
-            'scope' => 'openid offline_access evData',
         ]);
 
         return redirect(config('services.ford.authorize_url').'?'.$query);
