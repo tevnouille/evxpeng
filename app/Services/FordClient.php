@@ -41,6 +41,16 @@ class FordClient
         return $this->get('/v1/telemetry');
     }
 
+    /**
+     * URL d'une image composite du vehicule (cache CDN Ford, construite a
+     * partir du VIN) -- contrairement a garage()/telemetry(), n'a pas besoin
+     * du scope evData, juste vehicleBasicInfo/vehicleData deja accordes.
+     */
+    public function vehicleImageUrl(): ?string
+    {
+        return $this->get('/v1/vehicle-image')['vehicleImage'] ?? null;
+    }
+
     /** @return array<string, mixed> */
     private function get(string $path): array
     {

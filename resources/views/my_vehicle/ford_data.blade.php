@@ -17,6 +17,12 @@
         </div>
     @endif
 
+    @if ($imageUrl)
+        <figure class="image mb-4" style="max-width: 480px;">
+            <img src="{{ $imageUrl }}" alt="Photo du véhicule (cache constructeur Ford)">
+        </figure>
+    @endif
+
     @if ($dernier)
         <div class="box">
             <div class="columns is-mobile is-multiline mb-1">

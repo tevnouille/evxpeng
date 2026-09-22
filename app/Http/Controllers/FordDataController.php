@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\FordOAuthToken;
 use App\Models\FordTelemetry;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\View\View;
 
 /**
@@ -29,6 +30,9 @@ class FordDataController extends Controller
             ->get();
 
         return view('my_vehicle.ford_data', [
+            // Simple lecture : le cache est rempli par ford:sync, jamais ici
+            // (voir son commentaire).
+            'imageUrl' => Cache::get('ford_vehicle_image_url'),
             'dernierJeton' => FordOAuthToken::where('vin', config('services.ford.vin'))->first(),
             'dernier' => $releves->last(),
             'releves' => $releves,

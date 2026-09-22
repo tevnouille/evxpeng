@@ -6,15 +6,18 @@ use App\Models\FordTelemetry;
 use App\Services\FordClient;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Interroge l'API FordConnect Query et enregistre un releve.
  *
  * Contrairement a xpeng:sync (export asynchrone, quota strict de 5
  * soumissions/24h), FordConnect Query repond l'etat courant a chaque appel :
- * un GET direct suffit, pas de file d'attente a interroger. Aucun quota
- * publie pour ce point d'entree ; la cadence planifiee (routes/console.php)
- * reste prudente en attendant d'en savoir plus en conditions reelles.
+ * un GET direct suffit, pas de file d'attente a interroger. Quota non publie,
+ * mais bien reel : une rafale de verifications manuelles a declenche un 429
+ * "Rate limit exceeded. Please wait 1 hour" le 22/09/2026. La cadence
+ * planifiee (routes/console.php, un seul appel par execution) en est tres
+ * loin, mais eviter les appels manuels a repetition en dehors de celle-ci.
  */
 class SyncFordData extends Command
 {
@@ -66,6 +69,22 @@ class SyncFordData extends Command
             'ignition_status' => $metriques['ignitionStatus']['value'] ?? null,
             'metrics' => $metriques,
         ]);
+
+        // Mise en cache indefinie : l'URL ne bouge pas (construite depuis le
+        // VIN cote CDN Ford), un seul appel a /v1/vehicle-image pour de bon.
+        // Fait ici plutot que dans FordDataController, qui ne doit jamais
+        // appeler l'API depuis une requete HTTP entrante (meme principe que
+        // XpengDataController). Best-effort : un echec ici (429 constate le
+        // 22/09/2026, Ford applique bien une limite de debit malgre l'absence
+        // de quota publie) ne doit jamais faire perdre le releve deja acquis
+        // ci-dessus.
+        if (! Cache::has('ford_vehicle_image_url')) {
+            try {
+                Cache::forever('ford_vehicle_image_url', $client->vehicleImageUrl());
+            } catch (\Throwable $e) {
+                $this->warn("Ford : recuperation de l'image du vehicule echouee : {$e->getMessage()}");
+            }
+        }
 
         $this->info('Ford : relevé enregistré.');
 
