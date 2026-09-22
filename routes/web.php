@@ -10,6 +10,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DetectedChargeController;
 use App\Http\Controllers\DataSourceController;
 use App\Http\Controllers\FavoriteRouteController;
+use App\Http\Controllers\FordAuthController;
 use App\Http\Controllers\FuelPriceController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\InfoCarController;
@@ -87,6 +88,14 @@ Route::get('/ma-voiture/statistiques-obd', [ObdStatsController::class, 'index'])
 Route::get('/ma-voiture/kilometrage', [MileageController::class, 'index'])
     ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
     ->name('my-vehicle.mileage');
+
+// Point de retour de l'autorisation FordConnect (OAuth2) : a enregistrer
+// comme redirect_uri sur developer.ford.com pour l'app dont FORD_CLIENT_ID/
+// FORD_CLIENT_SECRET viennent en .env. Reserve a l'administrateur : ecrit un
+// jeton d'acces valable pour tout le compte (App\Models\FordOAuthToken).
+Route::get('/ma-voiture/donnees-ford/callback', [FordAuthController::class, 'callback'])
+    ->middleware(\App\Http\Middleware\RequiresAdmin::class)
+    ->name('my-vehicle.ford.callback');
 
 // API constructeur (App\Services\XpengClient), distincte du boitier OBD/MQTT
 // ci-dessus : pas de telemetrie en direct, juste le suivi d'un export

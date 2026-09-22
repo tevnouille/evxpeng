@@ -93,4 +93,26 @@ return [
         'scope_code' => env('XPENG_SCOPE_CODE'),
     ],
 
+    'ford' => [
+        // API FordConnect (App\Services\FordClient) : client_id/client_secret
+        // viennent de l'inscription sur developer.ford.com. Distinct de
+        // l'autorisation par vehicule (access_token/refresh_token), qui elle
+        // vit en base (App\Models\FordOAuthToken) et non ici : le
+        // refresh_token tourne a chaque utilisation cote Ford.
+        'base_url' => env('FORD_BASE_URL', 'https://api.mps.ford.com/api/fordconnect/vehicles/v3'),
+        // Domaine + tenant partages par tous les partenaires FordConnect (vus
+        // dans plusieurs implementations tierces publiques, pas propres a ce
+        // compte) : seuls client_id/client_secret distinguent une app d'une
+        // autre aupres de ce meme point d'entree.
+        'token_url' => env('FORD_TOKEN_URL', 'https://dah2vb2cprod.b2clogin.com/914d88b1-3523-4bf6-9be4-1b96b4f6f919/oauth2/v2.0/token?p=B2C_1A_signup_signin_common'),
+        // Constante publique du programme FordConnect, exigee en en-tete de
+        // chaque appel a l'API (vue dans plusieurs implementations tierces
+        // publiques) -- ne s'obtient pas depuis developer.ford.com.
+        'application_id' => env('FORD_APPLICATION_ID', 'AFDC085B-377A-4351-B23E-5E1D35FB3700'),
+        'client_id' => env('FORD_CLIENT_ID'),
+        'client_secret' => env('FORD_CLIENT_SECRET'),
+        'vin' => env('FORD_VIN'),
+        'redirect_uri' => env('FORD_REDIRECT_URI'),
+    ],
+
 ];
