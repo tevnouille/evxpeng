@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\FordTelemetry;
 use App\Services\FordClient;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 
 /**
  * Interroge l'API FordConnect Query et enregistre un releve.
@@ -46,9 +47,17 @@ class SyncFordData extends Command
 
         $metriques = $telemetry['metrics'] ?? [];
 
+        // updateTime est un horodatage UTC (suffixe Z) : le convertir avant
+        // l'ecriture, sinon la colonne (sans notion de fuseau sur MariaDB) le
+        // relit plus tard comme s'il etait deja en heure locale -- meme piege
+        // deja rencontre pour XpengExportParser et IngestMqttTelemetry.
+        $recordedAt = isset($telemetry['updateTime'])
+            ? Carbon::parse($telemetry['updateTime'])->setTimezone(config('app.timezone'))
+            : now();
+
         FordTelemetry::create([
             'vin' => $telemetry['vin'] ?? config('services.ford.vin'),
-            'recorded_at' => $telemetry['updateTime'] ?? now(),
+            'recorded_at' => $recordedAt,
             'soc' => $metriques['batteryStateOfCharge']['value'] ?? null,
             'odometre_km' => $metriques['odometer']['value'] ?? null,
             'battery_voltage' => $metriques['batteryVoltage']['value'] ?? null,
