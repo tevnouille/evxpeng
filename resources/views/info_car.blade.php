@@ -1065,6 +1065,17 @@
         // Marge de 20 % autour des positions extremes, avec un plancher : sans
         // lui, une voiture restee au meme endroit toute la journee degenererait
         // sur une bbox de largeur nulle.
+        //
+        // L'iframe OSM (Leaflet) n'affiche jamais exactement la bbox demandee :
+        // elle l'agrandit sur l'un des deux axes pour remplir le cadre sans le
+        // deformer, comme le fait tout `fitBounds`. Sans en tenir compte ici,
+        // notre projection lineaire (voir projeter()) suppose une bbox affichee
+        // telle quelle et place donc les boutons au mauvais endroit des que la
+        // forme de la bbox (ecart lat/lon) ne correspond pas au ratio largeur/
+        // hauteur du cadre -- constate le 23/09/2026, boutons decales par
+        // rapport au trajet reel. On elargit ici l'axe le plus court pour que
+        // la bbox envoyee ait deja le bon ratio, et que Leaflet n'ait plus
+        // besoin de l'ajuster de son cote.
         function calculerBbox(points) {
             var minLat = points[0].lat, maxLat = points[0].lat;
             var minLon = points[0].lon, maxLon = points[0].lon;
@@ -1078,11 +1089,35 @@
 
             var margeLat = Math.max((maxLat - minLat) * 0.2, 0.003);
             var margeLon = Math.max((maxLon - minLon) * 0.2, 0.003);
+            minLat -= margeLat; maxLat += margeLat;
+            minLon -= margeLon; maxLon += margeLon;
 
-            return {
-                minLat: minLat - margeLat, maxLat: maxLat + margeLat,
-                minLon: minLon - margeLon, maxLon: maxLon + margeLon,
-            };
+            var rect = carte.getBoundingClientRect();
+            var ratioCadre = (rect.width > 0 && rect.height > 0) ? (rect.width / rect.height) : 1;
+
+            // Un degre de longitude vaut cos(latitude) degres de latitude en
+            // distance reelle : sans ce facteur, l'ajustement serait lui-meme
+            // fausse a cette latitude (un degre de longitude a Paris ne fait
+            // pas la meme distance qu'a l'equateur).
+            var facteurLon = Math.cos((minLat + maxLat) / 2 * Math.PI / 180) || 1;
+
+            var largeurDeg = (maxLon - minLon) * facteurLon;
+            var hauteurDeg = maxLat - minLat;
+            var ratioActuel = largeurDeg / hauteurDeg;
+
+            if (ratioActuel < ratioCadre) {
+                var largeurVoulueDeg = hauteurDeg * ratioCadre;
+                var extraLon = (largeurVoulueDeg / facteurLon - (maxLon - minLon)) / 2;
+                minLon -= extraLon;
+                maxLon += extraLon;
+            } else {
+                var hauteurVoulueDeg = largeurDeg / ratioCadre;
+                var extraLat = (hauteurVoulueDeg - hauteurDeg) / 2;
+                minLat -= extraLat;
+                maxLat += extraLat;
+            }
+
+            return { minLat: minLat, maxLat: maxLat, minLon: minLon, maxLon: maxLon };
         }
 
         // Projection lineaire simple lat/lon -> pourcentage dans le cadre :
