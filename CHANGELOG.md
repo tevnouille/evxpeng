@@ -18,6 +18,7 @@ change rien de visible. La même liste s'affiche sur `/changelog`.
 - **Nouveauté** — « Données Ford » affiche aussi une photo du véhicule, fournie par l'API constructeur.
 - **Nouveauté** — Sur « Info voiture », le bouton d'onglet « Info » passe en rouge si le boîtier n'a rien publié depuis plus de deux minutes — jusqu'ici rien ne distinguait un relevé périmé des chiffres à jour.
 - **Nouveauté** — Sur « Info voiture », l'onglet Position affiche désormais un petit bouton par position retenue de la journée directement sur la carte, plutôt qu'un seul point fixe. Toucher un bouton zoome sur ce point précis ; un bouton « Vue du jour » permet de revenir à l'ensemble.
+- **Nouveauté** — « Info voiture » gagne une tuile « Limite de vitesse », d'après le tag OpenStreetMap de la route la plus proche — pas une lecture de panneau, elle peut donc manquer sur les petites routes. La tuile « Autonomie estimée » alterne aussi une estimation du véhicule lui-même (CLTC) et une autonomie calculée d'après la consommation réellement observée, en plus du calcul habituel.
 - **Amélioration** — La récupération quotidienne des données Xpeng retente désormais à 8h15 si le passage de 6h15 n'a pas rapporté de fichier (export encore en cours de génération chez Xpeng au-delà des 80 secondes d'attente) — jusqu'ici il fallait attendre le lendemain.
 
 ## 21 septembre 2026
