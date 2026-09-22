@@ -54,16 +54,21 @@
            A la ligne sous le titre : quatre onglets ne tenaient plus a cote du
            badge d'etat sans se comprimer illisiblement. */
         .onglets { display: flex; flex-wrap: wrap; gap: 1vw; margin: 0 0 1.2vh; flex: 0 0 auto; }
+        /* Icone seule (voir le commentaire sur les boutons plus bas) : carre
+           plutot que pilule allongee, mais toujours une cible tactile
+           genereuse -- clamp() suit la meme logique que le reste de la page. */
         .onglets button {
-            font: inherit; font-size: clamp(.75rem, 2.6vh, 1.05rem); font-weight: 600;
-            padding: .5em 1.4em; border: 1px solid #d0d0d0; border-radius: 999px;
-            background: #f4f4f4; color: #4a4a4a; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            width: clamp(2.4rem, 7.5vh, 3.2rem); height: clamp(2.4rem, 7.5vh, 3.2rem);
+            padding: .5em; border: 1px solid #d0d0d0; border-radius: 999px;
+            background: #f4f4f4; cursor: pointer;
         }
-        .onglets button[aria-current="page"] { background: #2ea36b; border-color: #2ea36b; color: #fff; }
+        .onglets button svg { width: 60%; height: 60%; }
+        .onglets button[aria-current="page"] { background: #2ea36b; border-color: #2ea36b; }
         /* Prime sur aria-current (regle precedente, meme specificite) : plus
            de releve recent est plus urgent a signaler que l'onglet actif.
            Meme rouge que la jauge batterie basse (.jauge-basse). */
-        .onglets button.perime { background: #c0392b; border-color: #c0392b; color: #fff; }
+        .onglets button.perime { background: #c0392b; border-color: #c0392b; }
         /* Le titre ouvre le plein ecran : pas garanti sur le navigateur
            embarque de la voiture ("on verra bien"), mais gratuit a tenter et
            sans consequence en cas d'echec silencieux. */
@@ -256,7 +261,7 @@
             .titre, .note, .fraicheur, .valeur .unite, thead th { color: #a0a4ab; }
             .jauge, .attente { background: #2c3037; }
             .attente span { background: #5a6069; }
-            .onglets button { background: #24272d; border-color: #3a3f47; color: #d5d8dd; }
+            .onglets button { background: #24272d; border-color: #3a3f47; }
             thead th { border-bottom-color: #3a3f47; }
             tbody tr + tr td { border-top-color: #24272d; }
             .recouvrement .carte { background: #20232a; }
@@ -298,13 +303,46 @@
         <span class="etat {{ $classes[$state['state']] ?? 'arret' }}">{{ $state['label'] }}</span>
     </header>
 
+    {{-- Icone seule plutot que texte + icone : sur quatre onglets a la
+         ligne sous le titre, le texte forçait deja a comprimer illisiblement
+         (voir plus haut) ; l'icone colorée se distingue davantage au premier
+         coup d'oeil en conduisant qu'un mot dans une police minuscule. Le
+         libelle reste present en aria-label/title pour le lecteur d'ecran et
+         l'aide tactile longue. --}}
     <div class="onglets">
         <button type="button" data-vue="info" aria-current="page" @class(['perime' => $mqttPerime])
-            title="{{ $mqttPerime ? 'Aucun relevé du boîtier depuis plus de deux minutes : les chiffres affichés peuvent être périmés.' : '' }}">Info</button>
-        <button type="button" data-vue="recharge">Recharge</button>
-        <button type="button" data-vue="courbe">Courbe</button>
+            aria-label="Info"
+            title="{{ $mqttPerime ? 'Aucun relevé du boîtier depuis plus de deux minutes : les chiffres affichés peuvent être périmés.' : 'Info' }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#3e8ed0" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9"/>
+                <line x1="12" y1="11" x2="12" y2="16"/>
+                <circle cx="12" cy="7.5" r="1" fill="#3e8ed0" stroke="none"/>
+            </svg>
+        </button>
+        <button type="button" data-vue="recharge" aria-label="Recharge" title="Recharge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 18H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.2M15 6h2a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-3.2"/>
+                <line x1="23" y1="13" x2="23" y2="11"/>
+                <polyline points="11 6 7 12 13 12 9 18"/>
+            </svg>
+        </button>
+        <button type="button" data-vue="courbe" aria-label="Courbe" title="Courbe">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#9b59b6" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="22 7 14 15 10 11 2 19"/>
+                <polyline points="16 7 22 7 22 13"/>
+            </svg>
+        </button>
         @if ($position)
-            <button type="button" data-vue="position">Position</button>
+            <button type="button" data-vue="position" aria-label="Position" title="Position">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#f14668" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 21s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12z"/>
+                    <circle cx="12" cy="9" r="2.5"/>
+                </svg>
+            </button>
         @endif
     </div>
 
