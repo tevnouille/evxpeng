@@ -99,12 +99,15 @@ return [
         // l'autorisation par vehicule (access_token/refresh_token), qui elle
         // vit en base (App\Models\FordOAuthToken) et non ici : le
         // refresh_token tourne a chaque utilisation cote Ford.
-        'base_url' => env('FORD_BASE_URL', 'https://api.mps.ford.com/api/fordconnect/vehicles/v3'),
-        // Domaine + tenant partages par tous les partenaires FordConnect (vus
-        // dans plusieurs implementations tierces publiques, pas propres a ce
-        // compte) : seuls client_id/client_secret distinguent une app d'une
-        // autre aupres de ce meme point d'entree.
-        'token_url' => env('FORD_TOKEN_URL', 'https://dah2vb2cprod.b2clogin.com/914d88b1-3523-4bf6-9be4-1b96b4f6f919/oauth2/v2.0/token?p=B2C_1A_signup_signin_common'),
+        // "FordConnect Query" (v1/garage, v1/telemetry) : le programme actuel,
+        // distinct de l'ancien api.mps.ford.com/api/fordconnect/vehicles/v3
+        // (toujours documente ca et la, mais pas ce que expose ce compte).
+        'base_url' => env('FORD_BASE_URL', 'https://api.vehicle.ford.com/fcon-query'),
+        // Domaine + tenant + politique propres a FordConnect Query (verifies
+        // le 22/09/2026 via le client officiel d'evcc, apres un premier essai
+        // rate sur le tenant/politique B2C generique -- kid introuvable pour
+        // le JWE, la politique ne correspondait pas a celle qui a emis le code).
+        'token_url' => env('FORD_TOKEN_URL', 'https://api.vehicle.ford.com/dah2vb2cprod.onmicrosoft.com/oauth2/v2.0/token?p=B2C_1A_FCON_AUTHORIZE'),
         // Point d'entree reel de l'autorisation FordConnect, confirme le
         // 22/09/2026 -- absent de developer.ford.com, gere lui-meme la
         // redirection vers la connexion Ford/FordPass puis vers redirect_uri.
