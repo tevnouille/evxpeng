@@ -441,6 +441,14 @@
                     @endif
                 </div>
             @endif
+
+            @if ($vitesseLimite !== null)
+                <div>
+                    <p class="titre">Limite de vitesse</p>
+                    <p class="valeur">{{ $vitesseLimite }}<span class="unite"> km/h</span></p>
+                    <p class="note">route la plus proche (OpenStreetMap)</p>
+                </div>
+            @endif
         </div>
     </div>
 

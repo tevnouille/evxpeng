@@ -7,6 +7,7 @@ use App\Services\BatteryHealth;
 use App\Services\ChargeCurveSimulator;
 use App\Services\ChargingCurveRepository;
 use App\Services\ReverseGeocoder;
+use App\Services\SpeedLimitLookup;
 use App\Services\VehicleState;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -46,6 +47,7 @@ class InfoCarController extends Controller
         private readonly ChargeCurveSimulator $simulator,
         private readonly ReverseGeocoder $geocoder,
         private readonly BatteryHealth $battery,
+        private readonly SpeedLimitLookup $speedLimit,
     ) {
     }
 
@@ -449,6 +451,12 @@ class InfoCarController extends Controller
             ? ['lat' => (float) $telemetry->lat, 'lon' => (float) $telemetry->lon]
             : null;
 
+        // Donnee OpenStreetMap (tag maxspeed), pas une lecture de panneau :
+        // voir le docblock de SpeedLimitLookup pour ses limites.
+        $vitesseLimite = $position
+            ? $this->speedLimit->forPosition($position['lat'], $position['lon'])
+            : null;
+
         // La courbe passe par forVehicle() : les paliers releves sur cette
         // voiture priment sur la reference du modele quand ils existent.
         $courbe = $this->curves->forVehicle($vehicle);
@@ -482,6 +490,7 @@ class InfoCarController extends Controller
             'cltcRange' => $cltcRange,
             'rangeDynamique' => $rangeDynamique,
             'position' => $position,
+            'vitesseLimite' => $vitesseLimite,
             'ecartCellules' => $this->battery->medianGap($history),
             'refreshSeconds' => VehicleState::REFRESH_SECONDS[$state['state'] ?? VehicleState::PARKED]
                 ?? VehicleState::REFRESH_SECONDS[VehicleState::PARKED],
