@@ -696,6 +696,22 @@
                         boutonInfoActuel.title = boutonInfoFrais.title;
                     }
 
+                    // La carte de l'onglet Position vit elle aussi hors des
+                    // ZONES_A_RAFRAICHIR (voir plus bas dans le fichier) : ce
+                    // n'est pas un simple remplacement de HTML, elle doit
+                    // reconstruire l'iframe OpenStreetMap avec les positions
+                    // fraiches. On ne fait que poser les nouvelles donnees et
+                    // prevenir -- la reconstruction elle-meme vit avec le
+                    // reste du code de cette carte.
+                    var vuePositionFraiche = frais.getElementById('vue-position');
+                    var vuePositionActuelle = document.getElementById('vue-position');
+                    if (vuePositionFraiche && vuePositionActuelle) {
+                        vuePositionActuelle.dataset.lat = vuePositionFraiche.dataset.lat;
+                        vuePositionActuelle.dataset.lon = vuePositionFraiche.dataset.lon;
+                        vuePositionActuelle.dataset.positions = vuePositionFraiche.dataset.positions;
+                        vuePositionActuelle.dispatchEvent(new Event('donnees-fraiches'));
+                    }
+
                     for (var i = 0; i < ZONES_A_RAFRAICHIR.length; i++) {
                         var actuelle = document.getElementById(ZONES_A_RAFRAICHIR[i]);
                         var neuve = frais.getElementById(ZONES_A_RAFRAICHIR[i]);
@@ -1047,19 +1063,26 @@
             }
         }
 
-        // Vue d'ensemble : un bouton par position retenue du jour (voir
-        // InfoCarController::positionsDuJour), chacun rouvrant la carte
-        // zoomee sur ce point precis au clic.
+        // Vue d'ensemble : le marqueur natif d'OpenStreetMap pour la position
+        // actuelle (le seul que l'embed sache dessiner), et un petit bouton
+        // par position retenue du jour (voir InfoCarController::positionsDuJour)
+        // par-dessus, chacun rouvrant la carte zoomee sur ce point precis au
+        // clic.
         function afficherVueJour() {
             viderCarte();
 
+            var actuelle = { lat: parseFloat(vue.dataset.lat), lon: parseFloat(vue.dataset.lon) };
+
             if (positions.length === 0) {
-                afficherPoint({ lat: parseFloat(vue.dataset.lat), lon: parseFloat(vue.dataset.lon) }, false);
+                afficherPoint(actuelle, false);
                 return;
             }
 
-            var bbox = calculerBbox(positions);
-            carte.appendChild(construireIframe(bbox, null));
+            // La position actuelle peut etre plus recente que le dernier point
+            // retenu du jour : elle participe donc aussi au calcul de la bbox,
+            // sans quoi le marqueur pourrait tomber hors du cadre.
+            var bbox = calculerBbox(positions.concat([actuelle]));
+            carte.appendChild(construireIframe(bbox, actuelle));
 
             positions.forEach(function (point) {
                 var p = projeter(bbox, point);
@@ -1074,33 +1097,34 @@
             });
         }
 
+        // Contrairement aux ecrans Batterie/Communes (voir « recouvrements »
+        // plus haut), la carte ne suspend plus le rechargement automatique :
+        // elle doit au contraire suivre la meme cadence que le reste de la
+        // page, pour montrer une position actuelle qui avance.
         var boutons = document.querySelectorAll('.onglets button');
 
         for (var i = 0; i < boutons.length; i++) {
             boutons[i].addEventListener('click', function (e) {
-                if (e.currentTarget.dataset.vue !== 'position') {
-                    // Quitter la carte remet le compte a rebours en marche : le
-                    // suspendre sans jamais le reprendre laissait la page figee
-                    // pour de bon des qu'on avait regarde la position une fois.
-                    rechargement.reprendre();
-                    return;
-                }
-
-                // Le rechargement est suspendu tant que la carte est affichee :
-                // elle serait reconstruite toutes les minutes, et rappellerait
-                // OpenStreetMap a chaque fois.
-                rechargement.suspendre();
-
+                if (e.currentTarget.dataset.vue !== 'position') { return; }
                 if (carte.childElementCount > 0) { return; }
 
                 afficherVueJour();
             });
         }
 
+        // Chaque rechargement (navigation complete ou mise a jour sur place
+        // en plein ecran, voir rafraichirSurPlace) pose des positions
+        // fraiches sur #vue-position et previent via cet evenement : la carte
+        // ne se reconstruit que si l'onglet est reellement affiche, pour ne
+        // pas rappeler OpenStreetMap dans le dos de qui regarde un autre onglet.
+        vue.addEventListener('donnees-fraiches', function () {
+            try { positions = JSON.parse(vue.dataset.positions || '[]'); } catch (e) { positions = []; }
+            if (!vue.hidden) { afficherVueJour(); }
+        });
+
         // L'ancre survit au rechargement : arriver directement sur l'onglet
         // Position doit inserer la carte, sans attendre un clic qui n'aura pas lieu.
         if (window.location.hash === '#position') {
-            rechargement.suspendre();
             var declencheur = document.querySelector('.onglets button[data-vue=\"position\"]');
             if (declencheur) { declencheur.click(); }
         }
