@@ -256,6 +256,58 @@ class InfoCarController extends Controller
     }
 
     /**
+     * Consommation apparente (kWh/100 km) sur la fenetre glissante fournie,
+     * a partir des seules baisses de SoC -- la charge est ignoree, elle
+     * fausserait le ratio a cette granularite. Sous 20 km parcourus, le
+     * ratio ne veut plus dire grand-chose, meme logique que
+     * DailyVehicleActivity::MIN_KM_FOR_CONSUMPTION.
+     *
+     * @param  \Illuminate\Support\Collection<int, \App\Models\VehicleTelemetry>  $history
+     */
+    private function consommationRecente(\Illuminate\Support\Collection $history, ?float $netCapacity): ?float
+    {
+        if (! $netCapacity) {
+            return null;
+        }
+
+        $points = $history->whereNotNull('odometer')->whereNotNull('soc')->values();
+
+        if ($points->count() < 2) {
+            return null;
+        }
+
+        $km = 0.0;
+        $socConsomme = 0.0;
+        $precedent = null;
+
+        foreach ($points as $point) {
+            if ($precedent !== null) {
+                $deltaOdo = (float) $point->odometer - (float) $precedent->odometer;
+
+                // Meme garde-fou que DailyVehicleActivity::MAX_JUMP_KM contre
+                // un changement de source ou une remise a zero.
+                if ($deltaOdo > 0 && $deltaOdo <= 2000) {
+                    $km += $deltaOdo;
+                }
+
+                $deltaSoc = (float) $point->soc - (float) $precedent->soc;
+
+                if ($deltaSoc < 0) {
+                    $socConsomme += abs($deltaSoc);
+                }
+            }
+
+            $precedent = $point;
+        }
+
+        if ($km < 20 || $socConsomme <= 0) {
+            return null;
+        }
+
+        return round($socConsomme / 100 * $netCapacity / $km * 100, 1);
+    }
+
+    /**
      * Positions du jour, espacees d'au moins 150 m pour ne pas superposer des
      * boutons quasi au meme endroit (voiture a l'arret) -- puis
      * echantillonnees a 20 points au plus, repartis sur toute la journee
@@ -376,6 +428,21 @@ class InfoCarController extends Controller
         $consumption = $vehicle?->kwh_per_100km ? (float) $vehicle->kwh_per_100km : null;
         $rangeKm = ($availableKwh !== null && $consumption) ? (int) round($availableKwh / $consumption * 100) : null;
 
+        // Le boitier remonte lui-meme une estimation (a la seconde pres, pas
+        // documentee au-dela du nom du champ) : distincte de $rangeKm, calcule
+        // ici a partir d'une consommation fixe saisie sur la fiche du vehicule.
+        $cltcRange = $telemetry?->raw['telemetry']['CLTC_RANGE'] ?? null;
+
+        // Autonomie a partir de la consommation reellement observee plutot
+        // que la fiche du vehicule : uniquement les baisses de SoC sur la
+        // fenetre glissante $history (la charge est ignoree, elle fausserait
+        // le ratio a cette granularite -- meme raison que DailyVehicleActivity,
+        // qui ne calcule ce ratio qu'au mois, jamais au jour).
+        $consommationRecente = $this->consommationRecente($history, $netCapacity);
+        $rangeDynamique = ($availableKwh !== null && $consommationRecente)
+            ? (int) round($availableKwh / $consommationRecente * 100)
+            : null;
+
         $state = $this->state->describe($telemetry, $history);
 
         $position = ($telemetry?->lat && $telemetry?->lon)
@@ -412,6 +479,8 @@ class InfoCarController extends Controller
             'availableKwh' => $availableKwh,
             'netCapacity' => $netCapacity,
             'rangeKm' => $rangeKm,
+            'cltcRange' => $cltcRange,
+            'rangeDynamique' => $rangeDynamique,
             'position' => $position,
             'ecartCellules' => $this->battery->medianGap($history),
             'refreshSeconds' => VehicleState::REFRESH_SECONDS[$state['state'] ?? VehicleState::PARKED]

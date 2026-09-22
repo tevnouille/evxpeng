@@ -368,6 +368,12 @@
                 @if ($availableKwh !== null)
                     <p class="note">{{ str_replace('.', ',', (string) $availableKwh) }} kWh disponibles</p>
                 @endif
+                @if ($cltcRange !== null)
+                    <p class="note">{{ (int) $cltcRange }} km annoncés par le véhicule (CLTC)</p>
+                @endif
+                @if ($rangeDynamique !== null)
+                    <p class="note">{{ $rangeDynamique }} km d'après la consommation récente</p>
+                @endif
             </div>
 
             @if ($telemetry->batt_temp !== null || $telemetry->power_kw !== null)
