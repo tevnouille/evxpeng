@@ -89,6 +89,13 @@ Route::get('/ma-voiture/kilometrage', [MileageController::class, 'index'])
     ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
     ->name('my-vehicle.mileage');
 
+// Lance l'autorisation FordConnect : reconstruit le lien de connexion Ford
+// faute de le trouver expose sur developer.ford.com (voir le docblock de
+// FordAuthController::authorize).
+Route::get('/ma-voiture/donnees-ford/autoriser', [FordAuthController::class, 'authorize'])
+    ->middleware(\App\Http\Middleware\RequiresAdmin::class)
+    ->name('my-vehicle.ford.authorize');
+
 // Point de retour de l'autorisation FordConnect (OAuth2) : a enregistrer
 // comme redirect_uri sur developer.ford.com pour l'app dont FORD_CLIENT_ID/
 // FORD_CLIENT_SECRET viennent en .env. Reserve a l'administrateur : ecrit un
