@@ -5,10 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <title>{{ $vehicle?->name ?? 'Véhicule' }}</title>
-    {{-- Page entierement autonome : aucune feuille de style ni script externe.
-         Les assets du site sont derriere la passerelle passkey — les ouvrir
-         pour cette page aurait expose tout le front. Et sur le reseau mobile
-         d'une voiture, une seule requete vaut mieux que quatre. --}}
+    {{-- Page entierement autonome vis-a-vis de CE depot : aucune feuille de
+         style ni script de l'appli elle-meme, qui vivent derriere la
+         passerelle passkey — les ouvrir pour cette page exposerait tout le
+         front. Leaflet ci-dessous est une exception deliberee : bibliotheque
+         publique generique (celle-la meme qui equipe deja « Deplacements »,
+         resources/js/trips.js), chargee depuis un CDN public, elle ne revele
+         rien du site. Necessaire pour de vrais marqueurs ancres a la carte —
+         un essai precedent avec des boutons HTML par-dessus un simple iframe
+         OSM restait fige quand on deplaçait la carte, les deux n'ayant aucun
+         lien entre eux. --}}
+    @if ($position)
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    @endif
     <style>
         /*
          * Le navigateur de la voiture ne permet ni de zoomer ni de defiler :
@@ -236,33 +245,9 @@
         tbody td { font-size: clamp(.85rem, 3.6vh, 1.5rem); font-weight: 600; }
         tbody td:first-child { font-weight: 700; }
         tbody tr + tr td { border-top: 1px solid #efefef; }
-        #carte { height: 100%; min-height: 55vh; position: relative; }
-        #carte iframe { width: 100%; height: 100%; min-height: 55vh; border: 1px solid #dcdcdc; border-radius: 8px; }
-        /* Boutons superposes a l'iframe OSM (qui ne propose pas de marqueurs
-           multiples nativement) : projection lineaire simple depuis lat/lon,
-           largement suffisante sur l'echelle d'une seule journee. Meme style
-           que les points de trajet de « Déplacements » (L.circleMarker,
-           resources/js/trips.js) : petit rond colore, bordure blanche, sans
-           texte -- une cible tactile un peu plus grande que le rond visible,
-           pour rester touchable du doigt sans agrandir le point lui-meme. */
-        #carte .point-jour {
-            position: absolute; transform: translate(-50%, -50%);
-            width: 1.6em; height: 1.6em; padding: 0; border: none; cursor: pointer;
-            background: transparent;
-        }
-        #carte .point-jour::before {
-            content: ''; position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: .6em; height: .6em; border-radius: 50%;
-            background: #2ea36b; border: .12em solid #fff;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
-        }
-        #carte .retour-jour {
-            position: absolute; top: .5em; left: .5em; z-index: 2;
-            font: inherit; font-size: .75rem; font-weight: 600;
-            padding: .4em .9em; border-radius: 999px; border: 1px solid #d0d0d0;
-            background: #fff; cursor: pointer; box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
-        }
+        /* Vraie carte Leaflet (pas un iframe) : height/min-height necessaires,
+           Leaflet ne se dimensionne jamais tout seul. */
+        #carte { height: 100%; min-height: 55vh; border-radius: 8px; overflow: hidden; }
         #courbe-autonomie { width: 100%; flex: 1 1 auto; min-height: 0; }
         .atteint { color: #2ea36b; font-weight: 600; }
         .inconnu { color: #9a9a9a; font-weight: 400; }
@@ -273,11 +258,6 @@
             .attente span { background: #5a6069; }
             .onglets button { background: #24272d; border-color: #3a3f47; color: #d5d8dd; }
             thead th { border-bottom-color: #3a3f47; }
-            #carte iframe { border-color: #3a3f47; }
-            /* .point-jour n'a rien a adapter : le point lui-meme (::before)
-               garde ses couleurs fixes (vert + bordure blanche), lisibles
-               sur les deux fonds. */
-            #carte .retour-jour { background: #24272d; border-color: #3a3f47; color: #d5d8dd; }
             tbody tr + tr td { border-top-color: #24272d; }
             .recouvrement .carte { background: #20232a; }
             .recouvrement button.fermer { background: #24272d; border-color: #3a3f47; color: #d5d8dd; }
@@ -576,6 +556,13 @@
             </div>
         </div>
     @endif
+@endif
+
+@if ($position)
+    {{-- Charge avant le script principal (synchrone, pas de defer) : ce
+         dernier construit la carte Leaflet des l'ouverture de l'onglet
+         Position, `L` doit donc deja exister. --}}
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 @endif
 
 <script>
@@ -1049,150 +1036,84 @@
     (function () {
         var vue = document.getElementById('vue-position');
 
-        if (!vue) { return; }
-
-        var carte = document.getElementById('carte');
+        if (!vue || typeof L === 'undefined') { return; }
 
         var positions = [];
         try { positions = JSON.parse(vue.dataset.positions || '[]'); } catch (e) { positions = []; }
 
-        function viderCarte() {
-            while (carte.firstChild) { carte.removeChild(carte.firstChild); }
+        var map = null;
+        var couche = null;
+
+        function positionActuelle() {
+            return { lat: parseFloat(vue.dataset.lat), lon: parseFloat(vue.dataset.lon) };
         }
 
-        function construireIframe(bbox, marqueur) {
-            var cadre = document.createElement('iframe');
-            var src = 'https://www.openstreetmap.org/export/embed.html?bbox='
-                + [bbox.minLon, bbox.minLat, bbox.maxLon, bbox.maxLat].join(',')
-                + '&layer=mapnik';
-            if (marqueur) { src += '&marker=' + marqueur.lat + ',' + marqueur.lon; }
-            cadre.src = src;
-            cadre.loading = 'lazy';
-            cadre.referrerPolicy = 'no-referrer';
-            return cadre;
+        // Meme style que les marqueurs de « Déplacements »
+        // (L.circleMarker, resources/js/trips.js) : rond colore, bordure
+        // blanche, popup au tap plutot qu'un texte visible en permanence
+        // (pas la place sur un ecran qui ne defile pas).
+        function marqueurPoint(point) {
+            return L.circleMarker([point.lat, point.lon], {
+                radius: 5, color: '#fff', weight: 2, fillColor: '#2ea36b', fillOpacity: 1,
+            }).bindPopup(point.heure);
         }
 
-        // Marge de 20 % autour des positions extremes, avec un plancher : sans
-        // lui, une voiture restee au meme endroit toute la journee degenererait
-        // sur une bbox de largeur nulle.
+        function marqueurActuel(point) {
+            return L.circleMarker([point.lat, point.lon], {
+                radius: 9, color: '#fff', weight: 3, fillColor: '#f14668', fillOpacity: 1,
+            }).bindPopup('Position actuelle');
+        }
+
+        function initCarte() {
+            if (map) { return; }
+
+            map = L.map('carte', { attributionControl: true });
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
+            }).addTo(map);
+            couche = L.layerGroup().addTo(map);
+        }
+
+        // De vrais marqueurs Leaflet, ancres a la carte comme sur
+        // « Déplacements » : contrairement au precedent essai (des boutons
+        // HTML poses par-dessus un simple iframe OSM), ils restent a leur
+        // place quand on deplace ou zoome la carte, puisqu'ils en font
+        // partie -- signale casse le 23/09/2026 sur cet essai precedent.
         //
-        // L'iframe OSM (Leaflet) n'affiche jamais exactement la bbox demandee :
-        // elle l'agrandit sur l'un des deux axes pour remplir le cadre sans le
-        // deformer, comme le fait tout `fitBounds`. Sans en tenir compte ici,
-        // notre projection lineaire (voir projeter()) suppose une bbox affichee
-        // telle quelle et place donc les boutons au mauvais endroit des que la
-        // forme de la bbox (ecart lat/lon) ne correspond pas au ratio largeur/
-        // hauteur du cadre -- constate le 23/09/2026, boutons decales par
-        // rapport au trajet reel. On elargit ici l'axe le plus court pour que
-        // la bbox envoyee ait deja le bon ratio, et que Leaflet n'ait plus
-        // besoin de l'ajuster de son cote.
-        function calculerBbox(points) {
-            var minLat = points[0].lat, maxLat = points[0].lat;
-            var minLon = points[0].lon, maxLon = points[0].lon;
+        // ajusterVue distingue l'ouverture de l'onglet (on montre l'ensemble
+        // du jour) du simple rafraichissement periodique (on ne fait que
+        // deplacer les marqueurs) : sans cette distinction, chaque
+        // rafraichissement recentrerait la carte et annulerait un zoom/
+        // deplacement manuel en cours.
+        function dessiner(ajusterVue) {
+            initCarte();
+            couche.clearLayers();
 
-            for (var i = 1; i < points.length; i++) {
-                minLat = Math.min(minLat, points[i].lat);
-                maxLat = Math.max(maxLat, points[i].lat);
-                minLon = Math.min(minLon, points[i].lon);
-                maxLon = Math.max(maxLon, points[i].lon);
-            }
-
-            var margeLat = Math.max((maxLat - minLat) * 0.2, 0.003);
-            var margeLon = Math.max((maxLon - minLon) * 0.2, 0.003);
-            minLat -= margeLat; maxLat += margeLat;
-            minLon -= margeLon; maxLon += margeLon;
-
-            var rect = carte.getBoundingClientRect();
-            var ratioCadre = (rect.width > 0 && rect.height > 0) ? (rect.width / rect.height) : 1;
-
-            // Un degre de longitude vaut cos(latitude) degres de latitude en
-            // distance reelle : sans ce facteur, l'ajustement serait lui-meme
-            // fausse a cette latitude (un degre de longitude a Paris ne fait
-            // pas la meme distance qu'a l'equateur).
-            var facteurLon = Math.cos((minLat + maxLat) / 2 * Math.PI / 180) || 1;
-
-            var largeurDeg = (maxLon - minLon) * facteurLon;
-            var hauteurDeg = maxLat - minLat;
-            var ratioActuel = largeurDeg / hauteurDeg;
-
-            if (ratioActuel < ratioCadre) {
-                var largeurVoulueDeg = hauteurDeg * ratioCadre;
-                var extraLon = (largeurVoulueDeg / facteurLon - (maxLon - minLon)) / 2;
-                minLon -= extraLon;
-                maxLon += extraLon;
-            } else {
-                var hauteurVoulueDeg = largeurDeg / ratioCadre;
-                var extraLat = (hauteurVoulueDeg - hauteurDeg) / 2;
-                minLat -= extraLat;
-                maxLat += extraLat;
-            }
-
-            return { minLat: minLat, maxLat: maxLat, minLon: minLon, maxLon: maxLon };
-        }
-
-        // Projection lineaire simple lat/lon -> pourcentage dans le cadre :
-        // l'iframe OSM ne permet pas de recuperer sa propre projection, mais
-        // sur l'echelle d'une seule journee l'approximation ne se voit pas.
-        function projeter(bbox, point) {
-            return {
-                x: (point.lon - bbox.minLon) / (bbox.maxLon - bbox.minLon) * 100,
-                y: (bbox.maxLat - point.lat) / (bbox.maxLat - bbox.minLat) * 100,
-            };
-        }
-
-        function afficherPoint(point, avecRetour) {
-            viderCarte();
-
-            var d = 0.006;
-            var bbox = { minLon: point.lon - d, minLat: point.lat - d, maxLon: point.lon + d, maxLat: point.lat + d };
-            carte.appendChild(construireIframe(bbox, point));
-
-            if (avecRetour) {
-                var retour = document.createElement('button');
-                retour.type = 'button';
-                retour.className = 'retour-jour';
-                retour.textContent = '‹ Vue du jour';
-                retour.addEventListener('click', afficherVueJour);
-                carte.appendChild(retour);
-            }
-        }
-
-        // Vue d'ensemble : le marqueur natif d'OpenStreetMap pour la position
-        // actuelle (le seul que l'embed sache dessiner), et un petit bouton
-        // par position retenue du jour (voir InfoCarController::positionsDuJour)
-        // par-dessus, chacun rouvrant la carte zoomee sur ce point precis au
-        // clic.
-        function afficherVueJour() {
-            viderCarte();
-
-            var actuelle = { lat: parseFloat(vue.dataset.lat), lon: parseFloat(vue.dataset.lon) };
-
-            if (positions.length === 0) {
-                afficherPoint(actuelle, false);
-                return;
-            }
-
-            // La position actuelle peut etre plus recente que le dernier point
-            // retenu du jour : elle participe donc aussi au calcul de la bbox,
-            // sans quoi le marqueur pourrait tomber hors du cadre.
-            var bbox = calculerBbox(positions.concat([actuelle]));
-            carte.appendChild(construireIframe(bbox, actuelle));
+            var actuelle = positionActuelle();
+            var tousLesPoints = positions.concat([actuelle]);
 
             positions.forEach(function (point) {
-                var p = projeter(bbox, point);
-                var bouton = document.createElement('button');
-                bouton.type = 'button';
-                bouton.className = 'point-jour';
-                bouton.style.left = p.x + '%';
-                bouton.style.top = p.y + '%';
-                // Pas de texte visible (juste le point, comme les marqueurs
-                // de « Déplacements ») : l'heure reste accessible au lecteur
-                // d'ecran et en aide tactile longue.
-                bouton.setAttribute('aria-label', point.heure);
-                bouton.title = point.heure;
-                bouton.addEventListener('click', function () { afficherPoint(point, true); });
-                carte.appendChild(bouton);
+                marqueurPoint(point).addTo(couche);
             });
+            marqueurActuel(actuelle).addTo(couche);
+
+            if (!ajusterVue) { return; }
+
+            var limites = L.latLngBounds(tousLesPoints.map(function (p) {
+                return [p.lat, p.lon];
+            }));
+
+            map.fitBounds(limites, { padding: [24, 24], maxZoom: 16 });
+
+            // Au tout premier affichage, la carte est construite juste apres
+            // que le conteneur soit rendu visible : Leaflet peut avoir
+            // mesure une taille nulle avant que la mise en page ne se
+            // stabilise. invalidateSize() la force a se remesurer.
+            setTimeout(function () {
+                map.invalidateSize();
+                map.fitBounds(limites, { padding: [24, 24], maxZoom: 16 });
+            }, 0);
         }
 
         // Contrairement aux ecrans Batterie/Communes (voir « recouvrements »
@@ -1204,20 +1125,22 @@
         for (var i = 0; i < boutons.length; i++) {
             boutons[i].addEventListener('click', function (e) {
                 if (e.currentTarget.dataset.vue !== 'position') { return; }
-                if (carte.childElementCount > 0) { return; }
 
-                afficherVueJour();
+                dessiner(true);
             });
         }
 
         // Chaque rechargement (navigation complete ou mise a jour sur place
         // en plein ecran, voir rafraichirSurPlace) pose des positions
         // fraiches sur #vue-position et previent via cet evenement : la carte
-        // ne se reconstruit que si l'onglet est reellement affiche, pour ne
-        // pas rappeler OpenStreetMap dans le dos de qui regarde un autre onglet.
+        // ne se redessine que si l'onglet est reellement affiche et deja
+        // construit, pour ne pas rappeler les tuiles OSM dans le dos de qui
+        // regarde un autre onglet. Sans reajuster la vue : un zoom ou
+        // deplacement manuel en cours ne doit pas etre annule par un simple
+        // rafraichissement de donnees.
         vue.addEventListener('donnees-fraiches', function () {
             try { positions = JSON.parse(vue.dataset.positions || '[]'); } catch (e) { positions = []; }
-            if (!vue.hidden) { afficherVueJour(); }
+            if (!vue.hidden && map) { dessiner(false); }
         });
 
         // L'ancre survit au rechargement : arriver directement sur l'onglet
