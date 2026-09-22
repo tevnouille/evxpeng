@@ -2,6 +2,7 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use App\Models\XpengDataExport;
 use App\Services\VehicleState;
 use Illuminate\Support\Facades\Schedule;
 
@@ -43,10 +44,19 @@ Schedule::command('irve:import')->weeklyOn(1, '04:30')->withoutOverlapping();
 // Le matin, avant que quiconque ne prenne la route.
 Schedule::command('fuel-prices:check')->dailyAt('07:30')->withoutOverlapping();
 
-// Quota Xpeng strict (5 soumissions/24h) : une fois par jour pour commencer,
-// tant que le comportement reel d'une resoumission pendant un export "en
-// cours" n'est pas verifie (voir App\Console\Commands\SyncXpengData). Peut
-// prendre jusqu'a 80 s (la commande patiente sur place tant que l'export
+// Quota Xpeng strict (5 soumissions/24h) : deux passages par jour pour
+// commencer, tant que le comportement reel d'une resoumission pendant un
+// export "en cours" n'est pas verifie (voir App\Console\Commands\SyncXpengData).
+// Peut prendre jusqu'a 80 s (la commande patiente sur place tant que l'export
 // n'est pas pret) : sans consequence a cette cadence, ce n'est pas un
 // declenchement a la sous-minute comme telemetry:ingest-mqtt plus haut.
 Schedule::command('xpeng:sync')->dailyAt('06:15')->withoutOverlapping();
+
+// Repli si le passage de 06h15 n'a pas rapporte de fichier (export encore en
+// cours chez Xpeng au-dela des 80 s d'attente, deja vu le 22/09/2026) : un
+// second essai plutot que d'attendre le lendemain. Ne se declenche que si
+// aucun export du jour n'a reussi, pour rester tres en-deca du quota.
+Schedule::command('xpeng:sync')
+    ->dailyAt('08:15')
+    ->withoutOverlapping()
+    ->when(fn () => ! XpengDataExport::whereDate('requested_at', today())->where('statut', 'ok')->exists());

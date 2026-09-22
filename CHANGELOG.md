@@ -12,6 +12,10 @@ Le journal est rédigé pour qui se sert de l'application, pas depuis l'historiq
 Git : les messages de commit parlent de code, et une bonne moitié d'entre eux ne
 change rien de visible. La même liste s'affiche sur `/changelog`.
 
+## 22 septembre 2026
+
+- **Amélioration** — La récupération quotidienne des données Xpeng retente désormais à 8h15 si le passage de 6h15 n'a pas rapporté de fichier (export encore en cours de génération chez Xpeng au-delà des 80 secondes d'attente) — jusqu'ici il fallait attendre le lendemain.
+
 ## 21 septembre 2026
 
 - **Nouveauté** — « Ma voiture » gagne une page « Kilométrage » : la distance parcourue, déduite de l'odomètre du boîtier OBD, mois par mois et année par année sur toute la durée connue du véhicule.

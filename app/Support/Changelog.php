@@ -41,6 +41,12 @@ class Changelog
 
     private const DATA = [
         [
+            'date' => '2026-09-22',
+            'entries' => [
+                ['type' => 'amelioration', 'text' => "La récupération quotidienne des données Xpeng retente désormais à 8h15 si le passage de 6h15 n'a pas rapporté de fichier (export encore en cours de génération chez Xpeng au-delà des 80 secondes d'attente) — jusqu'ici il fallait attendre le lendemain."],
+            ],
+        ],
+        [
             'date' => '2026-09-21',
             'entries' => [
                 ['type' => 'nouveaute', 'text' => "« Ma voiture » gagne une page « Kilométrage » : la distance parcourue, déduite de l'odomètre du boîtier OBD, mois par mois et année par année sur toute la durée connue du véhicule."],
