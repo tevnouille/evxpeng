@@ -22,15 +22,11 @@ use Illuminate\Support\Str;
 class FordAuthController extends Controller
 {
     /**
-     * Lance l'autorisation FordConnect. Le portail developer.ford.com ne
-     * fournit pas de lien de liaison de compte directement accessible (page
-     * verifiee le 22/09/2026) : cette methode reconstruit l'URL a partir du
-     * point d'entree Azure AD B2C standard (le meme tenant/police que
-     * services.ford.token_url, endpoint /authorize au lieu de /token -- motif
-     * standard de la plateforme Microsoft identity, pas une valeur propre a
-     * Ford). A verifier a l'usage : si Ford exige un chemin different pour ce
-     * client_id, la page de connexion Ford elle-meme renverra une erreur
-     * explicite plutot qu'un echec silencieux.
+     * Lance l'autorisation FordConnect. Point d'entree confirme en pratique
+     * le 22/09/2026 (le portail developer.ford.com n'expose ce lien nulle
+     * part) : ce n'est pas l'endpoint Azure AD B2C generique, mais une route
+     * propre a FordConnect qui gere elle-meme la redirection vers la
+     * connexion Ford/FordPass.
      */
     public function authorize(): RedirectResponse
     {
@@ -39,17 +35,13 @@ class FordAuthController extends Controller
                 ->with('error', "Ford : client_id ou redirect_uri non configures (voir .env).");
         }
 
-        $authorizeUrl = str_replace('/oauth2/v2.0/token', '/oauth2/v2.0/authorize', config('services.ford.token_url'));
-
         $query = http_build_query([
             'client_id' => config('services.ford.client_id'),
             'redirect_uri' => config('services.ford.redirect_uri'),
-            'response_type' => 'code',
-            'scope' => 'openid offline_access',
             'state' => Str::random(32),
         ]);
 
-        return redirect($authorizeUrl.'&'.$query);
+        return redirect(config('services.ford.authorize_url').'?'.$query);
     }
 
     public function callback(Request $request): RedirectResponse

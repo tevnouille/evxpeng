@@ -105,6 +105,10 @@ return [
         // compte) : seuls client_id/client_secret distinguent une app d'une
         // autre aupres de ce meme point d'entree.
         'token_url' => env('FORD_TOKEN_URL', 'https://dah2vb2cprod.b2clogin.com/914d88b1-3523-4bf6-9be4-1b96b4f6f919/oauth2/v2.0/token?p=B2C_1A_signup_signin_common'),
+        // Point d'entree reel de l'autorisation FordConnect, confirme le
+        // 22/09/2026 -- absent de developer.ford.com, gere lui-meme la
+        // redirection vers la connexion Ford/FordPass puis vers redirect_uri.
+        'authorize_url' => env('FORD_AUTHORIZE_URL', 'https://api.vehicle.ford.com/fcon-public/v1/auth/init'),
         // Constante publique du programme FordConnect, exigee en en-tete de
         // chaque appel a l'API (vue dans plusieurs implementations tierces
         // publiques) -- ne s'obtient pas depuis developer.ford.com.
