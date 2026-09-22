@@ -69,13 +69,17 @@ class FordAuthController extends Controller
                 ->with('error', "Ford : FORD_VIN non configure (voir .env), impossible de savoir a quel vehicule rattacher ce jeton.");
         }
 
+        // Pas de `scope` ici : le client de reference (evcc) ne le redeclare
+        // jamais a l'echange, seulement a l'autorisation -- le rajouter a
+        // l'echange coincide avec l'echec AADB2C90085 rencontre le 22/09/2026
+        // en ajoutant evData (peut-etre un aleas ponctuel cote Ford sur ce
+        // nouveau consentement, mais autant coller au comportement prouve).
         $reponse = Http::asForm()->post(config('services.ford.token_url'), [
             'grant_type' => 'authorization_code',
             'client_id' => config('services.ford.client_id'),
             'client_secret' => config('services.ford.client_secret'),
             'code' => $request->query('code'),
             'redirect_uri' => config('services.ford.redirect_uri'),
-            'scope' => 'openid offline_access evData',
         ]);
 
         // Particularite de cette politique B2C (B2C_1A_FCON_AUTHORIZE, scope

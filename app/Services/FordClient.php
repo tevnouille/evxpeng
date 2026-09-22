@@ -74,12 +74,13 @@ class FordClient
 
     private function refresh(FordOAuthToken $token): string
     {
+        // Pas de `scope` ici non plus : voir le commentaire equivalent dans
+        // FordAuthController::callback().
         $reponse = Http::asForm()->post($this->tokenUrl, [
             'grant_type' => 'refresh_token',
             'client_id' => $this->clientId,
             'client_secret' => $this->clientSecret,
             'refresh_token' => $token->refresh_token,
-            'scope' => 'openid offline_access evData',
         ]);
 
         if (! $reponse->successful() || ! $reponse->json('id_token') || ! $reponse->json('refresh_token')) {
