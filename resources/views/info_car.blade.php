@@ -332,23 +332,27 @@
                  remis a zero au chargement — la page se recharge toutes les
                  cinq secondes en charge, et la seconde face n'apparaitrait
                  jamais. --}}
-            <div class="alterne" data-periode="5">
-                <div>
-                    <p class="titre">Autonomie estimée</p>
-                    <p class="valeur">{{ $rangeKm !== null ? $rangeKm : '—' }}<span class="unite"> km</span></p>
-                    @if ($availableKwh !== null)
-                        <p class="note">{{ str_replace('.', ',', (string) $availableKwh) }} kWh disponibles</p>
+            @if ($telemetry->soh !== null || $ecartCellules !== null)
+                <div class="alterne" data-periode="5">
+                    @if ($telemetry->soh !== null)
+                        <div>
+                            <p class="titre">Santé batterie</p>
+                            <p class="valeur">{{ str_replace('.', ',', rtrim(rtrim((string) $telemetry->soh, '0'), '.')) }}<span class="unite"> %</span></p>
+                            <p class="note">capacité annoncée par la batterie</p>
+                        </div>
+                    @endif
+
+                    @if ($ecartCellules !== null)
+                        <div @if ($telemetry->soh !== null) hidden @endif>
+                            <p class="titre">Écart entre cellules</p>
+                            <p class="valeur">{{ $ecartCellules }}<span class="unite"> mV</span></p>
+                            {{-- La mediane est dite, parce qu'elle change le sens du
+                                 chiffre : ce n'est pas l'ecart de l'instant. --}}
+                            <p class="note">médiane des dernières 24 h</p>
+                        </div>
                     @endif
                 </div>
-
-                @if ($telemetry->soh !== null)
-                    <div hidden>
-                        <p class="titre">Santé batterie</p>
-                        <p class="valeur">{{ str_replace('.', ',', rtrim(rtrim((string) $telemetry->soh, '0'), '.')) }}<span class="unite"> %</span></p>
-                        <p class="note">capacité annoncée par la batterie</p>
-                    </div>
-                @endif
-            </div>
+            @endif
 
             @if ($ville !== null)
                 <div @if (! empty($dernieresVilles)) class="tuile-cliquable" data-ouvre="villes" role="button" tabindex="0" @endif>
@@ -358,17 +362,13 @@
                 </div>
             @endif
 
-            @if ($ecartCellules !== null)
-                <div class="alterne" data-periode="5">
-                    <div>
-                        <p class="titre">Écart entre cellules</p>
-                        <p class="valeur">{{ $ecartCellules }}<span class="unite"> mV</span></p>
-                        {{-- La mediane est dite, parce qu'elle change le sens du
-                             chiffre : ce n'est pas l'ecart de l'instant. --}}
-                        <p class="note">médiane des dernières 24 h</p>
-                    </div>
-                </div>
-            @endif
+            <div>
+                <p class="titre">Autonomie estimée</p>
+                <p class="valeur">{{ $rangeKm !== null ? $rangeKm : '—' }}<span class="unite"> km</span></p>
+                @if ($availableKwh !== null)
+                    <p class="note">{{ str_replace('.', ',', (string) $availableKwh) }} kWh disponibles</p>
+                @endif
+            </div>
 
             @if ($telemetry->batt_temp !== null || $telemetry->power_kw !== null)
                 <div class="alterne" data-periode="5">
