@@ -136,12 +136,11 @@
         }
         .valeur { font-size: clamp(1.1rem, 7.5vh, 2.8rem); font-weight: 700; line-height: 1.05; margin: 0; }
         .valeur .unite { font-size: .45em; font-weight: 400; color: #6b6b6b; }
-        /* Meme taille pour l'icone SVG (Autonomie dynamique) et le drapeau
-           emoji (Autonomie CLTC) : l'un se dimensionne en trait, l'autre en
-           glyphe de police, mais visuellement les deux doivent occuper la
-           meme place a cote du chiffre. */
+        /* Meme taille pour l'icone SVG (trait) et les emoji colores (glyphe
+           de police, drapeau ou coeur) : deux techniques differentes, mais
+           qui doivent occuper visuellement la meme place a cote du chiffre. */
         .valeur .icone-valeur { width: .6em; height: .6em; vertical-align: .05em; margin-right: .1em; }
-        .valeur .drapeau { font-size: .55em; vertical-align: .08em; margin-right: .1em; }
+        .valeur .emoji-valeur { font-size: .55em; vertical-align: .08em; margin-right: .1em; }
         .moyenne { font-size: clamp(.95rem, 5.2vh, 2.1rem); font-weight: 600; line-height: 1.1; margin: 0; }
         /* Un nom de commune se coupe plutot que de deborder : « Corbeil-
            Essonnes » ne tient pas sur un tiers d'ecran etroit, et rien ici ne
@@ -343,7 +342,10 @@
                     @if ($telemetry->soh !== null)
                         <div>
                             <p class="titre">Santé batterie</p>
-                            <p class="valeur">{{ str_replace('.', ',', rtrim(rtrim((string) $telemetry->soh, '0'), '.')) }}<span class="unite"> %</span></p>
+                            <p class="valeur">
+                                <span class="emoji-valeur" aria-hidden="true">❤️</span>
+                                {{ str_replace('.', ',', rtrim(rtrim((string) $telemetry->soh, '0'), '.')) }}<span class="unite"> %</span>
+                            </p>
                             <p class="note">capacité annoncée par la batterie</p>
                         </div>
                     @endif
@@ -388,7 +390,7 @@
                     <div hidden>
                         <p class="titre">Autonomie (véhicule)</p>
                         <p class="valeur">
-                            <span class="drapeau" aria-hidden="true">🇨🇳</span>
+                            <span class="emoji-valeur" aria-hidden="true">🇨🇳</span>
                             {{ (int) $cltcRange }}<span class="unite"> km</span>
                         </p>
                         <p class="note">annoncée par le véhicule (CLTC)</p>
