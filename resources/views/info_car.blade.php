@@ -346,7 +346,7 @@
                  remis a zero au chargement — la page se recharge toutes les
                  cinq secondes en charge, et la seconde face n'apparaitrait
                  jamais. --}}
-            @if ($telemetry->soh !== null || $ecartCellules !== null)
+            @if ($telemetry->soh !== null || $ecartCellules !== null || $telemetry->batt_temp !== null)
                 <div class="alterne" data-periode="5">
                     @if ($telemetry->soh !== null)
                         <div>
@@ -366,6 +366,13 @@
                             {{-- La mediane est dite, parce qu'elle change le sens du
                                  chiffre : ce n'est pas l'ecart de l'instant. --}}
                             <p class="note">médiane des dernières 24 h</p>
+                        </div>
+                    @endif
+
+                    @if ($telemetry->batt_temp !== null)
+                        <div @if ($telemetry->soh !== null || $ecartCellules !== null) hidden @endif>
+                            <p class="titre">Température batterie</p>
+                            <p class="valeur">{{ str_replace('.', ',', rtrim(rtrim((string) $telemetry->batt_temp, '0'), '.')) }}<span class="unite"> °C</span></p>
                         </div>
                     @endif
                 </div>
@@ -392,9 +399,6 @@
                     <p class="valeur">{{ $rangeKm !== null ? $rangeKm : '—' }}<span class="unite"> km</span></p>
                     @if ($availableKwh !== null)
                         <p class="note">{{ str_replace('.', ',', (string) $availableKwh) }} kWh disponibles</p>
-                    @endif
-                    @if ($telemetry->batt_temp !== null)
-                        <p class="note">{{ str_replace('.', ',', rtrim(rtrim((string) $telemetry->batt_temp, '0'), '.')) }} °C batterie</p>
                     @endif
                 </div>
 
