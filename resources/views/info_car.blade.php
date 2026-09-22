@@ -393,6 +393,9 @@
                     @if ($availableKwh !== null)
                         <p class="note">{{ str_replace('.', ',', (string) $availableKwh) }} kWh disponibles</p>
                     @endif
+                    @if ($telemetry->batt_temp !== null)
+                        <p class="note">{{ str_replace('.', ',', rtrim(rtrim((string) $telemetry->batt_temp, '0'), '.')) }} °C batterie</p>
+                    @endif
                 </div>
 
                 @if ($cltcRange !== null)
@@ -422,25 +425,6 @@
                     </div>
                 @endif
             </div>
-
-            @if ($telemetry->batt_temp !== null || $telemetry->power_kw !== null)
-                <div class="alterne" data-periode="5">
-                    @if ($telemetry->batt_temp !== null)
-                        <div>
-                            <p class="titre">Température batterie</p>
-                            <p class="valeur">{{ str_replace('.', ',', rtrim(rtrim((string) $telemetry->batt_temp, '0'), '.')) }}<span class="unite"> °C</span></p>
-                        </div>
-                    @endif
-
-                    @if ($telemetry->power_kw !== null)
-                        <div @if ($telemetry->batt_temp !== null) hidden @endif>
-                            <p class="titre">Puissance</p>
-                            <p class="valeur">{{ str_replace('.', ',', (string) round(abs((float) $telemetry->power_kw), 1)) }}<span class="unite"> kW</span></p>
-                            <p class="note">{{ (float) $telemetry->power_kw < 0 ? 'entrante' : 'consommée' }}</p>
-                        </div>
-                    @endif
-                </div>
-            @endif
 
             @if ($vitesseLimite !== null)
                 <div>
