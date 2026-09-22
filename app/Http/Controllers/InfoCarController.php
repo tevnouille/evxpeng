@@ -335,10 +335,17 @@ class InfoCarController extends Controller
 
         $rangeChart = $this->rangeChart($this->rangeSeries($history, $netCapacity, $consumption));
 
+        // Signale que le boitier ne publie plus : sans releve recent, tout ce
+        // qu'affiche l'onglet Info (batterie, autonomie...) peut etre perime
+        // sans que rien ne le distingue autrement. Seuil de deux minutes,
+        // largement au-dessus de la cadence normale (5 a 20 s).
+        $mqttPerime = ! $telemetry || $telemetry->recorded_at->lt(now()->subMinutes(2));
+
         return view('info_car', [
             'vehicle' => $vehicle,
             'ville' => $ville,
             'telemetry' => $telemetry,
+            'mqttPerime' => $mqttPerime,
             'state' => $state,
             'soc' => $soc,
             'availableKwh' => $availableKwh,

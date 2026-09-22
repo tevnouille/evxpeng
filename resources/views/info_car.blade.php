@@ -51,6 +51,10 @@
             background: #f4f4f4; color: #4a4a4a; cursor: pointer;
         }
         .onglets button[aria-current="page"] { background: #2ea36b; border-color: #2ea36b; color: #fff; }
+        /* Prime sur aria-current (regle precedente, meme specificite) : plus
+           de releve recent est plus urgent a signaler que l'onglet actif.
+           Meme rouge que la jauge batterie basse (.jauge-basse). */
+        .onglets button.perime { background: #c0392b; border-color: #c0392b; color: #fff; }
         /* Le titre ouvre le plein ecran : pas garanti sur le navigateur
            embarque de la voiture ("on verra bien"), mais gratuit a tenter et
            sans consequence en cas d'echec silencieux. */
@@ -272,7 +276,8 @@
     </header>
 
     <div class="onglets">
-        <button type="button" data-vue="info" aria-current="page">Info</button>
+        <button type="button" data-vue="info" aria-current="page" @class(['perime' => $mqttPerime])
+            title="{{ $mqttPerime ? 'Aucun relevé du boîtier depuis plus de deux minutes : les chiffres affichés peuvent être périmés.' : '' }}">Info</button>
         <button type="button" data-vue="recharge">Recharge</button>
         <button type="button" data-vue="courbe">Courbe</button>
         @if ($position)
@@ -660,6 +665,15 @@
                     if (etatFrais && etatActuel) {
                         etatActuel.className = etatFrais.className;
                         etatActuel.textContent = etatFrais.textContent;
+                    }
+
+                    // Meme raison que .etat juste au-dessus : le bouton Info
+                    // vit dans .onglets, hors des ZONES_A_RAFRAICHIR.
+                    var boutonInfoFrais = frais.querySelector('.onglets button[data-vue="info"]');
+                    var boutonInfoActuel = document.querySelector('.onglets button[data-vue="info"]');
+                    if (boutonInfoFrais && boutonInfoActuel) {
+                        boutonInfoActuel.classList.toggle('perime', boutonInfoFrais.classList.contains('perime'));
+                        boutonInfoActuel.title = boutonInfoFrais.title;
                     }
 
                     for (var i = 0; i < ZONES_A_RAFRAICHIR.length; i++) {
