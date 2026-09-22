@@ -240,15 +240,23 @@
         #carte iframe { width: 100%; height: 100%; min-height: 55vh; border: 1px solid #dcdcdc; border-radius: 8px; }
         /* Boutons superposes a l'iframe OSM (qui ne propose pas de marqueurs
            multiples nativement) : projection lineaire simple depuis lat/lon,
-           largement suffisante sur l'echelle d'une seule journee. */
+           largement suffisante sur l'echelle d'une seule journee. Meme style
+           que les points de trajet de « Déplacements » (L.circleMarker,
+           resources/js/trips.js) : petit rond colore, bordure blanche, sans
+           texte -- une cible tactile un peu plus grande que le rond visible,
+           pour rester touchable du doigt sans agrandir le point lui-meme. */
         #carte .point-jour {
             position: absolute; transform: translate(-50%, -50%);
-            font: inherit; font-size: .65rem; font-weight: 700; line-height: 1;
-            padding: .3em .55em; border-radius: 999px; border: 1px solid #2ea36b;
-            background: rgba(255, 255, 255, .92); color: #14663f; cursor: pointer;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, .35); white-space: nowrap;
+            width: 1.6em; height: 1.6em; padding: 0; border: none; cursor: pointer;
+            background: transparent;
         }
-        #carte .point-jour.actif { background: #2ea36b; color: #fff; }
+        #carte .point-jour::before {
+            content: ''; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: .6em; height: .6em; border-radius: 50%;
+            background: #2ea36b; border: .12em solid #fff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+        }
         #carte .retour-jour {
             position: absolute; top: .5em; left: .5em; z-index: 2;
             font: inherit; font-size: .75rem; font-weight: 600;
@@ -266,7 +274,9 @@
             .onglets button { background: #24272d; border-color: #3a3f47; color: #d5d8dd; }
             thead th { border-bottom-color: #3a3f47; }
             #carte iframe { border-color: #3a3f47; }
-            #carte .point-jour { background: rgba(36, 39, 45, .92); color: #6fd19d; border-color: #2ea36b; }
+            /* .point-jour n'a rien a adapter : le point lui-meme (::before)
+               garde ses couleurs fixes (vert + bordure blanche), lisibles
+               sur les deux fonds. */
             #carte .retour-jour { background: #24272d; border-color: #3a3f47; color: #d5d8dd; }
             tbody tr + tr td { border-top-color: #24272d; }
             .recouvrement .carte { background: #20232a; }
@@ -1175,7 +1185,11 @@
                 bouton.className = 'point-jour';
                 bouton.style.left = p.x + '%';
                 bouton.style.top = p.y + '%';
-                bouton.textContent = point.heure;
+                // Pas de texte visible (juste le point, comme les marqueurs
+                // de « Déplacements ») : l'heure reste accessible au lecteur
+                // d'ecran et en aide tactile longue.
+                bouton.setAttribute('aria-label', point.heure);
+                bouton.title = point.heure;
                 bouton.addEventListener('click', function () { afficherPoint(point, true); });
                 carte.appendChild(bouton);
             });
