@@ -255,6 +255,67 @@ class InfoCarController extends Controller
         return $villes;
     }
 
+    /**
+     * Positions du jour, espacees d'au moins 150 m pour ne pas superposer des
+     * boutons quasi au meme endroit (voiture a l'arret) -- puis
+     * echantillonnees a 20 points au plus, repartis sur toute la journee
+     * plutot que les 20 premiers : au-dela, des boutons illisibles sur un
+     * ecran qu'on ne peut ni zoomer ni faire defiler.
+     *
+     * @return array<int, array{lat: float, lon: float, heure: string}>
+     */
+    private function positionsDuJour(?Vehicle $vehicle): array
+    {
+        if (! $vehicle) {
+            return [];
+        }
+
+        $points = $vehicle->telemetries()
+            ->whereNotNull('lat')->whereNotNull('lon')
+            ->whereDate('recorded_at', now(config('app.timezone'))->toDateString())
+            ->orderBy('recorded_at')
+            ->get(['lat', 'lon', 'recorded_at']);
+
+        $retenus = [];
+        $precedent = null;
+
+        foreach ($points as $point) {
+            $lat = (float) $point->lat;
+            $lon = (float) $point->lon;
+
+            if ($precedent && $this->haversine($precedent['lat'], $precedent['lon'], $lat, $lon) < 0.15) {
+                continue;
+            }
+
+            $retenus[] = [
+                'lat' => $lat,
+                'lon' => $lon,
+                'heure' => $point->recorded_at->timezone(config('app.timezone'))->format('H:i'),
+            ];
+            $precedent = ['lat' => $lat, 'lon' => $lon];
+        }
+
+        if (count($retenus) > 20) {
+            $pas = (int) ceil(count($retenus) / 20);
+            $retenus = collect($retenus)->filter(fn ($p, $i) => $i % $pas === 0)->values()->all();
+        }
+
+        return $retenus;
+    }
+
+    private function haversine(float $lat1, float $lon1, float $lat2, float $lon2): float
+    {
+        $earthKm = 6371.0;
+
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+
+        $a = sin($dLat / 2) ** 2
+            + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon / 2) ** 2;
+
+        return $earthKm * 2 * atan2(sqrt($a), sqrt(1 - $a));
+    }
+
     public function show(Request $request): View|JsonResponse
     {
         // Le graphique de batterie a son propre cycle de rafraichissement
@@ -359,6 +420,7 @@ class InfoCarController extends Controller
             'recharges' => $this->recharges($courbe, $soc),
             'rangeChart' => $rangeChart,
             'dernieresVilles' => $this->dernieresVilles($vehicle),
+            'positionsDuJour' => $this->positionsDuJour($vehicle),
         ]);
     }
 

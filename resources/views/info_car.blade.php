@@ -222,8 +222,25 @@
         tbody td { font-size: clamp(.85rem, 3.6vh, 1.5rem); font-weight: 600; }
         tbody td:first-child { font-weight: 700; }
         tbody tr + tr td { border-top: 1px solid #efefef; }
-        #carte { height: 100%; min-height: 55vh; }
+        #carte { height: 100%; min-height: 55vh; position: relative; }
         #carte iframe { width: 100%; height: 100%; min-height: 55vh; border: 1px solid #dcdcdc; border-radius: 8px; }
+        /* Boutons superposes a l'iframe OSM (qui ne propose pas de marqueurs
+           multiples nativement) : projection lineaire simple depuis lat/lon,
+           largement suffisante sur l'echelle d'une seule journee. */
+        #carte .point-jour {
+            position: absolute; transform: translate(-50%, -50%);
+            font: inherit; font-size: .65rem; font-weight: 700; line-height: 1;
+            padding: .3em .55em; border-radius: 999px; border: 1px solid #2ea36b;
+            background: rgba(255, 255, 255, .92); color: #14663f; cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, .35); white-space: nowrap;
+        }
+        #carte .point-jour.actif { background: #2ea36b; color: #fff; }
+        #carte .retour-jour {
+            position: absolute; top: .5em; left: .5em; z-index: 2;
+            font: inherit; font-size: .75rem; font-weight: 600;
+            padding: .4em .9em; border-radius: 999px; border: 1px solid #d0d0d0;
+            background: #fff; cursor: pointer; box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+        }
         #courbe-autonomie { width: 100%; flex: 1 1 auto; min-height: 0; }
         .atteint { color: #2ea36b; font-weight: 600; }
         .inconnu { color: #9a9a9a; font-weight: 400; }
@@ -235,6 +252,8 @@
             .onglets button { background: #24272d; border-color: #3a3f47; color: #d5d8dd; }
             thead th { border-bottom-color: #3a3f47; }
             #carte iframe { border-color: #3a3f47; }
+            #carte .point-jour { background: rgba(36, 39, 45, .92); color: #6fd19d; border-color: #2ea36b; }
+            #carte .retour-jour { background: #24272d; border-color: #3a3f47; color: #d5d8dd; }
             tbody tr + tr td { border-top-color: #24272d; }
             .recouvrement .carte { background: #20232a; }
             .recouvrement button.fermer { background: #24272d; border-color: #3a3f47; color: #d5d8dd; }
@@ -451,7 +470,8 @@
              garde-fou, chaque affichage — et la page se recharge seule —
              enverrait la position du vehicule a OpenStreetMap. --}}
         <div class="vue" id="vue-position" hidden
-             data-lat="{{ $position['lat'] }}" data-lon="{{ $position['lon'] }}">
+             data-lat="{{ $position['lat'] }}" data-lon="{{ $position['lon'] }}"
+             data-positions='@json($positionsDuJour)'>
             <div id="carte"></div>
             <p class="note">
                 {{ number_format($position['lat'], 5, ',', ' ') }},
@@ -956,6 +976,104 @@
 
         if (!vue) { return; }
 
+        var carte = document.getElementById('carte');
+
+        var positions = [];
+        try { positions = JSON.parse(vue.dataset.positions || '[]'); } catch (e) { positions = []; }
+
+        function viderCarte() {
+            while (carte.firstChild) { carte.removeChild(carte.firstChild); }
+        }
+
+        function construireIframe(bbox, marqueur) {
+            var cadre = document.createElement('iframe');
+            var src = 'https://www.openstreetmap.org/export/embed.html?bbox='
+                + [bbox.minLon, bbox.minLat, bbox.maxLon, bbox.maxLat].join(',')
+                + '&layer=mapnik';
+            if (marqueur) { src += '&marker=' + marqueur.lat + ',' + marqueur.lon; }
+            cadre.src = src;
+            cadre.loading = 'lazy';
+            cadre.referrerPolicy = 'no-referrer';
+            return cadre;
+        }
+
+        // Marge de 20 % autour des positions extremes, avec un plancher : sans
+        // lui, une voiture restee au meme endroit toute la journee degenererait
+        // sur une bbox de largeur nulle.
+        function calculerBbox(points) {
+            var minLat = points[0].lat, maxLat = points[0].lat;
+            var minLon = points[0].lon, maxLon = points[0].lon;
+
+            for (var i = 1; i < points.length; i++) {
+                minLat = Math.min(minLat, points[i].lat);
+                maxLat = Math.max(maxLat, points[i].lat);
+                minLon = Math.min(minLon, points[i].lon);
+                maxLon = Math.max(maxLon, points[i].lon);
+            }
+
+            var margeLat = Math.max((maxLat - minLat) * 0.2, 0.003);
+            var margeLon = Math.max((maxLon - minLon) * 0.2, 0.003);
+
+            return {
+                minLat: minLat - margeLat, maxLat: maxLat + margeLat,
+                minLon: minLon - margeLon, maxLon: maxLon + margeLon,
+            };
+        }
+
+        // Projection lineaire simple lat/lon -> pourcentage dans le cadre :
+        // l'iframe OSM ne permet pas de recuperer sa propre projection, mais
+        // sur l'echelle d'une seule journee l'approximation ne se voit pas.
+        function projeter(bbox, point) {
+            return {
+                x: (point.lon - bbox.minLon) / (bbox.maxLon - bbox.minLon) * 100,
+                y: (bbox.maxLat - point.lat) / (bbox.maxLat - bbox.minLat) * 100,
+            };
+        }
+
+        function afficherPoint(point, avecRetour) {
+            viderCarte();
+
+            var d = 0.006;
+            var bbox = { minLon: point.lon - d, minLat: point.lat - d, maxLon: point.lon + d, maxLat: point.lat + d };
+            carte.appendChild(construireIframe(bbox, point));
+
+            if (avecRetour) {
+                var retour = document.createElement('button');
+                retour.type = 'button';
+                retour.className = 'retour-jour';
+                retour.textContent = '‹ Vue du jour';
+                retour.addEventListener('click', afficherVueJour);
+                carte.appendChild(retour);
+            }
+        }
+
+        // Vue d'ensemble : un bouton par position retenue du jour (voir
+        // InfoCarController::positionsDuJour), chacun rouvrant la carte
+        // zoomee sur ce point precis au clic.
+        function afficherVueJour() {
+            viderCarte();
+
+            if (positions.length === 0) {
+                afficherPoint({ lat: parseFloat(vue.dataset.lat), lon: parseFloat(vue.dataset.lon) }, false);
+                return;
+            }
+
+            var bbox = calculerBbox(positions);
+            carte.appendChild(construireIframe(bbox, null));
+
+            positions.forEach(function (point) {
+                var p = projeter(bbox, point);
+                var bouton = document.createElement('button');
+                bouton.type = 'button';
+                bouton.className = 'point-jour';
+                bouton.style.left = p.x + '%';
+                bouton.style.top = p.y + '%';
+                bouton.textContent = point.heure;
+                bouton.addEventListener('click', function () { afficherPoint(point, true); });
+                carte.appendChild(bouton);
+            });
+        }
+
         var boutons = document.querySelectorAll('.onglets button');
 
         for (var i = 0; i < boutons.length; i++) {
@@ -973,19 +1091,9 @@
                 // OpenStreetMap a chaque fois.
                 rechargement.suspendre();
 
-                var carte = document.getElementById('carte');
                 if (carte.childElementCount > 0) { return; }
 
-                var lat = parseFloat(vue.dataset.lat);
-                var lon = parseFloat(vue.dataset.lon);
-                var d = 0.006;
-                var cadre = document.createElement('iframe');
-                cadre.src = 'https://www.openstreetmap.org/export/embed.html?bbox='
-                    + [lon - d, lat - d, lon + d, lat + d].join(',')
-                    + '&layer=mapnik&marker=' + lat + ',' + lon;
-                cadre.loading = 'lazy';
-                cadre.referrerPolicy = 'no-referrer';
-                carte.appendChild(cadre);
+                afficherVueJour();
             });
         }
 
