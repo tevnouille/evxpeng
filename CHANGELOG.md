@@ -12,6 +12,16 @@ Le journal est rédigé pour qui se sert de l'application, pas depuis l'historiq
 Git : les messages de commit parlent de code, et une bonne moitié d'entre eux ne
 change rien de visible. La même liste s'affiche sur `/changelog`.
 
+## 23 septembre 2026
+
+- **Nouveauté** — « Données Ford » affiche enfin les vraies données de la batterie de traction (charge, autonomie, énergie restante), l'état de la prise et la tension/courant de charge, en plus des pressions de pneus — jusqu'ici seule la batterie 12V était accessible.
+- **Nouveauté** — « Données Ford » affiche le nom et le modèle du véhicule, et un bouton « Lancer la récupération des données » ouvert à tous les comptes qui voient la page (pas seulement l'administrateur).
+- **Nouveauté** — « Données Ford » signale les valeurs anciennes (plus d'une heure) directement sur chaque tuile, avec l'heure exacte du dernier relevé — la voiture ne remonte rien tant qu'elle est à l'arrêt.
+- **Nouveauté** — « Données Xpeng » gagne elle aussi un bouton « Lancer la récupération des données », et affiche la date de la dernière donnée disponible.
+- **Amélioration** — La récupération quotidienne des données Xpeng passe de deux tentatives (6h15 puis 8h15 en cas d'échec) à cinq relevés répartis dans la journée (5h, 9h, 13h, 17h, 21h), pour des chiffres plus proches de l'heure réelle.
+- **Correction** — Le téléchargement d'un fichier depuis « Données Xpeng » renvoyait une erreur serveur (500) au lieu du fichier.
+- **Correction** — Sur « Données Ford », la tuile « Batterie » affichait en réalité la charge de la batterie 12V, pas celle de la batterie de traction — renommée « Batterie 12V » pour éviter la confusion.
+
 ## 22 septembre 2026
 
 - **Nouveauté** — Nouvelle page « Données Ford » dans le menu Ma voiture : batterie, kilométrage, tension 12V et températures, en graphiques sur les 30 derniers jours. Source distincte du boîtier OBD et de l'API Xpeng — l'API officielle FordConnect, interrogée toutes les 30 minutes. Nécessite d'autoriser l'accès une fois avec le compte Ford/FordPass propriétaire du véhicule, depuis un lien sur cette même page.
