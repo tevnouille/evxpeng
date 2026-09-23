@@ -27,22 +27,77 @@ class FordDataController extends Controller
     /** Meme motif que XpengDataController::JOURS_AFFICHES. */
     private const JOURS_AFFICHES = 30;
 
+    /**
+     * Au-dela, une valeur est signalee comme ancienne. Deux passages de
+     * ford:sync (toutes les 30 min) sans rien de neuf : la voiture ne
+     * remonte plus rien, en general parce qu'elle est a l'arret -- Ford
+     * renvoie alors indefiniment le dernier releve connu (une temperature
+     * de 8h lue a 22h a deja ete prise pour la valeur du moment).
+     */
+    private const ANCIENNETE_MINUTES = 60;
+
+    /** Colonne affichee => metrique brute Ford, qui porte son propre updateTime. */
+    private const METRIQUES_TUILES = [
+        'soc' => 'batteryStateOfCharge',
+        'odometre_km' => 'odometer',
+        'ignition_status' => 'ignitionStatus',
+        'outside_temp_c' => 'outsideTemperature',
+    ];
+
     public function index(): View
     {
         $releves = FordTelemetry::where('recorded_at', '>=', now()->subDays(self::JOURS_AFFICHES))
             ->orderBy('recorded_at')
             ->get();
 
+        $dernier = $releves->last();
+
         return view('my_vehicle.ford_data', [
             'isAdmin' => (bool) CurrentUser::get()?->is_admin,
+            'ancienneteMinutes' => self::ANCIENNETE_MINUTES,
+            'releveAncien' => $dernier !== null && $dernier->recorded_at->lt(now()->subMinutes(self::ANCIENNETE_MINUTES)),
+            'valeursAnciennes' => $dernier !== null ? $this->valeursAnciennes($dernier) : [],
             // Simple lecture : le cache est rempli par ford:sync, jamais ici
             // (voir son commentaire).
             'imageUrl' => Cache::get('ford_vehicle_image_url'),
             'dernierJeton' => FordOAuthToken::where('vin', config('services.ford.vin'))->first(),
-            'dernier' => $releves->last(),
+            'dernier' => $dernier,
             'releves' => $releves,
             'mesures' => $releves->isEmpty() ? [] : $this->mesures($releves),
         ]);
+    }
+
+    /**
+     * Horodatage propre a chaque valeur des tuiles, seulement quand il est
+     * ancien. Chaque metrique Ford porte son updateTime, parfois bien plus
+     * vieux que l'updateTime global du releve (le SoC peut dater d'une heure
+     * avant le reste) : l'age du releve seul ne suffit pas a juger d'une
+     * valeur.
+     *
+     * @return array<string, \Illuminate\Support\Carbon>
+     */
+    private function valeursAnciennes(FordTelemetry $releve): array
+    {
+        $seuil = now()->subMinutes(self::ANCIENNETE_MINUTES);
+        $anciennes = [];
+
+        foreach (self::METRIQUES_TUILES as $colonne => $metrique) {
+            $horodatage = $releve->metrics[$metrique]['updateTime'] ?? null;
+
+            if ($horodatage === null) {
+                continue;
+            }
+
+            // updateTime est en UTC (suffixe Z), comme l'updateTime global
+            // deja converti par ford:sync.
+            $moment = \Illuminate\Support\Carbon::parse($horodatage)->setTimezone(config('app.timezone'));
+
+            if ($moment->lt($seuil)) {
+                $anciennes[$colonne] = $moment;
+            }
+        }
+
+        return $anciennes;
     }
 
     /**
