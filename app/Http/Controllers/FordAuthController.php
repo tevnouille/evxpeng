@@ -35,20 +35,19 @@ class FordAuthController extends Controller
                 ->with('error', "Ford : client_id ou redirect_uri non configures (voir .env).");
         }
 
-        // Un premier essai le 22/09/2026 avec `scope=evData` seul n'avait
-        // rien change (le jeton obtenu portait quand meme
-        // scope=vehicleBasicInfo,vehicleData) : cette fois avec la liste
-        // complete des scopes vus refuses en pratique le 23/09/2026
-        // (vehicleHealth, chargingData, evData sur /v1/vehicle-health/alerts,
-        // /v1/wallbox, /v1/electric/*). Si la permission Ford se decide
-        // reellement ailleurs (ecran de consentement, droits de l'app sur
-        // developer.ford.com) plutot que par ce parametre, le jeton obtenu
-        // portera encore scope=vehicleBasicInfo,vehicleData -- a verifier en
-        // decodant le nouveau jeton apres une reautorisation.
+        // Pas de parametre `scope` ici : deux essais infructueux l'ont
+        // definitivement ecarte. Le 22/09/2026 avec `scope=evData` seul, puis
+        // le 23/09/2026 avec la liste complete des scopes vus refuses en
+        // pratique (vehicleHealth, chargingData, evData sur
+        // /v1/vehicle-health/alerts, /v1/wallbox, /v1/electric/*) -- dans les
+        // deux cas, le jeton obtenu (verifie en decodant son JWT) portait
+        // quand meme scope=vehicleBasicInfo,vehicleData. Cette permission
+        // Ford ne se decide donc pas par ce parametre : elle vient d'ailleurs
+        // (droits de l'app sur developer.ford.com, ou statut du programme
+        // FordConnect pour ce client_id), hors de portee cote code.
         $query = http_build_query([
             'client_id' => config('services.ford.client_id'),
             'redirect_uri' => config('services.ford.redirect_uri'),
-            'scope' => 'vehicleBasicInfo vehicleData evData vehicleHealth chargingData',
             'state' => Str::random(32),
         ]);
 
