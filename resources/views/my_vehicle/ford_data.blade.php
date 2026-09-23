@@ -118,6 +118,48 @@
                 </p>
             @endif
         </div>
+
+        @if ($dernier->latitude !== null && $dernier->longitude !== null)
+            <div id="ford-map" style="height: 260px; border-radius: 8px;" class="mb-4"
+                 data-lat="{{ $dernier->latitude }}" data-lon="{{ $dernier->longitude }}"></div>
+        @endif
+    @endif
+
+    @if (! empty($recharges))
+        <h2 class="title is-5 mt-5">Recharges détectées</h2>
+        <p class="has-text-grey is-size-7 mb-2">
+            D'après <code>charge_display_status = IN_PROGRESS</code>, publié directement par Ford (contrairement à
+            Xpeng, pas besoin de déduire la charge d'une vitesse nulle et d'une puissance positive). À reporter à la
+            main dans <a href="{{ route('charging-sessions.index') }}">Recharges</a> si besoin : prix et borne n'y
+            figurent pas.
+        </p>
+        <table class="table is-fullwidth is-striped">
+            <thead>
+                <tr>
+                    <th>Début</th>
+                    <th>Fin</th>
+                    <th>Durée</th>
+                    <th>Batterie</th>
+                    <th>Puissance max</th>
+                    <th>Énergie estimée</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($recharges as $recharge)
+                    <tr>
+                        <td>{{ $recharge['debut']->timezone(config('app.timezone'))->translatedFormat('d/m/Y H:i') }}</td>
+                        <td>{{ $recharge['fin']->timezone(config('app.timezone'))->translatedFormat('d/m/Y H:i') }}</td>
+                        <td>{{ $recharge['duree_minutes'] }} min</td>
+                        <td>
+                            {{ $recharge['soc_debut'] !== null ? round($recharge['soc_debut'], 1) : '?' }} %
+                            → {{ $recharge['soc_fin'] !== null ? round($recharge['soc_fin'], 1) : '?' }} %
+                        </td>
+                        <td>{{ $recharge['puissance_max_kw'] > 0 ? round($recharge['puissance_max_kw'], 1).' kW' : '—' }}</td>
+                        <td>{{ $recharge['energie_kwh'] !== null ? round($recharge['energie_kwh'], 1).' kWh' : '—' }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
     @endif
 
     @if (! empty($mesures))
@@ -160,4 +202,7 @@
          data-labels/-values/-unit sur canvas.obd-chart), pas d'utilite a le
          dupliquer ici. --}}
     @vite('resources/js/obd-stats.js')
+    @if ($dernier?->latitude !== null)
+        @vite('resources/js/ford-map.js')
+    @endif
 @endsection

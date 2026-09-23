@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\FordOAuthToken;
 use App\Models\FordTelemetry;
+use App\Services\FordChargeDetector;
 use App\Support\CurrentUser;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
@@ -48,13 +49,14 @@ class FordDataController extends Controller
         'latitude' => 'position',
     ];
 
-    public function index(): View
+    public function index(FordChargeDetector $detecteur): View
     {
         $releves = FordTelemetry::where('recorded_at', '>=', now()->subDays(self::JOURS_AFFICHES))
             ->orderBy('recorded_at')
             ->get();
 
         $dernier = $releves->last();
+        $capaciteBatterie = $this->capaciteBatterieMoyenne7j($releves);
 
         return view('my_vehicle.ford_data', [
             'isAdmin' => (bool) CurrentUser::get()?->is_admin,
@@ -69,7 +71,8 @@ class FordDataController extends Controller
             'dernier' => $dernier,
             'releves' => $releves,
             'mesures' => $releves->isEmpty() ? [] : $this->mesures($releves),
-            'capaciteBatterie' => $this->capaciteBatterieMoyenne7j($releves),
+            'recharges' => $releves->isEmpty() ? [] : $detecteur->detecter($releves, $capaciteBatterie),
+            'capaciteBatterie' => $capaciteBatterie,
         ]);
     }
 
