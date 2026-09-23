@@ -21,6 +21,8 @@ change rien de visible. La même liste s'affiche sur `/changelog`.
 - **Amélioration** — La récupération quotidienne des données Xpeng passe de deux tentatives (6h15 puis 8h15 en cas d'échec) à cinq relevés répartis dans la journée (5h, 9h, 13h, 17h, 21h), pour des chiffres plus proches de l'heure réelle.
 - **Correction** — Le téléchargement d'un fichier depuis « Données Xpeng » renvoyait une erreur serveur (500) au lieu du fichier.
 - **Correction** — Sur « Données Ford », la tuile « Batterie » affichait en réalité la charge de la batterie 12V, pas celle de la batterie de traction — renommée « Batterie 12V » pour éviter la confusion.
+- **Nouveauté** — « Données Ford » affiche une petite carte avec la dernière position connue, et une estimation de la capacité réelle de la batterie de traction (moyenne sur 7 jours), Ford ne publiant aucun indicateur d'usure direct.
+- **Nouveauté** — « Données Ford » repère désormais les recharges, comme « Données Xpeng » — à reporter à la main dans Recharges si besoin, prix et borne n'étant pas connus de Ford.
 
 ## 22 septembre 2026
 
