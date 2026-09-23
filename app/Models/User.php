@@ -18,6 +18,8 @@ class User extends Authenticatable
     /** Memorisation par instance : la navigation pose la question a chaque page. */
     private ?bool $hasTelemetry = null;
 
+    private ?bool $hasFordData = null;
+
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
@@ -64,6 +66,21 @@ class User extends Authenticatable
             ->where('user_id', $this->id)
             ->whereNotNull('mqtt_client_id')
             ->exists();
+    }
+
+    /**
+     * Acces a « Donnees Ford » : l'administrateur, et le proprietaire du
+     * vehicule dont le VIN est celui autorise chez Ford (services.ford.vin).
+     * Independant du boitier OBD -- la Ford n'en a pas.
+     */
+    public function hasFordData(): bool
+    {
+        $vin = config('services.ford.vin');
+
+        return $this->hasFordData ??= $this->is_admin || ($vin && Vehicle::withoutGlobalScope('user')
+            ->where('user_id', $this->id)
+            ->where('vin', $vin)
+            ->exists());
     }
 
     protected function casts(): array

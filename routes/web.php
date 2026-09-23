@@ -90,15 +90,17 @@ Route::get('/ma-voiture/kilometrage', [MileageController::class, 'index'])
     ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
     ->name('my-vehicle.mileage');
 
+// Pas RequiresTelemetry : la Ford n'a pas de boitier OBD. Acces par le VIN
+// du vehicule (User::hasFordData), administrateur et proprietaire.
 Route::get('/ma-voiture/donnees-ford', [FordDataController::class, 'index'])
-    ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
+    ->middleware(\App\Http\Middleware\RequiresFordData::class)
     ->name('my-vehicle.ford');
 
-// Relance manuelle de ford:sync. Reserve a l'administrateur comme les autres
-// sources partagees (DataSourceController) ; throttle par prudence, Ford
-// ayant deja repondu 429 a une rafale d'appels manuels.
+// Relance manuelle de ford:sync, ouverte a qui voit la page : les donnees ne
+// concernent que ce vehicule. Throttle par prudence, Ford ayant deja repondu
+// 429 a une rafale d'appels manuels.
 Route::post('/ma-voiture/donnees-ford/synchroniser', [FordDataController::class, 'synchroniser'])
-    ->middleware([\App\Http\Middleware\RequiresAdmin::class, 'throttle:3,1'])
+    ->middleware([\App\Http\Middleware\RequiresFordData::class, 'throttle:3,1'])
     ->name('my-vehicle.ford.synchroniser');
 
 // Lance l'autorisation FordConnect : reconstruit le lien de connexion Ford

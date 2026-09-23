@@ -13,7 +13,7 @@ class Vehicle extends Model
     use BelongsToUser, HasFactory;
 
     protected $fillable = [
-        'name', 'charging_curve', 'mqtt_client_id', 'is_default',
+        'name', 'vin', 'charging_curve', 'mqtt_client_id', 'is_default',
         'kwh_per_100km', 'essence_l_per_100km', 'diesel_l_per_100km',
         'purchase_price', 'purchase_date', 'purchase_odometer_km',
         'thermal_equivalent_label', 'thermal_equivalent_price',

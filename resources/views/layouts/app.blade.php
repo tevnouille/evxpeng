@@ -41,35 +41,49 @@
                         </a>
                     </div>
                 </div>
-                @if (\App\Support\CurrentUser::get()?->hasTelemetry())
+                @php
+                    $avecTelemetrie = (bool) \App\Support\CurrentUser::get()?->hasTelemetry();
+                    $avecFord = (bool) \App\Support\CurrentUser::get()?->hasFordData();
+                @endphp
+                {{-- Deux acces independants : le boitier OBD (la plupart des
+                     entrees) et les donnees Ford, rattachees au VIN du vehicule
+                     plutot qu'au boitier -- la Ford n'en a pas. Un compte qui
+                     n'a que la seconde voit un menu reduit a elle. --}}
+                @if ($avecTelemetrie || $avecFord)
                     <div class="navbar-item has-dropdown is-hoverable">
                         <a class="navbar-link {{ request()->routeIs('my-vehicle.*') ? 'is-active' : '' }}"
-                           href="{{ route('my-vehicle.index') }}">
+                           href="{{ $avecTelemetrie ? route('my-vehicle.index') : route('my-vehicle.ford') }}">
                             @include('layouts._icon', ['name' => 'voiture'])Ma voiture
                         </a>
                         <div class="navbar-dropdown">
-                            <a class="navbar-item {{ request()->routeIs('my-vehicle.index') ? 'is-active' : '' }}" href="{{ route('my-vehicle.index') }}">
-                                Vue d'ensemble
-                            </a>
-                            <a class="navbar-item {{ request()->routeIs('my-vehicle.obd') ? 'is-active' : '' }}" href="{{ route('my-vehicle.obd') }}">
-                                Statistiques OBD
-                            </a>
-                            <a class="navbar-item {{ request()->routeIs('my-vehicle.mileage') ? 'is-active' : '' }}" href="{{ route('my-vehicle.mileage') }}">
-                                Kilométrage
-                            </a>
-                            <a class="navbar-item {{ request()->routeIs('my-vehicle.xpeng*') ? 'is-active' : '' }}" href="{{ route('my-vehicle.xpeng') }}">
-                                Données Xpeng
-                            </a>
-                            <a class="navbar-item {{ request()->routeIs('my-vehicle.ford') ? 'is-active' : '' }}" href="{{ route('my-vehicle.ford') }}">
-                                Données Ford
-                            </a>
-                            {{-- Adresse servie sans passkey : ouverte dans un
-                                 onglet a part, pour ne pas donner a croire qu'on
-                                 quitte la session, et signalee comme publique. --}}
-                            <a class="navbar-item" href="{{ route('info-car') }}" target="_blank" rel="noopener">
-                                Écran voiture
-                                <span class="tag is-warning is-light ml-2">public</span>
-                            </a>
+                            @if ($avecTelemetrie)
+                                <a class="navbar-item {{ request()->routeIs('my-vehicle.index') ? 'is-active' : '' }}" href="{{ route('my-vehicle.index') }}">
+                                    Vue d'ensemble
+                                </a>
+                                <a class="navbar-item {{ request()->routeIs('my-vehicle.obd') ? 'is-active' : '' }}" href="{{ route('my-vehicle.obd') }}">
+                                    Statistiques OBD
+                                </a>
+                                <a class="navbar-item {{ request()->routeIs('my-vehicle.mileage') ? 'is-active' : '' }}" href="{{ route('my-vehicle.mileage') }}">
+                                    Kilométrage
+                                </a>
+                                <a class="navbar-item {{ request()->routeIs('my-vehicle.xpeng*') ? 'is-active' : '' }}" href="{{ route('my-vehicle.xpeng') }}">
+                                    Données Xpeng
+                                </a>
+                            @endif
+                            @if ($avecFord)
+                                <a class="navbar-item {{ request()->routeIs('my-vehicle.ford') ? 'is-active' : '' }}" href="{{ route('my-vehicle.ford') }}">
+                                    Données Ford
+                                </a>
+                            @endif
+                            @if ($avecTelemetrie)
+                                {{-- Adresse servie sans passkey : ouverte dans un
+                                     onglet a part, pour ne pas donner a croire qu'on
+                                     quitte la session, et signalee comme publique. --}}
+                                <a class="navbar-item" href="{{ route('info-car') }}" target="_blank" rel="noopener">
+                                    Écran voiture
+                                    <span class="tag is-warning is-light ml-2">public</span>
+                                </a>
+                            @endif
                         </div>
                     </div>
                 @endif

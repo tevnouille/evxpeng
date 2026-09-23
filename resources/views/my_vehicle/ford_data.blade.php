@@ -13,10 +13,15 @@
 
     @if (! $dernierJeton)
         <div class="notification is-warning is-light">
-            Aucune autorisation Ford enregistrée. <a href="{{ route('my-vehicle.ford.authorize') }}">Autoriser l'accès</a>
-            (nécessite de se connecter avec le compte Ford/FordPass propriétaire du véhicule).
+            Aucune autorisation Ford enregistrée.
+            @if ($isAdmin)
+                <a href="{{ route('my-vehicle.ford.authorize') }}">Autoriser l'accès</a>
+                (nécessite de se connecter avec le compte Ford/FordPass propriétaire du véhicule).
+            @else
+                L'administrateur doit la renouveler.
+            @endif
         </div>
-    @elseif ($isAdmin)
+    @else
         <form method="POST" action="{{ route('my-vehicle.ford.synchroniser') }}" class="mb-4">
             @csrf
             <button type="submit" class="button is-link is-light">Lancer la récupération des données</button>
