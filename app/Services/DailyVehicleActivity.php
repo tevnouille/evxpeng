@@ -77,7 +77,12 @@ class DailyVehicleActivity
      * l'historique complet plutot qu'un mois a la fois : l'agregation ne porte
      * que sur l'odometre, pas les recharges, bien moins couteux.
      *
-     * @return array<int, array{month: string, km: int}>  Le plus recent d'abord.
+     * Chaque mois porte aussi son detail par jour (seuls les jours avec des
+     * kilometres), dans l'ordre chronologique : calcule dans le meme passage,
+     * un jour a cheval sur minuit etant compte au jour d'arrivee comme dans
+     * forMonth().
+     *
+     * @return array<int, array{month: string, km: int, days: array<int, array{date: string, km: int}>}>  Le plus recent d'abord.
      */
     public function perMonth(Vehicle $vehicle): array
     {
@@ -86,7 +91,7 @@ class DailyVehicleActivity
             ->orderBy('recorded_at')
             ->get(['recorded_at', 'odometer']);
 
-        $totals = [];
+        $parJour = [];
         $previousOdometer = null;
 
         foreach ($rows as $row) {
@@ -96,20 +101,26 @@ class DailyVehicleActivity
                 $delta = $odometer - $previousOdometer;
 
                 if ($delta > 0 && $delta <= self::MAX_JUMP_KM) {
-                    $key = $row->recorded_at->timezone(config('app.timezone'))->format('Y-m');
-                    $totals[$key] = ($totals[$key] ?? 0) + $delta;
+                    $key = $row->recorded_at->timezone(config('app.timezone'))->format('Y-m-d');
+                    $parJour[$key] = ($parJour[$key] ?? 0) + $delta;
                 }
             }
 
             $previousOdometer = $odometer;
         }
 
-        krsort($totals);
+        $mois = [];
 
-        return collect($totals)
-            ->map(fn ($km, $month) => ['month' => $month, 'km' => $km])
-            ->values()
-            ->all();
+        foreach ($parJour as $jour => $km) {
+            $cle = substr($jour, 0, 7);
+            $mois[$cle] ??= ['month' => $cle, 'km' => 0, 'days' => []];
+            $mois[$cle]['km'] += $km;
+            $mois[$cle]['days'][] = ['date' => $jour, 'km' => $km];
+        }
+
+        krsort($mois);
+
+        return array_values($mois);
     }
 
     /**
