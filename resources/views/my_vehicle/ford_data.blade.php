@@ -4,6 +4,14 @@
 
 @section('content')
     <h1 class="title">Données Ford</h1>
+    @if ($garage)
+        <p class="subtitle is-5 has-text-grey">
+            {{ $garage['nickName'] ?? $garage['vehicleType'] ?? '' }}
+            @if (! empty($garage['nickName']) && ! empty($garage['vehicleType']))
+                <span class="has-text-grey-light">— {{ $garage['vehicleType'] }}</span>
+            @endif
+        </p>
+    @endif
     <p class="subtitle is-6">
         API officielle du constructeur (FordConnect Query), distincte du boîtier OBD. Contrairement à
         Xpeng, elle répond l'état courant à chaque appel : une tâche planifiée (<code>ford:sync</code>)

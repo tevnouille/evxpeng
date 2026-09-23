@@ -35,9 +35,9 @@ class FordClient
      * malgre le fait que les seules metriques disponibles via telemetry()
      * (engineCoolantTemp, engineSpeed...) auraient pu laisser croire a un
      * thermique -- c'est juste que le jeton n'a jamais le scope evData (voir
-     * FordDataController::mesures(), tuile "Batterie 12V"). Jamais appele en
-     * dehors des tests manuels a ce jour : rien ici n'a d'usage sur la page
-     * /ma-voiture/donnees-ford pour l'instant.
+     * FordDataController::mesures(), tuile "Batterie 12V"). Appele une seule
+     * fois par SyncFordData (mis en cache indefiniment, meme motif que
+     * vehicleImageUrl() : cette identite ne change pour ainsi dire jamais).
      *
      * @return array<string, mixed>
      */

@@ -86,6 +86,17 @@ class SyncFordData extends Command
             }
         }
 
+        // Meme logique que l'image ci-dessus : identite du vehicule (nom,
+        // modele), qui ne change pour ainsi dire jamais -- un seul appel pour
+        // de bon plutot qu'a chaque passage planifie.
+        if (! Cache::has('ford_vehicle_garage')) {
+            try {
+                Cache::forever('ford_vehicle_garage', $client->garage());
+            } catch (\Throwable $e) {
+                $this->warn("Ford : recuperation de l'identite du vehicule echouee : {$e->getMessage()}");
+            }
+        }
+
         $this->info('Ford : relevé enregistré.');
 
         return self::SUCCESS;

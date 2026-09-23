@@ -60,6 +60,7 @@ class FordDataController extends Controller
             // Simple lecture : le cache est rempli par ford:sync, jamais ici
             // (voir son commentaire).
             'imageUrl' => Cache::get('ford_vehicle_image_url'),
+            'garage' => Cache::get('ford_vehicle_garage'),
             'dernierJeton' => FordOAuthToken::where('vin', config('services.ford.vin'))->first(),
             'dernier' => $dernier,
             'releves' => $releves,
