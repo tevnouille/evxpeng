@@ -83,6 +83,17 @@ class User extends Authenticatable
             ->exists());
     }
 
+    /**
+     * Acces a « Donnees Xpeng » : l'administrateur, et qui l'a reçu
+     * explicitement (xpeng_access). Contrairement a hasFordData(), pas de
+     * relation de possession a exploiter -- le vehicule Xpeng n'appartient
+     * pas forcement au compte qu'on veut y autoriser.
+     */
+    public function hasXpengData(): bool
+    {
+        return $this->is_admin || $this->xpeng_access;
+    }
+
     protected function casts(): array
     {
         return [
@@ -94,6 +105,7 @@ class User extends Authenticatable
             'approved_at' => 'datetime',
             'last_seen_at' => 'datetime',
             'is_admin' => 'boolean',
+            'xpeng_access' => 'boolean',
             'show_fuel_equivalent' => 'boolean',
             'fuel_alert_essence_price' => 'decimal:3',
             'fuel_alert_diesel_price' => 'decimal:3',

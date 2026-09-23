@@ -121,19 +121,22 @@ Route::get('/ma-voiture/donnees-ford/callback', [FordAuthController::class, 'cal
 // API constructeur (App\Services\XpengClient), distincte du boitier OBD/MQTT
 // ci-dessus : pas de telemetrie en direct, juste le suivi d'un export
 // quotidien. Jamais d'appel a l'API xpeng.com depuis ces deux routes.
+// Acces par User::hasXpengData() (administrateur + comptes autorises
+// explicitement), pas RequiresTelemetry -- le vehicule Xpeng n'appartient
+// pas forcement au compte qu'on veut y autoriser.
 Route::get('/ma-voiture/dataapixpeng', [XpengDataController::class, 'index'])
-    ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
+    ->middleware(\App\Http\Middleware\RequiresXpengData::class)
     ->name('my-vehicle.xpeng');
 
-// Relance manuelle de xpeng:sync, en arriere-plan. Reserve a l'administrateur :
-// chaque clic consomme une des 5 soumissions/24 h du quota Xpeng, commun a
-// tout le compte (garde-fous dans XpengDataController::synchroniser()).
+// Relance manuelle de xpeng:sync, en arriere-plan. Ouverte a qui voit la
+// page : chaque clic consomme une des 5 soumissions/24 h du quota Xpeng,
+// commun a tout le compte (garde-fous dans XpengDataController::synchroniser()).
 Route::post('/ma-voiture/dataapixpeng/synchroniser', [XpengDataController::class, 'synchroniser'])
-    ->middleware([\App\Http\Middleware\RequiresAdmin::class, 'throttle:3,1'])
+    ->middleware([\App\Http\Middleware\RequiresXpengData::class, 'throttle:3,1'])
     ->name('my-vehicle.xpeng.synchroniser');
 
 Route::get('/ma-voiture/dataapixpeng/{export}/telecharger', [XpengDataController::class, 'telecharger'])
-    ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
+    ->middleware(\App\Http\Middleware\RequiresXpengData::class)
     ->name('my-vehicle.xpeng.telecharger');
 
 // Depot manuel d'un export deja telecharge sur le portail Xpeng, en
@@ -141,7 +144,7 @@ Route::get('/ma-voiture/dataapixpeng/{export}/telecharger', [XpengDataController
 // formulaires de ce projet : un import prend deux minutes, pas de raison
 // d'en laisser lancer plusieurs a la suite.
 Route::post('/ma-voiture/dataapixpeng/importer', [XpengDataController::class, 'importer'])
-    ->middleware([\App\Http\Middleware\RequiresTelemetry::class, 'throttle:5,1'])
+    ->middleware([\App\Http\Middleware\RequiresXpengData::class, 'throttle:5,1'])
     ->name('my-vehicle.xpeng.importer');
 
 Route::get('/deplacements', [TripMapController::class, 'index'])

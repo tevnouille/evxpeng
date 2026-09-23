@@ -63,7 +63,7 @@ class XpengDataController extends Controller
             ->get();
 
         return view('my_vehicle.xpeng_data', [
-            'isAdmin' => (bool) CurrentUser::get()?->is_admin,
+            'canSync' => (bool) CurrentUser::get()?->hasXpengData(),
             'soumissions24h' => $this->soumissions24h(),
             'quota24h' => self::QUOTA_24H,
             'dernier' => $exports->first(),

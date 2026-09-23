@@ -95,7 +95,7 @@
         </div>
     @endif
 
-    @if ($isAdmin)
+    @if ($canSync)
         <form method="POST" action="{{ route('my-vehicle.xpeng.synchroniser') }}" class="mb-2">
             @csrf
             <button type="submit" class="button is-link is-light"

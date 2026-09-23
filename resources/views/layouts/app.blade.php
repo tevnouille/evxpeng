@@ -44,15 +44,18 @@
                 @php
                     $avecTelemetrie = (bool) \App\Support\CurrentUser::get()?->hasTelemetry();
                     $avecFord = (bool) \App\Support\CurrentUser::get()?->hasFordData();
+                    $avecXpeng = (bool) \App\Support\CurrentUser::get()?->hasXpengData();
                 @endphp
-                {{-- Deux acces independants : le boitier OBD (la plupart des
-                     entrees) et les donnees Ford, rattachees au VIN du vehicule
-                     plutot qu'au boitier -- la Ford n'en a pas. Un compte qui
-                     n'a que la seconde voit un menu reduit a elle. --}}
-                @if ($avecTelemetrie || $avecFord)
+                {{-- Trois acces independants : le boitier OBD (la plupart des
+                     entrees), les donnees Ford (rattachees au VIN du vehicule
+                     possede -- la Ford n'a pas de boitier) et les donnees
+                     Xpeng (accordees explicitement, aucune relation de
+                     possession a exploiter). Un compte qui n'en a qu'un
+                     sous-ensemble voit un menu reduit a celui-ci. --}}
+                @if ($avecTelemetrie || $avecFord || $avecXpeng)
                     <div class="navbar-item has-dropdown is-hoverable">
                         <a class="navbar-link {{ request()->routeIs('my-vehicle.*') ? 'is-active' : '' }}"
-                           href="{{ $avecTelemetrie ? route('my-vehicle.index') : route('my-vehicle.ford') }}">
+                           href="{{ $avecTelemetrie ? route('my-vehicle.index') : ($avecFord ? route('my-vehicle.ford') : route('my-vehicle.xpeng')) }}">
                             @include('layouts._icon', ['name' => 'voiture'])Ma voiture
                         </a>
                         <div class="navbar-dropdown">
@@ -66,6 +69,8 @@
                                 <a class="navbar-item {{ request()->routeIs('my-vehicle.mileage') ? 'is-active' : '' }}" href="{{ route('my-vehicle.mileage') }}">
                                     Kilométrage
                                 </a>
+                            @endif
+                            @if ($avecXpeng)
                                 <a class="navbar-item {{ request()->routeIs('my-vehicle.xpeng*') ? 'is-active' : '' }}" href="{{ route('my-vehicle.xpeng') }}">
                                     Données Xpeng
                                 </a>
