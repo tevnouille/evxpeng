@@ -45,6 +45,7 @@ class FordDataController extends Controller
         'xev_soc' => 'xevBatteryStateOfCharge',
         'xev_range_km' => 'xevBatteryRange',
         'plug_status' => 'xevPlugChargerStatus',
+        'latitude' => 'position',
     ];
 
     public function index(): View
@@ -68,7 +69,32 @@ class FordDataController extends Controller
             'dernier' => $dernier,
             'releves' => $releves,
             'mesures' => $releves->isEmpty() ? [] : $this->mesures($releves),
+            'capaciteBatterie' => $this->capaciteBatterieMoyenne7j($releves),
         ]);
+    }
+
+    /**
+     * Capacite de la batterie de traction a 100%, estimee a partir de chaque
+     * couple (xev_energy_remaining_kwh, xev_soc) : energie restante / SoC.
+     * Ford ne publie aucun champ direct pour ca (pas de SOH -- voir la
+     * discussion utilisateur du 23/09/2026, xevBatteryCapacity/
+     * xevBatteryMaximumRange documentes mais jamais presents en pratique).
+     *
+     * Moyenne glissante sur 7 jours plutot qu'un seul releve : le SoC Ford
+     * est arrondi a l'entier pres, ce qui fait bouger le resultat de pres
+     * d'1 kWh d'un releve a l'autre sur cette capacite (~80 kWh). Exclut les
+     * releves a moins de 20% de SoC : a ce niveau, 1 point d'arrondi pese
+     * plusieurs kWh de plus en erreur relative.
+     */
+    private function capaciteBatterieMoyenne7j(Collection $releves): ?float
+    {
+        $estimations = $releves
+            ->filter(fn (FordTelemetry $r) => $r->recorded_at->gte(now()->subDays(7))
+                && $r->xev_soc !== null && $r->xev_soc >= 20
+                && $r->xev_energy_remaining_kwh !== null)
+            ->map(fn (FordTelemetry $r) => $r->xev_energy_remaining_kwh / ($r->xev_soc / 100));
+
+        return $estimations->isEmpty() ? null : round($estimations->avg(), 1);
     }
 
     /**

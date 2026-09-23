@@ -93,6 +93,16 @@
                         @endif
                     </div>
                 @endforeach
+                @if ($dernier->latitude !== null && $dernier->longitude !== null)
+                    <div class="column">
+                        <p class="heading">Position</p>
+                        <p class="title is-6 {{ isset($valeursAnciennes['latitude']) ? 'has-text-grey' : '' }}">
+                            <a href="https://www.google.com/maps/search/?api=1&query={{ $dernier->latitude }},{{ $dernier->longitude }}" target="_blank" rel="noopener">Maps</a>
+                            ·
+                            <a href="https://www.waze.com/ul?ll={{ $dernier->latitude }},{{ $dernier->longitude }}&amp;navigate=yes" target="_blank" rel="noopener">Waze</a>
+                        </p>
+                    </div>
+                @endif
                 <div class="column">
                     <p class="heading">Dernier relevé</p>
                     <p class="title is-5">{{ $dernier->recorded_at->diffForHumans() }}</p>
@@ -101,6 +111,12 @@
                     </p>
                 </div>
             </div>
+            @if ($capaciteBatterie)
+                <p class="has-text-grey is-size-7">
+                    Capacité de la batterie de traction estimée à 100 % : <strong>{{ str_replace('.', ',', (string) $capaciteBatterie) }} kWh</strong>
+                    — moyenne glissante sur 7 jours (énergie restante ÷ SoC), pas une donnée Ford directe.
+                </p>
+            @endif
         </div>
     @endif
 
