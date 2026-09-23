@@ -30,10 +30,16 @@
             @endif
         </div>
     @else
-        <form method="POST" action="{{ route('my-vehicle.ford.synchroniser') }}" class="mb-4">
+        <form method="POST" action="{{ route('my-vehicle.ford.synchroniser') }}" class="mb-2 is-inline-block mr-2">
             @csrf
             <button type="submit" class="button is-link is-light">Lancer la récupération des données</button>
         </form>
+        @if ($isAdmin)
+            {{-- Reautoriser reste possible meme avec un jeton deja enregistre --
+                 par exemple pour redemander des scopes apres un changement du
+                 parametre envoye a l'autorisation (voir FordAuthController). --}}
+            <a href="{{ route('my-vehicle.ford.authorize') }}" class="button is-light mb-2">Réautoriser Ford</a>
+        @endif
     @endif
 
     @if ($imageUrl)
