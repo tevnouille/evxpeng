@@ -89,7 +89,10 @@ class FordDataController extends Controller
             ['champ' => 'soc', 'label' => 'Batterie (SoC)', 'unite' => '%'],
             ['champ' => 'odometre_km', 'label' => 'Kilométrage', 'unite' => 'km'],
             ['champ' => 'battery_voltage', 'label' => 'Tension batterie 12V', 'unite' => 'V'],
-            ['champ' => 'ambient_temp_c', 'label' => 'Température ambiante', 'unite' => '°C'],
+            // Pas de « Température ambiante » (ambient_temp_c) : toujours 0 sur
+            // cette voiture, y compris pendant un trajet ou outsideTemperature
+            // variait (constate le 23/09/2026) -- champ non renseigne par le
+            // vehicule. La colonne reste alimentee, au cas ou.
             ['champ' => 'outside_temp_c', 'label' => 'Température extérieure', 'unite' => '°C'],
         ];
 
