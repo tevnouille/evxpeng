@@ -47,7 +47,7 @@
 
         @php
             $tuiles = [
-                'soc' => ['Batterie', $dernier->soc !== null ? rtrim(rtrim(number_format($dernier->soc, 1, ',', ' '), '0'), ',') . ' %' : '—'],
+                'soc' => ['Batterie 12V (charge)', $dernier->soc !== null ? rtrim(rtrim(number_format($dernier->soc, 1, ',', ' '), '0'), ',') . ' %' : '—'],
                 'odometre_km' => ['Kilométrage', $dernier->odometre_km !== null ? number_format($dernier->odometre_km, 0, ',', ' ') . ' km' : '—'],
                 'outside_temp_c' => ['Température extérieure', $dernier->outside_temp_c !== null ? str_replace('.', ',', (string) round($dernier->outside_temp_c, 1)) . ' °C' : '—'],
                 'ignition_status' => ['Contact', $dernier->ignition_status ?? '—'],

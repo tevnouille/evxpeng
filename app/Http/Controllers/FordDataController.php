@@ -141,7 +141,12 @@ class FordDataController extends Controller
     private function mesures(Collection $releves): array
     {
         $definitions = [
-            ['champ' => 'soc', 'label' => 'Batterie (SoC)', 'unite' => '%'],
+            // « batteryStateOfCharge » chez Ford porte vehicleBattery=PRIMARY_BATTERY :
+            // la batterie 12V demarreur/accessoires, pas une batterie de traction --
+            // ce vehicule (moteur thermique : engineCoolantTemp/engineSpeed presents
+            // dans les metriques brutes) n'a de toute facon pas de batterie EV.
+            // Meme grandeur physique que Tension batterie 12V juste apres, en %.
+            ['champ' => 'soc', 'label' => 'Batterie 12V (charge)', 'unite' => '%'],
             ['champ' => 'odometre_km', 'label' => 'Kilométrage', 'unite' => 'km'],
             ['champ' => 'battery_voltage', 'label' => 'Tension batterie 12V', 'unite' => 'V'],
             // Pas de « Température ambiante » (ambient_temp_c) : toujours 0 sur
