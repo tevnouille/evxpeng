@@ -7,7 +7,8 @@
     <p class="subtitle is-6">
         API officielle du constructeur (FordConnect Query), distincte du boîtier OBD. Contrairement à
         Xpeng, elle répond l'état courant à chaque appel : une tâche planifiée (<code>ford:sync</code>)
-        enregistre un relevé à intervalles réguliers, jamais depuis cette page.
+        enregistre un relevé toutes les 30 minutes. La voiture ne remonte rien tant qu'elle est à
+        l'arrêt : Ford renvoie alors le dernier relevé connu.
     </p>
 
     @if (! $dernierJeton)
@@ -15,6 +16,11 @@
             Aucune autorisation Ford enregistrée. <a href="{{ route('my-vehicle.ford.authorize') }}">Autoriser l'accès</a>
             (nécessite de se connecter avec le compte Ford/FordPass propriétaire du véhicule).
         </div>
+    @elseif ($isAdmin)
+        <form method="POST" action="{{ route('my-vehicle.ford.synchroniser') }}" class="mb-4">
+            @csrf
+            <button type="submit" class="button is-link is-light">Lancer la récupération des données</button>
+        </form>
     @endif
 
     @if ($imageUrl)

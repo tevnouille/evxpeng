@@ -94,6 +94,13 @@ Route::get('/ma-voiture/donnees-ford', [FordDataController::class, 'index'])
     ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
     ->name('my-vehicle.ford');
 
+// Relance manuelle de ford:sync. Reserve a l'administrateur comme les autres
+// sources partagees (DataSourceController) ; throttle par prudence, Ford
+// ayant deja repondu 429 a une rafale d'appels manuels.
+Route::post('/ma-voiture/donnees-ford/synchroniser', [FordDataController::class, 'synchroniser'])
+    ->middleware([\App\Http\Middleware\RequiresAdmin::class, 'throttle:3,1'])
+    ->name('my-vehicle.ford.synchroniser');
+
 // Lance l'autorisation FordConnect : reconstruit le lien de connexion Ford
 // faute de le trouver expose sur developer.ford.com (voir le docblock de
 // FordAuthController::authorize).
@@ -115,6 +122,13 @@ Route::get('/ma-voiture/donnees-ford/callback', [FordAuthController::class, 'cal
 Route::get('/ma-voiture/dataapixpeng', [XpengDataController::class, 'index'])
     ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
     ->name('my-vehicle.xpeng');
+
+// Relance manuelle de xpeng:sync, en arriere-plan. Reserve a l'administrateur :
+// chaque clic consomme une des 5 soumissions/24 h du quota Xpeng, commun a
+// tout le compte (garde-fous dans XpengDataController::synchroniser()).
+Route::post('/ma-voiture/dataapixpeng/synchroniser', [XpengDataController::class, 'synchroniser'])
+    ->middleware([\App\Http\Middleware\RequiresAdmin::class, 'throttle:3,1'])
+    ->name('my-vehicle.xpeng.synchroniser');
 
 Route::get('/ma-voiture/dataapixpeng/{export}/telecharger', [XpengDataController::class, 'telecharger'])
     ->middleware(\App\Http\Middleware\RequiresTelemetry::class)

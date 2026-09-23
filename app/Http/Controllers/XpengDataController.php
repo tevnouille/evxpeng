@@ -6,11 +6,15 @@ use App\Models\XpengDataExport;
 use App\Models\XpengTelemetry;
 use App\Services\XpengChargeDetector;
 use App\Services\XpengExportParser;
+use App\Support\CurrentUser;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
+use Symfony\Component\Process\Process;
 
 /**
  * Suivi de l'integration Xpeng (donnees constructeur, hors OBD/MQTT).
@@ -39,6 +43,17 @@ class XpengDataController extends Controller
      */
     private const JOURS_AFFICHES = 30;
 
+    /** Quota Xpeng : soumissions par 24 h glissantes (voir XpengClient). */
+    private const QUOTA_24H = 5;
+
+    /**
+     * Au-dela, une ligne `en_cours` est tenue pour un processus mort (la
+     * commande abandonne d'elle-meme apres ~80 s d'attente, plus le
+     * telechargement et l'agregation) : elle ne doit pas bloquer le bouton
+     * indefiniment.
+     */
+    private const MINUTES_EN_COURS_MAX = 10;
+
     public function index(XpengChargeDetector $detecteur): View
     {
         $exports = XpengDataExport::orderByDesc('requested_at')->limit(30)->get();
@@ -48,12 +63,69 @@ class XpengDataController extends Controller
             ->get();
 
         return view('my_vehicle.xpeng_data', [
+            'isAdmin' => (bool) CurrentUser::get()?->is_admin,
+            'soumissions24h' => $this->soumissions24h(),
+            'quota24h' => self::QUOTA_24H,
             'dernier' => $exports->first(),
             'exports' => $exports,
             'releves' => $releves,
             'mesures' => $releves->isEmpty() ? [] : $this->mesures($releves),
             'recharges' => $releves->isEmpty() ? [] : $detecteur->detecter($releves),
         ]);
+    }
+
+    /**
+     * Lance `xpeng:sync` a la demande, sans attendre le passage planifie.
+     *
+     * En arriere-plan (meme `nohup ... &` que l'import IRVE de
+     * DataSourceController) : la commande attend sur place jusqu'a ~80 s que
+     * l'export soit pret, puis telecharge et agrege -- bien trop long pour
+     * tenir la requete ouverte. Son avancement se lit ensuite sur la page,
+     * via la ligne `en_cours` qu'elle cree elle-meme.
+     *
+     * Deux garde-fous, le quota Xpeng (5 soumissions/24 h) ne pardonnant pas :
+     * pas de second lancement tant qu'un premier tourne, et plus rien une
+     * fois le quota atteint.
+     */
+    public function synchroniser(): RedirectResponse
+    {
+        $enCours = XpengDataExport::where('statut', 'en_cours')
+            ->where('requested_at', '>=', now()->subMinutes(self::MINUTES_EN_COURS_MAX))
+            ->exists();
+
+        // Cache::add couvre aussi l'instant entre le lancement et la creation
+        // de la ligne `en_cours` par la commande : un double clic y
+        // lancerait sinon deux soumissions.
+        if ($enCours || ! Cache::add('xpeng_sync_manuelle', true, 120)) {
+            return back()->with('error', 'Une synchronisation Xpeng est déjà en cours : rechargez la page dans une minute ou deux.');
+        }
+
+        if ($this->soumissions24h() >= self::QUOTA_24H) {
+            Cache::forget('xpeng_sync_manuelle');
+
+            return back()->with('error', 'Quota Xpeng atteint ('.self::QUOTA_24H.' demandes sur 24 h glissantes) : réessayez plus tard.');
+        }
+
+        $log = storage_path('logs/xpeng-sync.log');
+
+        try {
+            Process::fromShellCommandline(
+                sprintf('nohup php artisan xpeng:sync >> %s 2>&1 &', escapeshellarg($log)),
+                base_path()
+            )->run();
+        } catch (\Throwable $e) {
+            Cache::forget('xpeng_sync_manuelle');
+            Log::error('Synchronisation Xpeng : lancement impossible', ['message' => $e->getMessage()]);
+
+            return back()->with('error', "La synchronisation n'a pas pu être lancée : ".$e->getMessage());
+        }
+
+        return back()->with('success', "Synchronisation Xpeng lancée en arrière-plan. Elle prend en général moins de deux minutes : rechargez la page pour voir le résultat.");
+    }
+
+    private function soumissions24h(): int
+    {
+        return XpengDataExport::where('requested_at', '>=', now()->subDay())->count();
     }
 
     /**

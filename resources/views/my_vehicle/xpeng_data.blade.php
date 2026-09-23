@@ -95,6 +95,21 @@
         </div>
     @endif
 
+    @if ($isAdmin)
+        <form method="POST" action="{{ route('my-vehicle.xpeng.synchroniser') }}" class="mb-2">
+            @csrf
+            <button type="submit" class="button is-link is-light"
+                @disabled($soumissions24h >= $quota24h || $dernier?->statut === 'en_cours')>
+                Lancer la récupération des données
+            </button>
+        </form>
+        <p class="has-text-grey is-size-7">
+            {{ $soumissions24h }}/{{ $quota24h }} demande(s) Xpeng sur les dernières 24 h — le quota est commun
+            au passage planifié (6h15, puis 8h15 en cas d'échec) et à ce bouton. Dure en général moins de deux
+            minutes, en arrière-plan : rechargez la page pour voir le résultat.
+        </p>
+    @endif
+
     <h2 class="title is-5 mt-5">Déposer un export manuellement</h2>
     <p class="has-text-grey is-size-7 mb-2">
         En attendant que la synchronisation automatique fonctionne (<code>appId</code>/<code>appSecret</code>),
