@@ -142,10 +142,14 @@ class FordDataController extends Controller
     {
         $definitions = [
             // « batteryStateOfCharge » chez Ford porte vehicleBattery=PRIMARY_BATTERY :
-            // la batterie 12V demarreur/accessoires, pas une batterie de traction --
-            // ce vehicule (moteur thermique : engineCoolantTemp/engineSpeed presents
-            // dans les metriques brutes) n'a de toute facon pas de batterie EV.
-            // Meme grandeur physique que Tension batterie 12V juste apres, en %.
+            // la batterie 12V demarreur/accessoires, pas la batterie de traction.
+            // Le vehicule EST un BEV (Mustang Mach-E, confirme par /v1/garage) mais
+            // le jeton n'a jamais le scope evData (vehicleBasicInfo/vehicleData
+            // seulement -- verifie le 23/09/2026 : /v1/electric/departure-times et
+            // /v1/electric/charge-schedules repondent 403 "missing: evData"), donc
+            // la vraie charge de traction (xevBatteryStateOfCharge) reste hors de
+            // portee cote API, quel que soit ce qu'on demande. Meme grandeur
+            // physique que Tension batterie 12V juste apres, en %.
             ['champ' => 'soc', 'label' => 'Batterie 12V (charge)', 'unite' => '%'],
             ['champ' => 'odometre_km', 'label' => 'Kilométrage', 'unite' => 'km'],
             ['champ' => 'battery_voltage', 'label' => 'Tension batterie 12V', 'unite' => 'V'],

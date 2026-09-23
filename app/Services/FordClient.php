@@ -29,7 +29,18 @@ class FordClient
     ) {
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * Identite du vehicule (marque, modele, annee, surnom, engineType) --
+     * confirme le 23/09/2026 : engineType "BEV" pour ce VIN (Mustang Mach-E),
+     * malgre le fait que les seules metriques disponibles via telemetry()
+     * (engineCoolantTemp, engineSpeed...) auraient pu laisser croire a un
+     * thermique -- c'est juste que le jeton n'a jamais le scope evData (voir
+     * FordDataController::mesures(), tuile "Batterie 12V"). Jamais appele en
+     * dehors des tests manuels a ce jour : rien ici n'a d'usage sur la page
+     * /ma-voiture/donnees-ford pour l'instant.
+     *
+     * @return array<string, mixed>
+     */
     public function garage(): array
     {
         return $this->get('/v1/garage');
