@@ -60,7 +60,14 @@
         @endif
 
         @php
+            $statutsPrise = [
+                'CONNECTED' => 'Branchée',
+                'DISCONNECTED' => 'Débranchée',
+            ];
             $tuiles = [
+                'xev_soc' => ['Batterie de traction (SoC)', $dernier->xev_soc !== null ? rtrim(rtrim(number_format($dernier->xev_soc, 1, ',', ' '), '0'), ',') . ' %' : '—'],
+                'xev_range_km' => ['Autonomie estimée (VE)', $dernier->xev_range_km !== null ? number_format($dernier->xev_range_km, 0, ',', ' ') . ' km' : '—'],
+                'plug_status' => ['Prise', $statutsPrise[$dernier->plug_status] ?? $dernier->plug_status ?? '—'],
                 'soc' => ['Batterie 12V (charge)', $dernier->soc !== null ? rtrim(rtrim(number_format($dernier->soc, 1, ',', ' '), '0'), ',') . ' %' : '—'],
                 'odometre_km' => ['Kilométrage', $dernier->odometre_km !== null ? number_format($dernier->odometre_km, 0, ',', ' ') . ' km' : '—'],
                 'outside_temp_c' => ['Température extérieure', $dernier->outside_temp_c !== null ? str_replace('.', ',', (string) round($dernier->outside_temp_c, 1)) . ' °C' : '—'],

@@ -42,6 +42,9 @@ class FordDataController extends Controller
         'odometre_km' => 'odometer',
         'ignition_status' => 'ignitionStatus',
         'outside_temp_c' => 'outsideTemperature',
+        'xev_soc' => 'xevBatteryStateOfCharge',
+        'xev_range_km' => 'xevBatteryRange',
+        'plug_status' => 'xevPlugChargerStatus',
     ];
 
     public function index(): View
@@ -143,17 +146,30 @@ class FordDataController extends Controller
     {
         $definitions = [
             // « batteryStateOfCharge » chez Ford porte vehicleBattery=PRIMARY_BATTERY :
-            // la batterie 12V demarreur/accessoires, pas la batterie de traction.
-            // Le vehicule EST un BEV (Mustang Mach-E, confirme par /v1/garage) mais
-            // le jeton n'a jamais le scope evData (vehicleBasicInfo/vehicleData
-            // seulement -- verifie le 23/09/2026 : /v1/electric/departure-times et
-            // /v1/electric/charge-schedules repondent 403 "missing: evData"), donc
-            // la vraie charge de traction (xevBatteryStateOfCharge) reste hors de
-            // portee cote API, quel que soit ce qu'on demande. Meme grandeur
-            // physique que Tension batterie 12V juste apres, en %.
+            // la batterie 12V demarreur/accessoires, pas la batterie de traction
+            // (xev_soc juste en dessous, depuis que le scope evData est accorde --
+            // voir le commentaire de xev_soc). Meme grandeur physique que Tension
+            // batterie 12V juste apres, en %.
             ['champ' => 'soc', 'label' => 'Batterie 12V (charge)', 'unite' => '%'],
             ['champ' => 'odometre_km', 'label' => 'Kilométrage', 'unite' => 'km'],
             ['champ' => 'battery_voltage', 'label' => 'Tension batterie 12V', 'unite' => 'V'],
+            // La vraie batterie de traction : hors de portee jusqu'au
+            // 23/09/2026, faute du scope evData (jamais accorde par le
+            // parametre `scope` de l'autorisation -- decide uniquement par
+            // les categories cochees a l'inscription de l'app sur
+            // developer.ford.com, verifie en recreant une app avec toutes
+            // les categories cochees).
+            ['champ' => 'xev_soc', 'label' => 'Batterie de traction (SoC)', 'unite' => '%'],
+            ['champ' => 'xev_range_km', 'label' => 'Autonomie estimée (VE)', 'unite' => 'km'],
+            ['champ' => 'xev_energy_remaining_kwh', 'label' => 'Énergie restante (VE)', 'unite' => 'kWh'],
+            ['champ' => 'xev_charger_voltage_output_v', 'label' => 'Tension de charge', 'unite' => 'V'],
+            ['champ' => 'xev_charger_current_output_a', 'label' => 'Courant de charge', 'unite' => 'A'],
+            // Stockees en kPa (meme raison qu'XpengDataController::mesures()),
+            // affichees en bar.
+            ['champ' => 'pression_av_gauche_kpa', 'label' => 'Pression avant gauche', 'unite' => 'bar', 'facteur' => 0.01, 'decimales' => 2],
+            ['champ' => 'pression_av_droite_kpa', 'label' => 'Pression avant droite', 'unite' => 'bar', 'facteur' => 0.01, 'decimales' => 2],
+            ['champ' => 'pression_ar_gauche_kpa', 'label' => 'Pression arrière gauche', 'unite' => 'bar', 'facteur' => 0.01, 'decimales' => 2],
+            ['champ' => 'pression_ar_droite_kpa', 'label' => 'Pression arrière droite', 'unite' => 'bar', 'facteur' => 0.01, 'decimales' => 2],
             // Pas de « Température ambiante » (ambient_temp_c) : toujours 0 sur
             // cette voiture, y compris pendant un trajet ou outsideTemperature
             // variait (constate le 23/09/2026) -- champ non renseigne par le
@@ -173,13 +189,15 @@ class FordDataController extends Controller
             }
 
             $echantillon = $this->echantillonner($points);
+            $facteur = $definition['facteur'] ?? 1;
+            $decimales = $definition['decimales'] ?? 1;
 
             $mesures[] = [
                 'label' => $definition['label'],
                 'unit' => $definition['unite'],
                 'count' => $points->count(),
                 'labels' => $echantillon->map(fn (FordTelemetry $r) => $r->recorded_at->timezone(config('app.timezone'))->format('d/m H:i'))->all(),
-                'values' => $echantillon->map(fn (FordTelemetry $r) => round((float) $r->{$definition['champ']}, 1))->all(),
+                'values' => $echantillon->map(fn (FordTelemetry $r) => round((float) $r->{$definition['champ']} * $facteur, $decimales))->all(),
             ];
         }
 

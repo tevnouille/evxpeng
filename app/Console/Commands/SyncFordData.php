@@ -67,6 +67,29 @@ class SyncFordData extends Command
             'ambient_temp_c' => $metriques['ambientTemp']['value'] ?? null,
             'outside_temp_c' => $metriques['outsideTemperature']['value'] ?? null,
             'ignition_status' => $metriques['ignitionStatus']['value'] ?? null,
+
+            // Colonnes ouvertes par le scope evData (23/09/2026, voir la
+            // migration associee) : absentes tant que le jeton ne le porte
+            // pas, ?? null les laisse alors simplement vides plutot que de
+            // faire echouer tout l'enregistrement.
+            'xev_soc' => $metriques['xevBatteryStateOfCharge']['value'] ?? null,
+            'xev_range_km' => $metriques['xevBatteryRange']['value'] ?? null,
+            'xev_energy_remaining_kwh' => $metriques['xevBatteryEnergyRemaining']['value'] ?? null,
+            'xev_time_to_full_charge_min' => $metriques['xevBatteryTimeToFullCharge']['value'] ?? null,
+            'xev_charger_energy_output_kwh' => $metriques['xevBatteryChargerEnergyOutput']['value'] ?? null,
+            'xev_charger_current_output_a' => $metriques['xevBatteryChargerCurrentOutput']['value'] ?? null,
+            'xev_charger_voltage_output_v' => $metriques['xevBatteryChargerVoltageOutput']['value'] ?? null,
+            'plug_status' => $metriques['xevPlugChargerStatus']['value'] ?? null,
+            'charge_display_status' => $metriques['xevBatteryChargeDisplayStatus']['value'] ?? null,
+            'charge_station_power_type' => $metriques['xevChargeStationPowerType']['value'] ?? null,
+            'speed_kmh' => $metriques['speed']['value'] ?? null,
+            'latitude' => $metriques['position']['value']['location']['lat'] ?? null,
+            'longitude' => $metriques['position']['value']['location']['lon'] ?? null,
+            'pression_av_gauche_kpa' => $this->pressionRoue($metriques, 'FRONT_LEFT'),
+            'pression_av_droite_kpa' => $this->pressionRoue($metriques, 'FRONT_RIGHT'),
+            'pression_ar_gauche_kpa' => $this->pressionRoue($metriques, 'REAR_LEFT'),
+            'pression_ar_droite_kpa' => $this->pressionRoue($metriques, 'REAR_RIGHT'),
+
             'metrics' => $metriques,
         ]);
 
@@ -100,5 +123,21 @@ class SyncFordData extends Command
         $this->info('Ford : relevé enregistré.');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * tirePressure est un tableau signale par vehicleWheel, pas un champ
+     * direct -- meme forme que doorStatus/windowStatus (non exploites en
+     * colonne, voir la migration).
+     */
+    private function pressionRoue(array $metriques, string $roue): ?float
+    {
+        foreach ($metriques['tirePressure'] ?? [] as $mesure) {
+            if (($mesure['vehicleWheel'] ?? null) === $roue) {
+                return $mesure['value'] ?? null;
+            }
+        }
+
+        return null;
     }
 }
