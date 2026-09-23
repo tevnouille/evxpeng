@@ -9,7 +9,7 @@ use App\Services\XpengExportParser;
 use App\Support\CurrentUser;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -241,7 +241,7 @@ class XpengDataController extends Controller
         return $garde->push($points->last());
     }
 
-    public function telecharger(XpengDataExport $export): Response
+    public function telecharger(XpengDataExport $export): BinaryFileResponse
     {
         abort_unless($export->chemin_fichier, 404);
 
