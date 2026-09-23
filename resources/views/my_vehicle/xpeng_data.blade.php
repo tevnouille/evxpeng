@@ -11,6 +11,13 @@
         trop serré pour le risquer sur une simple visite.
     </p>
 
+    @if ($derniereDonnee)
+        <p class="has-text-grey is-size-7 mb-4">
+            Dernière donnée disponible : {{ $derniereDonnee->translatedFormat('d/m/Y à H:i') }}
+            ({{ $derniereDonnee->diffForHumans() }}).
+        </p>
+    @endif
+
     @if (! empty($mesures))
         <p class="has-text-grey is-size-7 mb-4">
             {{ $releves->count() }} relevé(s), agrégés à la minute, sur les 30 derniers jours.

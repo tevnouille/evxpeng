@@ -66,6 +66,12 @@ class XpengDataController extends Controller
             'canSync' => (bool) CurrentUser::get()?->hasXpengData(),
             'soumissions24h' => $this->soumissions24h(),
             'quota24h' => self::QUOTA_24H,
+            // Independant de la fenetre de 30 jours affichee (JOURS_AFFICHES) :
+            // la derniere donnee dispo peut en theorie tomber juste hors de
+            // cette fenetre si $releves est vide un jour donne. orderBy+first
+            // plutot que max() : ce dernier renvoie la valeur brute, sans le
+            // cast datetime du modele.
+            'derniereDonnee' => XpengTelemetry::orderByDesc('horodatage')->first()?->horodatage,
             'dernier' => $exports->first(),
             'exports' => $exports,
             'releves' => $releves,
