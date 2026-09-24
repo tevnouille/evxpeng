@@ -179,7 +179,11 @@
         table.pneus { border-collapse: collapse; margin: .1em 0; }
         table.pneus td {
             font-size: clamp(.85rem, 3.5vh, 1.5rem); font-weight: 700;
-            padding: 0 .4em; line-height: 1.3;
+            padding: 0 .4em 0 0; line-height: 1.3;
+        }
+        table.pneus td.repere {
+            font-size: clamp(.55rem, 1.6vh, .8rem); font-weight: 400;
+            color: #6b6b6b; padding-right: .3em; text-align: right;
         }
         .note { font-size: clamp(.55rem, 1.6vh, .8rem); color: #6b6b6b; margin: .2em 0 0; }
         /* Un fondu court a la releve : sans lui, la valeur change d'un coup et
@@ -473,11 +477,15 @@
                     <p class="titre">Pression des pneus</p>
                     <table class="pneus">
                         <tr>
+                            <td class="repere">AVG</td>
                             <td>{{ $pressionPneus->pression_av_gauche_kpa !== null ? number_format($pressionPneus->pression_av_gauche_kpa * 0.01, 2) : '—' }}</td>
+                            <td class="repere">AVD</td>
                             <td>{{ $pressionPneus->pression_av_droite_kpa !== null ? number_format($pressionPneus->pression_av_droite_kpa * 0.01, 2) : '—' }}</td>
                         </tr>
                         <tr>
+                            <td class="repere">ARG</td>
                             <td>{{ $pressionPneus->pression_ar_gauche_kpa !== null ? number_format($pressionPneus->pression_ar_gauche_kpa * 0.01, 2) : '—' }}</td>
+                            <td class="repere">ARD</td>
                             <td>{{ $pressionPneus->pression_ar_droite_kpa !== null ? number_format($pressionPneus->pression_ar_droite_kpa * 0.01, 2) : '—' }}</td>
                         </tr>
                     </table>
