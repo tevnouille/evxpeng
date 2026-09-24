@@ -181,10 +181,16 @@
             grid-template-rows: 1fr 1fr;
             align-items: center; gap: 1vh 2vw;
         }
-        .silhouette { grid-row: 1 / 3; height: 100%; max-height: 60vh; color: #6b6b6b; }
+        /* Placement explicite : sans lui, le placement automatique casait le
+           SVG (qui s'etend sur les deux lignes) dans la 3e colonne plutot
+           que la 2e des qu'un item de la premiere ligne l'occupait deja --
+           constate par l'utilisateur (voiture et texte tous a droite). */
+        .silhouette { grid-column: 2; grid-row: 1 / 3; height: 100%; max-height: 60vh; color: #6b6b6b; }
         .pneu-info { display: flex; flex-direction: column; }
-        .pneu-info.gauche { align-items: flex-end; text-align: right; }
-        .pneu-info.droite { align-items: flex-start; text-align: left; }
+        .pneu-info.gauche { grid-column: 1; align-items: flex-end; text-align: right; }
+        .pneu-info.droite { grid-column: 3; align-items: flex-start; text-align: left; }
+        .pneu-info.avant { grid-row: 1; }
+        .pneu-info.arriere { grid-row: 2; }
         /* Pneu dont la pression s'ecarte des trois autres (voir
            InfoCarController::pneusEnEcart) : fond oranger sur le chiffre,
            et sur le rectangle de la roue correspondante dans la silhouette. */
@@ -594,13 +600,13 @@
     @if ($pressionPneus)
         <div class="vue" id="vue-pneus" hidden>
             <div class="voiture-pneus">
-                <div class="pneu-info gauche">
+                <div class="pneu-info gauche avant">
                     <p class="titre">AVG</p>
                     <p class="valeur {{ in_array('av_gauche', $pneusEnEcart) ? 'ecart' : '' }}">
                         {{ $pressionPneus->pression_av_gauche_kpa !== null ? number_format($pressionPneus->pression_av_gauche_kpa * 0.01, 2) : '—' }}<span class="unite"> bar</span>
                     </p>
                 </div>
-                <div class="pneu-info droite">
+                <div class="pneu-info droite avant">
                     <p class="titre">AVD</p>
                     <p class="valeur {{ in_array('av_droite', $pneusEnEcart) ? 'ecart' : '' }}">
                         {{ $pressionPneus->pression_av_droite_kpa !== null ? number_format($pressionPneus->pression_av_droite_kpa * 0.01, 2) : '—' }}<span class="unite"> bar</span>
@@ -626,13 +632,13 @@
                           class="roue {{ in_array('ar_droite', $pneusEnEcart) ? 'ecart' : '' }}"/>
                 </svg>
 
-                <div class="pneu-info gauche">
+                <div class="pneu-info gauche arriere">
                     <p class="titre">ARG</p>
                     <p class="valeur {{ in_array('ar_gauche', $pneusEnEcart) ? 'ecart' : '' }}">
                         {{ $pressionPneus->pression_ar_gauche_kpa !== null ? number_format($pressionPneus->pression_ar_gauche_kpa * 0.01, 2) : '—' }}<span class="unite"> bar</span>
                     </p>
                 </div>
-                <div class="pneu-info droite">
+                <div class="pneu-info droite arriere">
                     <p class="titre">ARD</p>
                     <p class="valeur {{ in_array('ar_droite', $pneusEnEcart) ? 'ecart' : '' }}">
                         {{ $pressionPneus->pression_ar_droite_kpa !== null ? number_format($pressionPneus->pression_ar_droite_kpa * 0.01, 2) : '—' }}<span class="unite"> bar</span>
