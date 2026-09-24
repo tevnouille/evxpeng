@@ -59,6 +59,15 @@ class InfoCarController extends Controller
     private const CIBLES = [80, 90, 100];
 
     /**
+     * Au-dela, un pneu est signale en ecart par rapport aux trois autres --
+     * demande par l'utilisateur en voyant un arriere droit a 2,81 bar contre
+     * ~3,04 bar pour les trois autres (ecart de 0,23). Absolu plutot que
+     * relatif a une pression de plaque constructeur : l'export Xpeng n'en
+     * fournit aucune (contrairement a Ford, qui a wheelPlacardFront/Rear).
+     */
+    private const ECART_PRESSION_PNEU_BAR = 0.2;
+
+    /**
      * Serie temporelle de l'autonomie estimee, pour le graphique de l'onglet
      * « Courbe ». Aucun signal de charge separe n'est ajoute : une pente
      * montante en fin de courbe le dit deja aussi clairement qu'un badge.
@@ -184,6 +193,43 @@ class InfoCarController extends Controller
         }
 
         return $lignes;
+    }
+
+    /**
+     * Roues dont la pression s'ecarte des trois autres de plus de
+     * ECART_PRESSION_PNEU_BAR -- chacune comparee a la moyenne des trois
+     * autres, pas a la moyenne globale (qui inclurait la roue elle-meme et
+     * diluerait l'ecart d'autant plus que les trois autres sont homogenes).
+     *
+     * @return array<int, string> Sous-ensemble de ['av_gauche', 'av_droite', 'ar_gauche', 'ar_droite'].
+     */
+    private function pneusEnEcart(XpengTelemetry $releve): array
+    {
+        $pressions = [
+            'av_gauche' => $releve->pression_av_gauche_kpa,
+            'av_droite' => $releve->pression_av_droite_kpa,
+            'ar_gauche' => $releve->pression_ar_gauche_kpa,
+            'ar_droite' => $releve->pression_ar_droite_kpa,
+        ];
+
+        $connues = array_filter($pressions, fn ($v) => $v !== null);
+
+        if (count($connues) < 4) {
+            return [];
+        }
+
+        $enEcart = [];
+
+        foreach ($connues as $roue => $valeurKpa) {
+            $autres = array_diff_key($connues, [$roue => null]);
+            $moyenneAutresBar = (array_sum($autres) / count($autres)) * 0.01;
+
+            if (abs($valeurKpa * 0.01 - $moyenneAutresBar) >= self::ECART_PRESSION_PNEU_BAR) {
+                $enEcart[] = $roue;
+            }
+        }
+
+        return $enEcart;
     }
 
     /**
@@ -490,6 +536,8 @@ class InfoCarController extends Controller
             ->orderByDesc('horodatage')
             ->first();
 
+        $pneusEnEcart = $pressionPneus ? $this->pneusEnEcart($pressionPneus) : [];
+
         // Signale que le boitier ne publie plus : sans releve recent, tout ce
         // qu'affiche l'onglet Info (batterie, autonomie...) peut etre perime
         // sans que rien ne le distingue autrement. Seuil de deux minutes,
@@ -510,6 +558,7 @@ class InfoCarController extends Controller
             'position' => $position,
             'vitesseLimite' => $vitesseLimite,
             'pressionPneus' => $pressionPneus,
+            'pneusEnEcart' => $pneusEnEcart,
             'ecartCellules' => $this->battery->medianGap($history),
             'refreshSeconds' => VehicleState::REFRESH_SECONDS[$state['state'] ?? VehicleState::PARKED]
                 ?? VehicleState::REFRESH_SECONDS[VehicleState::PARKED],

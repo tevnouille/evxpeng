@@ -185,6 +185,12 @@
             font-size: clamp(.55rem, 1.6vh, .8rem); font-weight: 400;
             color: #6b6b6b; padding-right: .3em; text-align: right;
         }
+        /* Pneu dont la pression s'ecarte des trois autres (voir
+           InfoCarController::pneusEnEcart) : fond oranger sur le chiffre. */
+        table.pneus td.ecart {
+            background: #f5a623; color: #1a1a1a;
+            border-radius: 4px; padding-left: .25em; padding-right: .25em;
+        }
         .note { font-size: clamp(.55rem, 1.6vh, .8rem); color: #6b6b6b; margin: .2em 0 0; }
         /* Un fondu court a la releve : sans lui, la valeur change d'un coup et
            se lit comme une mesure qui vient de bouger. */
@@ -478,15 +484,15 @@
                     <table class="pneus">
                         <tr>
                             <td class="repere">AVG</td>
-                            <td>{{ $pressionPneus->pression_av_gauche_kpa !== null ? number_format($pressionPneus->pression_av_gauche_kpa * 0.01, 2) : '—' }}</td>
+                            <td class="{{ in_array('av_gauche', $pneusEnEcart) ? 'ecart' : '' }}">{{ $pressionPneus->pression_av_gauche_kpa !== null ? number_format($pressionPneus->pression_av_gauche_kpa * 0.01, 2) : '—' }}</td>
                             <td class="repere">AVD</td>
-                            <td>{{ $pressionPneus->pression_av_droite_kpa !== null ? number_format($pressionPneus->pression_av_droite_kpa * 0.01, 2) : '—' }}</td>
+                            <td class="{{ in_array('av_droite', $pneusEnEcart) ? 'ecart' : '' }}">{{ $pressionPneus->pression_av_droite_kpa !== null ? number_format($pressionPneus->pression_av_droite_kpa * 0.01, 2) : '—' }}</td>
                         </tr>
                         <tr>
                             <td class="repere">ARG</td>
-                            <td>{{ $pressionPneus->pression_ar_gauche_kpa !== null ? number_format($pressionPneus->pression_ar_gauche_kpa * 0.01, 2) : '—' }}</td>
+                            <td class="{{ in_array('ar_gauche', $pneusEnEcart) ? 'ecart' : '' }}">{{ $pressionPneus->pression_ar_gauche_kpa !== null ? number_format($pressionPneus->pression_ar_gauche_kpa * 0.01, 2) : '—' }}</td>
                             <td class="repere">ARD</td>
-                            <td>{{ $pressionPneus->pression_ar_droite_kpa !== null ? number_format($pressionPneus->pression_ar_droite_kpa * 0.01, 2) : '—' }}</td>
+                            <td class="{{ in_array('ar_droite', $pneusEnEcart) ? 'ecart' : '' }}">{{ $pressionPneus->pression_ar_droite_kpa !== null ? number_format($pressionPneus->pression_ar_droite_kpa * 0.01, 2) : '—' }}</td>
                         </tr>
                     </table>
                     <p class="note">bar — {{ $pressionPneus->horodatage->timezone(config('app.timezone'))->translatedFormat('d/m H:i') }}</p>
