@@ -69,7 +69,12 @@ class ObdReadings
         'speed' => ['Vitesse', 'km/h'],
         'gpsSpeed' => ['Vitesse GPS', 'km/h'],
         'odometer' => ['Compteur kilométrique', 'km'],
-        'CLTC_RANGE' => ['Autonomie annoncée', 'km'],
+        // Pas "Autonomie annoncée" : correlation de -0,907 avec le SoC
+        // constatee le 24/09/2026 (InfoCarController) -- l'exact inverse
+        // d'une autonomie, unite donc non plus garantie non plus. Garde le
+        // champ brut (utile en diagnostic) sous son nom PID plutot que sous
+        // un libelle qui s'est revele faux.
+        'CLTC_RANGE' => ['CLTC_RANGE (signification incertaine)', null],
         'altitude' => ['Altitude', 'm'],
         'heading' => ['Cap', '°'],
         'latitude' => ['Latitude', null],

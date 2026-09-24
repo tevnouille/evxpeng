@@ -430,16 +430,6 @@
                     @endif
                 </div>
 
-                @if ($cltcRange !== null)
-                    <div hidden>
-                        <p class="titre">Autonomie (véhicule)</p>
-                        <p class="valeur">
-                            <span class="emoji-valeur" aria-hidden="true">🇨🇳</span>
-                            {{ (int) $cltcRange }}<span class="unite"> km</span>
-                        </p>
-                        <p class="note">annoncée par le véhicule (CLTC)</p>
-                    </div>
-                @endif
 
                 @if ($rangeDynamique !== null)
                     <div hidden>

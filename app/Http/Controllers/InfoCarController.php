@@ -430,10 +430,14 @@ class InfoCarController extends Controller
         $consumption = $vehicle?->kwh_per_100km ? (float) $vehicle->kwh_per_100km : null;
         $rangeKm = ($availableKwh !== null && $consumption) ? (int) round($availableKwh / $consumption * 100) : null;
 
-        // Le boitier remonte lui-meme une estimation (a la seconde pres, pas
-        // documentee au-dela du nom du champ) : distincte de $rangeKm, calcule
-        // ici a partir d'une consommation fixe saisie sur la fiche du vehicule.
-        $cltcRange = $telemetry?->raw['telemetry']['CLTC_RANGE'] ?? null;
+        // Pas de tuile "Autonomie (vehicule)" a partir de CLTC_RANGE : ce
+        // champ du boitier est mal etiquete, constate le 24/09/2026 --
+        // correlation de -0,907 avec le SoC sur 3738 points (plus la batterie
+        // est chargee, plus la valeur est basse : 76-90 km a 100%, jusqu'a
+        // ~380 km vers 65% de SoC). L'exact inverse d'une autonomie. Meme
+        // categorie de piege que cumulativeCharge (voir CLAUDE.md, "Tout
+        // champ venant d'un PID peut sortir n'importe quoi") : le nom du
+        // champ ne garantit pas son contenu reel.
 
         // Autonomie a partir de la consommation reellement observee plutot
         // que la fiche du vehicule : uniquement les baisses de SoC sur la
@@ -487,7 +491,6 @@ class InfoCarController extends Controller
             'availableKwh' => $availableKwh,
             'netCapacity' => $netCapacity,
             'rangeKm' => $rangeKm,
-            'cltcRange' => $cltcRange,
             'rangeDynamique' => $rangeDynamique,
             'position' => $position,
             'vitesseLimite' => $vitesseLimite,
