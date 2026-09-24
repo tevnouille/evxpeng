@@ -310,6 +310,17 @@ Depuis le 2026-09-16, Xpeng expose une API officielle
   recommandation du guide d'intégration) plutôt que d'attendre le lendemain :
   la fenêtre de 30 s pour télécharger le fichier ne survivrait pas à un
   report au jour suivant.
+- **L'export lui-même a environ un jour de retard sur la conduite réelle,
+  indépendamment de notre cadence de synchronisation.** Constaté le
+  2026-09-24 : un export régénéré par Xpeng le jour même (nom de fichier
+  daté du matin) ne contenait encore aucune ligne au-delà de la veille
+  17h37 (`ds=20260923` sur la dernière ligne du CSV `_status_di_part1`,
+  colonne `timer` verifiee par conversion manuelle). Rien à corriger côté
+  code : les 5 synchronisations quotidiennes (`routes/console.php`)
+  réussissent bien et rapatrient le fichier le plus frais qu'Xpeng propose
+  à l'instant T, seulement ce fichier lui-même n'est pas à jour. Une
+  tuile/page affichant un relevé Xpeng peut donc légitimement montrer une
+  heure d'hier même rafraîchie à l'instant.
 - **Piège de signature** : seules deux clés participent à la chaîne signée —
   `body` (le JSON du corps **tel qu'envoyé**, pas re-sérialisé) et `nonce` —
   pas chaque champ du corps un par un, contrairement à ce qu'un résumé rapide
