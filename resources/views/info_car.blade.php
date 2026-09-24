@@ -172,6 +172,15 @@
             font-size: clamp(.85rem, 3.8vh, 1.6rem);
             overflow-wrap: break-word; hyphens: auto;
         }
+        /* Quatre valeurs dans une seule case (voir la tuile "Pression des
+           pneus") plutot que quatre tuiles distinctes : un tableau 2x2 tient
+           mieux la comparaison visuelle avant/arriere, gauche/droite qu'une
+           liste. */
+        table.pneus { border-collapse: collapse; margin: .1em 0; }
+        table.pneus td {
+            font-size: clamp(.85rem, 3.5vh, 1.5rem); font-weight: 700;
+            padding: 0 .4em; line-height: 1.3;
+        }
         .note { font-size: clamp(.55rem, 1.6vh, .8rem); color: #6b6b6b; margin: .2em 0 0; }
         /* Un fondu court a la releve : sans lui, la valeur change d'un coup et
            se lit comme une mesure qui vient de bouger. */
@@ -453,6 +462,26 @@
                     <p class="titre">Limite de vitesse</p>
                     <p class="valeur">{{ $vitesseLimite }}<span class="unite"> km/h</span></p>
                     <p class="note">route la plus proche (OpenStreetMap)</p>
+                </div>
+            @endif
+
+            {{-- Les quatre valeurs dans une seule case (pas quatre tuiles) :
+                 pression des pneus, donnee absente du boitier OBD/MQTT, tiree
+                 de l'export officiel Xpeng (rafraichi 5x/jour, pas en direct). --}}
+            @if ($pressionPneus)
+                <div>
+                    <p class="titre">Pression des pneus</p>
+                    <table class="pneus">
+                        <tr>
+                            <td>{{ $pressionPneus->pression_av_gauche_kpa !== null ? number_format($pressionPneus->pression_av_gauche_kpa * 0.01, 2) : '—' }}</td>
+                            <td>{{ $pressionPneus->pression_av_droite_kpa !== null ? number_format($pressionPneus->pression_av_droite_kpa * 0.01, 2) : '—' }}</td>
+                        </tr>
+                        <tr>
+                            <td>{{ $pressionPneus->pression_ar_gauche_kpa !== null ? number_format($pressionPneus->pression_ar_gauche_kpa * 0.01, 2) : '—' }}</td>
+                            <td>{{ $pressionPneus->pression_ar_droite_kpa !== null ? number_format($pressionPneus->pression_ar_droite_kpa * 0.01, 2) : '—' }}</td>
+                        </tr>
+                    </table>
+                    <p class="note">bar — {{ $pressionPneus->horodatage->timezone(config('app.timezone'))->translatedFormat('d/m H:i') }}</p>
                 </div>
             @endif
         </div>

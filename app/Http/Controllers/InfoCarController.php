@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Vehicle;
+use App\Models\XpengTelemetry;
 use App\Services\BatteryHealth;
 use App\Services\ChargeCurveSimulator;
 use App\Services\ChargingCurveRepository;
@@ -475,6 +476,20 @@ class InfoCarController extends Controller
 
         $rangeChart = $this->rangeChart($this->rangeSeries($history, $netCapacity, $consumption));
 
+        // Pression des pneus : absente du boitier OBD/MQTT (aucun PID connu
+        // pour ca, voir ObdReadings), disponible en revanche cote export
+        // officiel Xpeng (XpengDataController) -- pas de notion de vehicule
+        // ici, meme convention mono-vehicule que le reste de cette table.
+        // Kpa en base, bar a l'affichage, meme conversion que sur la page
+        // Donnees Xpeng.
+        $pressionPneus = XpengTelemetry::where(fn ($q) => $q
+                ->whereNotNull('pression_av_gauche_kpa')
+                ->orWhereNotNull('pression_av_droite_kpa')
+                ->orWhereNotNull('pression_ar_gauche_kpa')
+                ->orWhereNotNull('pression_ar_droite_kpa'))
+            ->orderByDesc('horodatage')
+            ->first();
+
         // Signale que le boitier ne publie plus : sans releve recent, tout ce
         // qu'affiche l'onglet Info (batterie, autonomie...) peut etre perime
         // sans que rien ne le distingue autrement. Seuil de deux minutes,
@@ -494,6 +509,7 @@ class InfoCarController extends Controller
             'rangeDynamique' => $rangeDynamique,
             'position' => $position,
             'vitesseLimite' => $vitesseLimite,
+            'pressionPneus' => $pressionPneus,
             'ecartCellules' => $this->battery->medianGap($history),
             'refreshSeconds' => VehicleState::REFRESH_SECONDS[$state['state'] ?? VehicleState::PARKED]
                 ?? VehicleState::REFRESH_SECONDS[VehicleState::PARKED],
