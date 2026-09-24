@@ -39,23 +39,25 @@ class VehicleState
     private const MOVEMENT_WINDOW_MINUTES = 10;
 
     /**
-     * Cadence de rafraichissement de la page « Ma voiture », en secondes.
+     * Cadence de rafraichissement de la page « Ma voiture » (et d'InfoCar,
+     * qui partage cette meme table), en secondes.
      *
      * On regarde la page pour des raisons differentes selon l'etat : suivre une
      * charge se fait au rythme ou la puissance evolue, un trajet au rythme ou
      * les kilometres tombent, et une voiture a l'arret n'a rien a raconter.
-     * Recharger plus vite que la collecte n'apporterait rien : la cadence de
-     * `telemetry:ingest-mqtt` suit la meme regle.
      *
-     * **Dix secondes, parce que c'est la cadence mesuree du boitier** (mediane
-     * 10,0 s sur 5 527 messages du 1er au 8 septembre 2026, identique en charge
-     * et en roulage). Les cinq secondes de la charge faisaient une requete sur
-     * deux pour rien, et les vingt secondes du roulage affichaient une donnee
-     * deux fois plus vieille que necessaire.
+     * **Dix secondes en charge, parce que c'est la cadence mesuree du
+     * boitier** (mediane 10,0 s sur 5 527 messages du 1er au 8 septembre
+     * 2026). Les cinq secondes faisaient une requete sur deux pour rien.
+     *
+     * **Vingt secondes en roulage** (2026-09-24, demande explicite) : deux
+     * fois la cadence mesuree du boitier, donc une donnee jusqu'a deux fois
+     * plus vieille que necessaire au pire des cas -- accepte au profit de
+     * moitie moins de requetes/rechargements sur cet ecran en particulier.
      */
     public const REFRESH_SECONDS = [
         self::CHARGING => 10,
-        self::DRIVING => 10,
+        self::DRIVING => 20,
         self::PARKED => 60,
         self::OFFLINE => 60,
     ];
