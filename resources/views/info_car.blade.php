@@ -495,7 +495,13 @@
                             <td class="{{ in_array('ar_droite', $pneusEnEcart) ? 'ecart' : '' }}">{{ $pressionPneus->pression_ar_droite_kpa !== null ? number_format($pressionPneus->pression_ar_droite_kpa * 0.01, 2) : '—' }}</td>
                         </tr>
                     </table>
-                    <p class="note">bar — {{ $pressionPneus->horodatage->timezone(config('app.timezone'))->translatedFormat('d/m H:i') }}</p>
+                    {{-- "Xpeng" explicite plutot qu'une simple date : sans
+                         source nommee, une date d'hier a cote de tuiles a
+                         jour a la minute passe pour une donnee perimee par
+                         erreur plutot que pour ce qu'elle est -- l'export
+                         officiel Xpeng, distinct du boitier OBD/MQTT, a
+                         structurellement ~1 jour de retard (voir CLAUDE.md). --}}
+                    <p class="note">bar — export Xpeng du {{ $pressionPneus->horodatage->timezone(config('app.timezone'))->translatedFormat('d/m H:i') }}</p>
                 </div>
             @endif
         </div>
