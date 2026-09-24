@@ -48,14 +48,29 @@ class SpeedLimitLookup
             return $cache['limite'];
         }
 
-        $limite = $this->query($lat, $lon);
+        $reponse = $this->interroger($lat, $lon);
+
+        // Overpass (instance publique, gratuite, sans cle) renvoie tres
+        // souvent des 504/timeouts sous charge (constate le 23-24/09/2026,
+        // 75 echecs en quelques jours dans les logs) -- un echec de requete
+        // n'a rien a voir avec une route sans tag maxspeed, et ne doit pas
+        // etre mis en cache 15 minutes comme si c'en etait une : la tuile
+        // resterait vide bien plus longtemps qu'un simple echec ponctuel ne
+        // le justifie. Seul un resultat effectivement obtenu (avec ou sans
+        // limite trouvee) est mis en cache.
+        if ($reponse === null) {
+            return $cache['limite'] ?? null;
+        }
+
+        $limite = $this->limiteDepuisReponse($reponse, $lat, $lon);
 
         Cache::put(self::CACHE_KEY, ['lat' => $lat, 'lon' => $lon, 'limite' => $limite], now()->addMinutes(self::CACHE_TTL_MINUTES));
 
         return $limite;
     }
 
-    private function query(float $lat, float $lon): ?int
+    /** @return array<mixed>|null */
+    private function interroger(float $lat, float $lon): ?array
     {
         $ql = sprintf(
             '[out:json][timeout:10];way(around:%d,%F,%F)[highway][maxspeed];out tags center;',
@@ -64,9 +79,13 @@ class SpeedLimitLookup
             $lon
         );
 
-        $reponse = $this->http->get('https://overpass-api.de/api/interpreter', ['data' => $ql], 12);
+        return $this->http->get('https://overpass-api.de/api/interpreter', ['data' => $ql], 12);
+    }
 
-        if (! $reponse || empty($reponse['elements'])) {
+    /** @param  array<mixed>  $reponse */
+    private function limiteDepuisReponse(array $reponse, float $lat, float $lon): ?int
+    {
+        if (empty($reponse['elements'])) {
             return null;
         }
 
