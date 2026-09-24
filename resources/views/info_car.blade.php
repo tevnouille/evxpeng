@@ -172,25 +172,28 @@
             font-size: clamp(.85rem, 3.8vh, 1.6rem);
             overflow-wrap: break-word; hyphens: auto;
         }
-        /* Quatre valeurs dans une seule case (voir la tuile "Pression des
-           pneus") plutot que quatre tuiles distinctes : un tableau 2x2 tient
-           mieux la comparaison visuelle avant/arriere, gauche/droite qu'une
-           liste. */
-        table.pneus { border-collapse: collapse; margin: .1em 0; }
-        table.pneus td {
-            font-size: clamp(.85rem, 3.5vh, 1.5rem); font-weight: 700;
-            padding: 0 .4em 0 0; line-height: 1.3;
+        /* Onglet Pneus : vue de dessus au centre, une valeur de chaque cote
+           en face de la roue correspondante -- plus parlant qu'un tableau
+           2x2 pour situer chaque pression par rapport a la voiture. */
+        .voiture-pneus {
+            flex: 1 1 auto; display: grid; min-height: 0;
+            grid-template-columns: 1fr auto 1fr;
+            grid-template-rows: 1fr 1fr;
+            align-items: center; gap: 1vh 2vw;
         }
-        table.pneus td.repere {
-            font-size: clamp(.55rem, 1.6vh, .8rem); font-weight: 400;
-            color: #6b6b6b; padding-right: .3em; text-align: right;
-        }
+        .silhouette { grid-row: 1 / 3; height: 100%; max-height: 60vh; color: #6b6b6b; }
+        .pneu-info { display: flex; flex-direction: column; }
+        .pneu-info.gauche { align-items: flex-end; text-align: right; }
+        .pneu-info.droite { align-items: flex-start; text-align: left; }
         /* Pneu dont la pression s'ecarte des trois autres (voir
-           InfoCarController::pneusEnEcart) : fond oranger sur le chiffre. */
-        table.pneus td.ecart {
+           InfoCarController::pneusEnEcart) : fond oranger sur le chiffre,
+           et sur le rectangle de la roue correspondante dans la silhouette. */
+        .pneu-info .valeur.ecart {
             background: #f5a623; color: #1a1a1a;
-            border-radius: 4px; padding-left: .25em; padding-right: .25em;
+            border-radius: 6px; padding: 0 .2em; display: inline-block;
         }
+        .silhouette .roue { fill: currentColor; opacity: .5; }
+        .silhouette .roue.ecart { fill: #f5a623; opacity: 1; }
         .note { font-size: clamp(.55rem, 1.6vh, .8rem); color: #6b6b6b; margin: .2em 0 0; }
         /* Un fondu court a la releve : sans lui, la valeur change d'un coup et
            se lit comme une mesure qui vient de bouger. */
@@ -363,6 +366,24 @@
                 </svg>
             </button>
         @endif
+        @if ($pressionPneus)
+            {{-- Onglet a part plutot qu'une tuile de la grille Info : une
+                 donnee qui ne bouge qu'a chaque synchro Xpeng (5x/jour,
+                 souvent perimee d'~1 jour, voir CLAUDE.md) n'a pas sa place
+                 a cote de tuiles remises a jour a la minute -- confusion
+                 deja rencontree par l'utilisateur. --}}
+            <button type="button" data-vue="pneus" aria-label="Pneus" title="Pneus">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#2ea36b" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9"/>
+                    <circle cx="12" cy="12" r="3.5"/>
+                    <line x1="12" y1="3" x2="12" y2="6.5"/>
+                    <line x1="12" y1="17.5" x2="12" y2="21"/>
+                    <line x1="3" y1="12" x2="6.5" y2="12"/>
+                    <line x1="17.5" y1="12" x2="21" y2="12"/>
+                </svg>
+            </button>
+        @endif
     </div>
 
     {{-- Sous le titre et non en pied de page : sur un ecran qu'on ne peut ni
@@ -475,35 +496,6 @@
                 </div>
             @endif
 
-            {{-- Les quatre valeurs dans une seule case (pas quatre tuiles) :
-                 pression des pneus, donnee absente du boitier OBD/MQTT, tiree
-                 de l'export officiel Xpeng (rafraichi 5x/jour, pas en direct). --}}
-            @if ($pressionPneus)
-                <div>
-                    <p class="titre">Pression des pneus</p>
-                    <table class="pneus">
-                        <tr>
-                            <td class="repere">AVG</td>
-                            <td class="{{ in_array('av_gauche', $pneusEnEcart) ? 'ecart' : '' }}">{{ $pressionPneus->pression_av_gauche_kpa !== null ? number_format($pressionPneus->pression_av_gauche_kpa * 0.01, 2) : '—' }}</td>
-                            <td class="repere">AVD</td>
-                            <td class="{{ in_array('av_droite', $pneusEnEcart) ? 'ecart' : '' }}">{{ $pressionPneus->pression_av_droite_kpa !== null ? number_format($pressionPneus->pression_av_droite_kpa * 0.01, 2) : '—' }}</td>
-                        </tr>
-                        <tr>
-                            <td class="repere">ARG</td>
-                            <td class="{{ in_array('ar_gauche', $pneusEnEcart) ? 'ecart' : '' }}">{{ $pressionPneus->pression_ar_gauche_kpa !== null ? number_format($pressionPneus->pression_ar_gauche_kpa * 0.01, 2) : '—' }}</td>
-                            <td class="repere">ARD</td>
-                            <td class="{{ in_array('ar_droite', $pneusEnEcart) ? 'ecart' : '' }}">{{ $pressionPneus->pression_ar_droite_kpa !== null ? number_format($pressionPneus->pression_ar_droite_kpa * 0.01, 2) : '—' }}</td>
-                        </tr>
-                    </table>
-                    {{-- "Xpeng" explicite plutot qu'une simple date : sans
-                         source nommee, une date d'hier a cote de tuiles a
-                         jour a la minute passe pour une donnee perimee par
-                         erreur plutot que pour ce qu'elle est -- l'export
-                         officiel Xpeng, distinct du boitier OBD/MQTT, a
-                         structurellement ~1 jour de retard (voir CLAUDE.md). --}}
-                    <p class="note">bar — export Xpeng du {{ $pressionPneus->horodatage->timezone(config('app.timezone'))->translatedFormat('d/m H:i') }}</p>
-                </div>
-            @endif
         </div>
     </div>
 
@@ -599,6 +591,63 @@
         </div>
     @endif
 
+    @if ($pressionPneus)
+        <div class="vue" id="vue-pneus" hidden>
+            <div class="voiture-pneus">
+                <div class="pneu-info gauche">
+                    <p class="titre">AVG</p>
+                    <p class="valeur {{ in_array('av_gauche', $pneusEnEcart) ? 'ecart' : '' }}">
+                        {{ $pressionPneus->pression_av_gauche_kpa !== null ? number_format($pressionPneus->pression_av_gauche_kpa * 0.01, 2) : '—' }}<span class="unite"> bar</span>
+                    </p>
+                </div>
+                <div class="pneu-info droite">
+                    <p class="titre">AVD</p>
+                    <p class="valeur {{ in_array('av_droite', $pneusEnEcart) ? 'ecart' : '' }}">
+                        {{ $pressionPneus->pression_av_droite_kpa !== null ? number_format($pressionPneus->pression_av_droite_kpa * 0.01, 2) : '—' }}<span class="unite"> bar</span>
+                    </p>
+                </div>
+
+                {{-- Silhouette generique, pas une reproduction fidele du G6 :
+                     vue de dessus stylisee (carrosserie + pare-brise/lunette
+                     + 4 rectangles-roues), juste assez pour situer chaque
+                     valeur par rapport a la voiture. --}}
+                <svg class="silhouette" viewBox="0 0 220 340" role="img" aria-label="Vue de dessus du véhicule">
+                    <rect x="70" y="20" width="80" height="300" rx="30" fill="currentColor" opacity=".12"/>
+                    <rect x="70" y="20" width="80" height="300" rx="30" fill="none" stroke="currentColor" stroke-width="2"/>
+                    <path d="M78 78 q32 -14 64 0 l6 34 q-38 -12 -76 0 z" fill="currentColor" opacity=".25"/>
+                    <path d="M78 262 q32 14 64 0 l6 -34 q-38 12 -76 0 z" fill="currentColor" opacity=".25"/>
+                    <rect x="40" y="76" width="24" height="54" rx="7"
+                          class="roue {{ in_array('av_gauche', $pneusEnEcart) ? 'ecart' : '' }}"/>
+                    <rect x="156" y="76" width="24" height="54" rx="7"
+                          class="roue {{ in_array('av_droite', $pneusEnEcart) ? 'ecart' : '' }}"/>
+                    <rect x="40" y="210" width="24" height="54" rx="7"
+                          class="roue {{ in_array('ar_gauche', $pneusEnEcart) ? 'ecart' : '' }}"/>
+                    <rect x="156" y="210" width="24" height="54" rx="7"
+                          class="roue {{ in_array('ar_droite', $pneusEnEcart) ? 'ecart' : '' }}"/>
+                </svg>
+
+                <div class="pneu-info gauche">
+                    <p class="titre">ARG</p>
+                    <p class="valeur {{ in_array('ar_gauche', $pneusEnEcart) ? 'ecart' : '' }}">
+                        {{ $pressionPneus->pression_ar_gauche_kpa !== null ? number_format($pressionPneus->pression_ar_gauche_kpa * 0.01, 2) : '—' }}<span class="unite"> bar</span>
+                    </p>
+                </div>
+                <div class="pneu-info droite">
+                    <p class="titre">ARD</p>
+                    <p class="valeur {{ in_array('ar_droite', $pneusEnEcart) ? 'ecart' : '' }}">
+                        {{ $pressionPneus->pression_ar_droite_kpa !== null ? number_format($pressionPneus->pression_ar_droite_kpa * 0.01, 2) : '—' }}<span class="unite"> bar</span>
+                    </p>
+                </div>
+            </div>
+            {{-- "Xpeng" explicite plutot qu'une simple date : sans source
+                 nommee, une date d'hier passe pour une donnee perimee par
+                 erreur plutot que pour ce qu'elle est -- l'export officiel
+                 Xpeng, distinct du boitier OBD/MQTT, a structurellement ~1
+                 jour de retard (voir CLAUDE.md). --}}
+            <p class="note" style="text-align: center;">export Xpeng du {{ $pressionPneus->horodatage->timezone(config('app.timezone'))->translatedFormat('d/m H:i') }}</p>
+        </div>
+    @endif
+
     {{-- Ecran de batterie du jour : contenu vide au chargement, rempli en
          JS des l'ouverture puis toutes les minutes tant qu'il reste affiche.
          Pas de rendu cote serveur ici -- contrairement a l'onglet Courbe --
@@ -666,7 +715,7 @@
         }
 
         var ongletDepuisAncre = window.location.hash.replace('#', '');
-        afficher(['recharge', 'courbe', 'position'].indexOf(ongletDepuisAncre) !== -1 ? ongletDepuisAncre : 'info');
+        afficher(['recharge', 'courbe', 'position', 'pneus'].indexOf(ongletDepuisAncre) !== -1 ? ongletDepuisAncre : 'info');
     })();
 
     (function () {
@@ -736,7 +785,7 @@
         // panneau reste cache pendant l'echange (ouvre() suspend deja le
         // rechargement tant qu'il est affiche), le remplacement est donc
         // invisible pour qui le regarde.
-        var ZONES_A_RAFRAICHIR = ['vue-info', 'vue-recharge', 'vue-courbe', 'recouvrement-villes'];
+        var ZONES_A_RAFRAICHIR = ['vue-info', 'vue-recharge', 'vue-courbe', 'vue-pneus', 'recouvrement-villes'];
 
         /*
          * Le rechargement se decide sur l'horloge et non sur un delai pose une
