@@ -14,12 +14,16 @@ use Illuminate\Support\Facades\Http;
 class MerossClient
 {
     /**
-     * Le service reconnecte entierement a Meross a chaque appel (~3-5 s,
-     * plus 2 s d'attente avant relecture de l'etat pour open/close) : une
-     * marge large plutot qu'un timeout qui coupe une action reellement en
+     * Le service reconnecte entierement a Meross a chaque appel (~3-5 s),
+     * puis relit l'etat par petits pas jusqu'a confirmation ou 30 s au
+     * maximum pour open/close (voir DELAI_ENTRE_RELECTURES_S/RELECTURES_MAX
+     * dans docker/meross/app.py -- corrige le 25/09/2026, une seule
+     * relecture trop rapide renvoyait encore "ouvert" juste apres une
+     * fermeture pourtant reussie, la porte n'ayant pas fini sa course).
+     * Marge large plutot qu'un timeout qui coupe une action reellement en
      * cours sur une porte physique.
      */
-    private const TIMEOUT_SECONDES = 20;
+    private const TIMEOUT_SECONDES = 45;
 
     /**
      * @return array{ok: bool, open: ?bool, error: ?string}

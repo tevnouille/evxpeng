@@ -17,6 +17,16 @@ app = Flask(__name__)
 
 API_BASE_URL = "https://iotx-eu.meross.com"
 
+# Temps d'attente avant de relire l'etat apres open/close, en secondes entre
+# chaque relecture puis nombre maximal de tentatives. Corrige le 25/09/2026 :
+# une seule relecture a 2 s renvoyait encore "ouvert" pour une fermeture de
+# garage reellement reussie cote Meross -- la porte physique n'avait
+# simplement pas fini sa course. On interroge donc par petits pas jusqu'a ce
+# que l'etat confirme la cible demandee, ou jusqu'a ce delai maximal (portes
+# lentes : garage/portail, pas un relai instantane).
+DELAI_ENTRE_RELECTURES_S = 3
+RELECTURES_MAX = 10
+
 
 async def operer(uuid: str, action: str, channel: int) -> dict:
     email = os.environ["MEROSS_EMAIL"]
@@ -46,11 +56,14 @@ async def operer(uuid: str, action: str, channel: int) -> dict:
             return {"ok": False, "error": f"action inconnue: {action}"}
 
         if action != "state":
-            # Laisse le temps a l'etat de se propager (capteur de position
-            # du portail/garage) avant de le relire, sinon on renvoie encore
-            # l'ancien etat.
-            await asyncio.sleep(2)
-            await appareil.async_update()
+            cible = action == "open"
+
+            for _ in range(RELECTURES_MAX):
+                await asyncio.sleep(DELAI_ENTRE_RELECTURES_S)
+                await appareil.async_update()
+
+                if appareil.get_is_open(channel=channel) == cible:
+                    break
 
         return {"ok": True, "open": appareil.get_is_open(channel=channel)}
     finally:

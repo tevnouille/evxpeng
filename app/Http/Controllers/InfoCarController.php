@@ -46,13 +46,15 @@ class InfoCarController extends Controller
     private const UNLOCK_COOKIE = 'infocar_code';
 
     /**
-     * Anti-rebond : un aller-retour Meross prend 3 a 7 s (reconnexion
-     * complete a chaque appel, voir docker/meross/app.py) -- assez large
-     * pour ignorer un second declenchement du meme appareil pendant qu'un
-     * premier est encore en cours, et laisser une courte pause apres, pour
-     * ne pas enchainer ouverture/fermeture sur un mecanisme physique.
+     * Anti-rebond : un open/close peut prendre jusqu'a ~35 s (reconnexion
+     * Meross puis relecture de l'etat par petits pas jusqu'a confirmation,
+     * voir docker/meross/app.py -- corrige le 25/09/2026, la porte physique
+     * met plus de temps que prevu a finir sa course) -- assez large pour
+     * ignorer un second declenchement du meme appareil pendant qu'un premier
+     * est encore en cours, et laisser une pause apres, pour ne pas enchainer
+     * ouverture/fermeture sur un mecanisme physique.
      */
-    private const ANTI_REBOND_SECONDES = 8;
+    private const ANTI_REBOND_SECONDES = 40;
 
     public function __construct(
         private readonly VehicleState $state,
