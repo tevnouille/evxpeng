@@ -122,4 +122,21 @@ return [
         'redirect_uri' => env('FORD_REDIRECT_URI'),
     ],
 
+    'meross' => [
+        // Identifiants du compte Meross (App\Services\MerossClient) : les
+        // memes que l'application mobile, Meross n'ayant pas d'API publique
+        // avec cle dediee. L'appel reel part du service interne "meross"
+        // (docker/meross/), jamais de ev-app directement (ni acces MQTT ni
+        // acces au socket Docker de l'hote).
+        'email' => env('MEROSS_EMAIL'),
+        'password' => env('MEROSS_PASSWORD'),
+        // UUID stables, decouverts une fois via l'API Meross -- pas des
+        // secrets, mais autant les laisser en config que les coder en dur
+        // dans le service, meme convention que Ford application_id.
+        'devices' => [
+            'garage' => env('MEROSS_GARAGE_UUID', '1911082967173290804648e1e9112e49'),
+            'portail' => env('MEROSS_PORTAIL_UUID', '1911082759724990804648e1e9111938'),
+        ],
+    ],
+
 ];

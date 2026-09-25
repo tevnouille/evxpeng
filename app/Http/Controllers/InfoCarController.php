@@ -4,15 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Models\Vehicle;
 use App\Models\XpengTelemetry;
+use App\Models\MerossAction;
 use App\Services\BatteryHealth;
 use App\Services\ChargeCurveSimulator;
 use App\Services\ChargingCurveRepository;
+use App\Services\MerossClient;
 use App\Services\ReverseGeocoder;
 use App\Services\SpeedLimitLookup;
 use App\Services\VehicleState;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\View\View;
 
 /**
@@ -42,6 +45,15 @@ class InfoCarController extends Controller
 
     private const UNLOCK_COOKIE = 'infocar_code';
 
+    /**
+     * Anti-rebond : un aller-retour Meross prend 3 a 7 s (reconnexion
+     * complete a chaque appel, voir docker/meross/app.py) -- assez large
+     * pour ignorer un second declenchement du meme appareil pendant qu'un
+     * premier est encore en cours, et laisser une courte pause apres, pour
+     * ne pas enchainer ouverture/fermeture sur un mecanisme physique.
+     */
+    private const ANTI_REBOND_SECONDES = 8;
+
     public function __construct(
         private readonly VehicleState $state,
         private readonly ChargingCurveRepository $curves,
@@ -49,6 +61,7 @@ class InfoCarController extends Controller
         private readonly ReverseGeocoder $geocoder,
         private readonly BatteryHealth $battery,
         private readonly SpeedLimitLookup $speedLimit,
+        private readonly MerossClient $meross,
     ) {
     }
 
@@ -538,6 +551,20 @@ class InfoCarController extends Controller
 
         $pneusEnEcart = $pressionPneus ? $this->pneusEnEcart($pressionPneus) : [];
 
+        // Dernier etat connu de chaque porte (App\Services\MerossClient) :
+        // jamais interroge au chargement de la page, qui se recharge seule
+        // toutes les 10-60 s -- un aller-retour Meross prend plusieurs
+        // secondes, seule une action declenchee ici (controlerPortail) met
+        // ce cache a jour.
+        $portails = [
+            'garage' => ['label' => 'Garage', 'uuid' => config('services.meross.devices.garage')],
+            'portail' => ['label' => 'Portail entrée', 'uuid' => config('services.meross.devices.portail')],
+        ];
+        foreach ($portails as $cle => &$portail) {
+            $portail['etat'] = $portail['uuid'] ? Cache::get('meross_etat_'.$cle) : null;
+        }
+        unset($portail);
+
         // Signale que le boitier ne publie plus : sans releve recent, tout ce
         // qu'affiche l'onglet Info (batterie, autonomie...) peut etre perime
         // sans que rien ne le distingue autrement. Seuil de deux minutes,
@@ -559,6 +586,7 @@ class InfoCarController extends Controller
             'vitesseLimite' => $vitesseLimite,
             'pressionPneus' => $pressionPneus,
             'pneusEnEcart' => $pneusEnEcart,
+            'portails' => $portails,
             'ecartCellules' => $this->battery->medianGap($history),
             'refreshSeconds' => VehicleState::REFRESH_SECONDS[$state['state'] ?? VehicleState::PARKED]
                 ?? VehicleState::REFRESH_SECONDS[VehicleState::PARKED],
@@ -574,9 +602,19 @@ class InfoCarController extends Controller
      * Verifie le code saisi au pave numerique. hash_equals() plutot qu'un
      * simple === : le code, bien que court, n'a pas a etre compare en temps
      * variable pour qui observerait les reponses de pres.
+     *
+     * Sert aussi de point d'entree au pilotage du garage/portail (presence
+     * du champ `appareil`) : meme chemin public que la page elle-meme
+     * (POST /infoCar), l'exemption nginx ne matchant que le chemin exact --
+     * une sous-route dediee retomberait derriere la passkey (meme principe
+     * que le flux `?flux=batterie` du docblock de show()).
      */
-    public function unlock(Request $request): RedirectResponse
+    public function unlock(Request $request): RedirectResponse|JsonResponse
     {
+        if ($request->filled('appareil')) {
+            return $this->controlerPortail($request);
+        }
+
         $data = $request->validate([
             'code' => ['required', 'string', 'regex:/^[0-9]{6}$/'],
         ]);
@@ -589,5 +627,53 @@ class InfoCarController extends Controller
         }
 
         return redirect()->route('info-car')->with('error', 'Code incorrect.');
+    }
+
+    private function controlerPortail(Request $request): JsonResponse
+    {
+        if (! $this->deverrouille($request)) {
+            return response()->json(['ok' => false, 'error' => 'verrouille'], 403);
+        }
+
+        $data = $request->validate([
+            'appareil' => ['required', 'in:garage,portail'],
+            'action' => ['required', 'in:open,close'],
+        ]);
+
+        $uuid = config('services.meross.devices.'.$data['appareil']);
+
+        if (! $uuid) {
+            return response()->json(['ok' => false, 'error' => 'appareil non configuré'], 500);
+        }
+
+        $verrou = 'meross_action_'.$data['appareil'];
+
+        if (! Cache::add($verrou, true, self::ANTI_REBOND_SECONDES)) {
+            return response()->json(['ok' => false, 'error' => 'action déjà en cours'], 429);
+        }
+
+        $resultat = $this->meross->operer($uuid, $data['action']);
+
+        MerossAction::create([
+            'appareil' => $data['appareil'],
+            'action' => $data['action'],
+            'reussi' => $resultat['ok'],
+            'erreur' => $resultat['error'],
+            'created_at' => now(),
+        ]);
+
+        // Dernier etat connu, affiche sur la tuile : jamais interroge tout
+        // seul (un appel Meross prend plusieurs secondes, hors de question de
+        // le faire a chaque chargement d'InfoCar, qui se recharge lui-meme
+        // toutes les 10-60 s) -- seulement mis a jour a la suite d'une action
+        // reellement declenchee ici.
+        if ($resultat['ok'] && $resultat['open'] !== null) {
+            Cache::put('meross_etat_'.$data['appareil'], [
+                'open' => $resultat['open'],
+                'at' => now()->toIso8601String(),
+            ], now()->addDays(30));
+        }
+
+        return response()->json($resultat, $resultat['ok'] ? 200 : 502);
     }
 }

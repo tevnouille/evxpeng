@@ -4,6 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
+    {{-- Lu par le fetch() du pilotage garage/portail (onglet Portail) --
+         seule requete AJAX de cette page, les autres actions passant par de
+         vrais formulaires (jeton deja porte par leur champ _token). --}}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $vehicle?->name ?? 'Véhicule' }}</title>
     {{-- Page entierement autonome vis-a-vis de CE depot : aucune feuille de
          style ni script de l'appli elle-meme, qui vivent derriere la
@@ -200,6 +204,30 @@
         }
         .silhouette .roue { fill: currentColor; opacity: .5; }
         .silhouette .roue.ecart { fill: #f5a623; opacity: 1; }
+        /* Onglet Portail : une tuile illustree par entree, plutot qu'une
+           simple ligne de boutons -- icone, etat connu, deux actions. */
+        .portails {
+            flex: 1 1 auto; display: grid; min-height: 0;
+            grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+            gap: 2vh 3vw; align-content: center;
+        }
+        .portail-tuile {
+            display: flex; flex-direction: column; align-items: center;
+            text-align: center; gap: .3em;
+        }
+        .portail-icone { width: clamp(3rem, 12vh, 5rem); height: clamp(3rem, 12vh, 5rem); color: #607d8b; }
+        .portail-etat { font-size: clamp(.9rem, 3vh, 1.3rem); font-weight: 700; margin: 0; }
+        .portail-etat .ouvert { color: #f5a623; }
+        .portail-boutons { display: flex; gap: .6em; margin-top: .3em; }
+        .portail-boutons button {
+            font: inherit; font-size: clamp(.75rem, 2.4vh, 1rem); font-weight: 600;
+            padding: .5em 1em; border: 1px solid #d0d0d0; border-radius: 10px;
+            background: #f4f4f4; color: #1a1a1a;
+        }
+        .portail-boutons button:active { background: #e0e0e0; }
+        .portail-boutons button:disabled { opacity: .5; }
+        .portail-message { min-height: 1.2em; }
+        .portail-message.erreur { color: #c0392b; font-weight: 600; }
         .note { font-size: clamp(.55rem, 1.6vh, .8rem); color: #6b6b6b; margin: .2em 0 0; }
         /* Un fondu court a la releve : sans lui, la valeur change d'un coup et
            se lit comme une mesure qui vient de bouger. */
@@ -296,6 +324,7 @@
             .recouvrement button.fermer { background: #24272d; border-color: #3a3f47; color: #d5d8dd; }
             .liste-villes li + li { border-top-color: #2c3037; }
             .liste-villes .heure { color: #a0a4ab; }
+            .portail-boutons button { background: #24272d; border-color: #3a3f47; color: #f0f0f0; }
         }
     </style>
 </head>
@@ -387,6 +416,24 @@
                     <line x1="12" y1="17.5" x2="12" y2="21"/>
                     <line x1="3" y1="12" x2="6.5" y2="12"/>
                     <line x1="17.5" y1="12" x2="21" y2="12"/>
+                </svg>
+            </button>
+        @endif
+        @if (config('services.meross.devices.garage') || config('services.meross.devices.portail'))
+            <button type="button" data-vue="portail" aria-label="Portail" title="Portail">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#607d8b" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="3" y1="21" x2="21" y2="21"/>
+                    <line x1="4" y1="21" x2="4" y2="6"/>
+                    <line x1="20" y1="21" x2="20" y2="6"/>
+                    <line x1="4" y1="6" x2="4" y2="4"/>
+                    <line x1="20" y1="6" x2="20" y2="4"/>
+                    <line x1="7" y1="21" x2="7" y2="10"/>
+                    <line x1="7" y1="10" x2="10" y2="10"/>
+                    <line x1="10" y1="10" x2="10" y2="21"/>
+                    <line x1="14" y1="21" x2="14" y2="10"/>
+                    <line x1="14" y1="10" x2="17" y2="10"/>
+                    <line x1="17" y1="10" x2="17" y2="21"/>
                 </svg>
             </button>
         @endif
@@ -654,6 +701,61 @@
         </div>
     @endif
 
+    @if ($portails['garage']['uuid'] || $portails['portail']['uuid'])
+        {{-- Hors ZONES_A_RAFRAICHIR (voir plus bas) : le rechargement
+             automatique de la page ne doit pas couper une action en cours
+             sur une porte reelle. La tuile ne se met a jour que par son
+             propre JS, apres une action declenchee ici. --}}
+        <div class="vue" id="vue-portail" hidden>
+            <div class="portails">
+                @foreach ($portails as $cle => $portail)
+                    @continue(! $portail['uuid'])
+                    <div class="portail-tuile" data-appareil="{{ $cle }}">
+                        @if ($cle === 'garage')
+                            <svg class="portail-icone" viewBox="0 0 24 24" fill="none" stroke="#607d8b" stroke-width="1.6"
+                                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect x="3" y="6" width="18" height="15" rx="1"/>
+                                <line x1="3" y1="10.5" x2="21" y2="10.5"/>
+                                <line x1="3" y1="14.5" x2="21" y2="14.5"/>
+                                <line x1="3" y1="18" x2="21" y2="18"/>
+                                <path d="M3 6 L12 2 L21 6"/>
+                            </svg>
+                        @else
+                            <svg class="portail-icone" viewBox="0 0 24 24" fill="none" stroke="#607d8b" stroke-width="1.6"
+                                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <line x1="3" y1="21" x2="21" y2="21"/>
+                                <line x1="4" y1="21" x2="4" y2="6"/>
+                                <line x1="20" y1="21" x2="20" y2="6"/>
+                                <line x1="4" y1="6" x2="4" y2="4"/>
+                                <line x1="20" y1="6" x2="20" y2="4"/>
+                                <line x1="7" y1="21" x2="7" y2="10"/>
+                                <line x1="7" y1="10" x2="10" y2="10"/>
+                                <line x1="10" y1="10" x2="10" y2="21"/>
+                                <line x1="14" y1="21" x2="14" y2="10"/>
+                                <line x1="14" y1="10" x2="17" y2="10"/>
+                                <line x1="17" y1="10" x2="17" y2="21"/>
+                            </svg>
+                        @endif
+                        <p class="titre">{{ $portail['label'] }}</p>
+                        <p class="portail-etat" data-role="etat">
+                            @if ($portail['etat'])
+                                <span class="{{ $portail['etat']['open'] ? 'ouvert' : '' }}">{{ $portail['etat']['open'] ? 'Ouvert' : 'Fermé' }}</span>
+                                <span class="note">— {{ \Illuminate\Support\Carbon::parse($portail['etat']['at'])->diffForHumans() }}</span>
+                            @else
+                                <span class="note">état inconnu</span>
+                            @endif
+                        </p>
+                        <div class="portail-boutons">
+                            <button type="button" data-action="open">Ouvrir</button>
+                            <button type="button" data-action="close">Fermer</button>
+                        </div>
+                        <p class="portail-message note" data-role="message" hidden></p>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
     {{-- Ecran de batterie du jour : contenu vide au chargement, rempli en
          JS des l'ouverture puis toutes les minutes tant qu'il reste affiche.
          Pas de rendu cote serveur ici -- contrairement a l'onglet Courbe --
@@ -721,7 +823,7 @@
         }
 
         var ongletDepuisAncre = window.location.hash.replace('#', '');
-        afficher(['recharge', 'courbe', 'position', 'pneus'].indexOf(ongletDepuisAncre) !== -1 ? ongletDepuisAncre : 'info');
+        afficher(['recharge', 'courbe', 'position', 'pneus', 'portail'].indexOf(ongletDepuisAncre) !== -1 ? ongletDepuisAncre : 'info');
     })();
 
     (function () {
@@ -1280,6 +1382,73 @@
         if (window.location.hash === '#position') {
             var declencheur = document.querySelector('.onglets button[data-vue=\"position\"]');
             if (declencheur) { declencheur.click(); }
+        }
+    })();
+
+    (function () {
+        // Onglet Portail : chaque tuile pilote son propre appareil, un
+        // fetch() par bouton -- pas de formulaire classique (une navigation
+        // couperait la reponse Meross, qui prend plusieurs secondes) ni de
+        // rechargement de page pendant l'action.
+        var tuiles = document.querySelectorAll('.portail-tuile');
+
+        if (tuiles.length === 0) { return; }
+
+        var jeton = document.querySelector('meta[name="csrf-token"]');
+        jeton = jeton ? jeton.content : '';
+
+        for (var i = 0; i < tuiles.length; i++) {
+            (function (tuile) {
+                var appareil = tuile.dataset.appareil;
+                var boutons = tuile.querySelectorAll('.portail-boutons button');
+                var etat = tuile.querySelector('[data-role="etat"]');
+                var message = tuile.querySelector('[data-role="message"]');
+
+                function activerBoutons(actif) {
+                    for (var j = 0; j < boutons.length; j++) { boutons[j].disabled = !actif; }
+                }
+
+                for (var b = 0; b < boutons.length; b++) {
+                    boutons[b].addEventListener('click', function (e) {
+                        var action = e.currentTarget.dataset.action;
+
+                        activerBoutons(false);
+                        message.hidden = false;
+                        message.classList.remove('erreur');
+                        message.textContent = action === 'open' ? 'Ouverture en cours…' : 'Fermeture en cours…';
+
+                        fetch(window.location.pathname, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                                'X-CSRF-TOKEN': jeton,
+                                'Accept': 'application/json',
+                            },
+                            body: 'appareil=' + encodeURIComponent(appareil) + '&action=' + encodeURIComponent(action),
+                        })
+                            .then(function (reponse) { return reponse.json().then(function (corps) { return { reponse: reponse, corps: corps }; }); })
+                            .then(function (r) {
+                                if (!r.reponse.ok || !r.corps.ok) {
+                                    throw new Error(r.corps.error || ('HTTP ' + r.reponse.status));
+                                }
+
+                                message.hidden = true;
+
+                                if (r.corps.open !== null && r.corps.open !== undefined) {
+                                    etat.innerHTML = '<span class="' + (r.corps.open ? 'ouvert' : '') + '">'
+                                        + (r.corps.open ? 'Ouvert' : 'Fermé') + '</span> <span class="note">— à l’instant</span>';
+                                }
+
+                                activerBoutons(true);
+                            })
+                            .catch(function (e) {
+                                message.classList.add('erreur');
+                                message.textContent = 'Échec : ' + e.message;
+                                activerBoutons(true);
+                            });
+                    });
+                }
+            })(tuiles[i]);
         }
     })();
 </script>
