@@ -41,6 +41,15 @@ class Changelog
 
     private const DATA = [
         [
+            'date' => '2026-09-25',
+            'entries' => [
+                ['type' => 'nouveaute', 'text' => "« Info voiture » gagne un onglet Portail : ouvrir/fermer le garage et le portail d'entrée (Meross) directement depuis l'écran de la voiture, avec une tuile illustrée par entrée et le dernier état connu."],
+                ['type' => 'amelioration', 'text' => "« Info voiture » : le rafraîchissement automatique de la page en roulage passe de 10 à 20 secondes."],
+                ['type' => 'correction', 'text' => "« Info voiture » : la tuile « Limite de vitesse » disparaissait parfois plus longtemps que nécessaire après un simple pépin du service de cartographie public — un échec temporaire n'est plus traité comme une absence confirmée de limite."],
+                ['type' => 'correction', 'text' => "« Info voiture » : la tuile d'autonomie annoncée par le véhicule (CLTC) affichait une valeur sans rapport avec la réalité (79 km à 100 % de batterie) — le champ du boîtier ne contenait pas ce que son nom indiquait, retiré."],
+            ],
+        ],
+        [
             'date' => '2026-09-23',
             'entries' => [
                 ['type' => 'nouveaute', 'text' => "« Données Ford » affiche enfin les vraies données de la batterie de traction (charge, autonomie, énergie restante), l'état de la prise et la tension/courant de charge, en plus des pressions de pneus — jusqu'ici seule la batterie 12V était accessible."],

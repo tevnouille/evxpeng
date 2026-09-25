@@ -12,6 +12,13 @@ Le journal est rédigé pour qui se sert de l'application, pas depuis l'historiq
 Git : les messages de commit parlent de code, et une bonne moitié d'entre eux ne
 change rien de visible. La même liste s'affiche sur `/changelog`.
 
+## 25 septembre 2026
+
+- **Nouveauté** — « Info voiture » gagne un onglet Portail : ouvrir/fermer le garage et le portail d'entrée (Meross) directement depuis l'écran de la voiture, avec une tuile illustrée par entrée et le dernier état connu.
+- **Amélioration** — « Info voiture » : le rafraîchissement automatique de la page en roulage passe de 10 à 20 secondes.
+- **Correction** — « Info voiture » : la tuile « Limite de vitesse » disparaissait parfois plus longtemps que nécessaire après un simple pépin du service de cartographie public — un échec temporaire n'est plus traité comme une absence confirmée de limite.
+- **Correction** — « Info voiture » : la tuile d'autonomie annoncée par le véhicule (CLTC) affichait une valeur sans rapport avec la réalité (79 km à 100 % de batterie) — le champ du boîtier ne contenait pas ce que son nom indiquait, retiré.
+
 ## 23 septembre 2026
 
 - **Nouveauté** — « Données Ford » affiche enfin les vraies données de la batterie de traction (charge, autonomie, énergie restante), l'état de la prise et la tension/courant de charge, en plus des pressions de pneus — jusqu'ici seule la batterie 12V était accessible.
