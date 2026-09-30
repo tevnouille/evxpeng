@@ -659,6 +659,7 @@ class InfoCarController extends Controller
         MerossAction::create([
             'appareil' => $data['appareil'],
             'action' => $data['action'],
+            'source' => 'manuel',
             'reussi' => $resultat['ok'],
             'erreur' => $resultat['error'],
             'created_at' => now(),

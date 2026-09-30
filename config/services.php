@@ -139,4 +139,14 @@ return [
         ],
     ],
 
+    // Domicile (App\Console\Commands\AutoOuvrirPortail) : geocode une seule
+    // fois le 30/09/2026 via App\Services\Geocoder (62 rue Henri Berreau,
+    // 91100 Corbeil-Essonnes) -- coordonnees stables, meme raison de les
+    // garder en config plutot qu'en recalcul a chaque execution que les UUID
+    // Meross ci-dessus.
+    'domicile' => [
+        'lat' => (float) env('DOMICILE_LAT', 48.595264),
+        'lon' => (float) env('DOMICILE_LON', 2.476097),
+    ],
+
 ];

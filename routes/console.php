@@ -59,3 +59,10 @@ foreach (['05:00', '09:00', '13:00', '17:00', '21:00'] as $heure) {
 // rien ne le confirme non plus -- cadence prudente pour commencer, a
 // resserrer si l'usage reel le permet.
 Schedule::command('ford:sync')->everyThirtyMinutes()->withoutOverlapping();
+
+// Ouvre le portail d'entree quand la voiture s'en approche (demande
+// explicite du 30/09/2026). Meme cadence que telemetry:ingest-mqtt en
+// roulage : une approche dure typiquement moins d'une minute, un pas plus
+// large la manquerait ou la declencherait trop tard pour que le portail ait
+// fini de s'ouvrir a l'arrivee.
+Schedule::command('portail:auto-ouverture')->everyFifteenSeconds()->withoutOverlapping();

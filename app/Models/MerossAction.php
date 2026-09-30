@@ -15,6 +15,7 @@ class MerossAction extends Model
     protected $fillable = [
         'appareil',
         'action',
+        'source',
         'reussi',
         'erreur',
         'created_at',
