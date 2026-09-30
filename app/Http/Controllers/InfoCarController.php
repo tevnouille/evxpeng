@@ -573,11 +573,24 @@ class InfoCarController extends Controller
         // largement au-dessus de la cadence normale (5 a 20 s).
         $mqttPerime = ! $telemetry || $telemetry->recorded_at->lt(now()->subMinutes(2));
 
+        // Annonce l'ouverture automatique du portail (AutoOuvrirPortail) sur
+        // la page elle-meme : fenetre calee sur la cadence de rafraichissement
+        // en roulage (20 s, voir VehicleState::REFRESH_SECONDS) -- l'etat sous
+        // lequel ce declenchement a forcement lieu -- avec une marge pour ne
+        // pas manquer l'evenement entre deux rechargements de page.
+        $portailVientDouvrir = MerossAction::where('appareil', 'portail')
+            ->where('action', 'open')
+            ->where('source', 'automatique')
+            ->where('reussi', true)
+            ->where('created_at', '>=', now()->subSeconds(25))
+            ->exists();
+
         return view('info_car', [
             'vehicle' => $vehicle,
             'ville' => $ville,
             'telemetry' => $telemetry,
             'mqttPerime' => $mqttPerime,
+            'portailVientDouvrir' => $portailVientDouvrir,
             'state' => $state,
             'soc' => $soc,
             'availableKwh' => $availableKwh,

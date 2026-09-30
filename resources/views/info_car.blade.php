@@ -134,6 +134,20 @@
             transition: width .2s linear;
         }
         .attente.suspendue { opacity: .45; }
+        /* Annonce ouverture automatique du portail : overlay au-dessus de
+           tout le reste, fond qui clignote 10 s (voir le JS qui la retire
+           du DOM a l'echeance) plutot qu'une simple apparition statique --
+           plus facile a remarquer du coin de l'oeil en conduisant. */
+        #annonce-portail {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 20;
+            padding: 1.2vh 4vw; text-align: center;
+            font-size: clamp(1rem, 4.5vh, 1.6rem); font-weight: 700; color: #fff;
+            animation: annonce-portail-flash 1s ease-in-out infinite;
+        }
+        @keyframes annonce-portail-flash {
+            0%, 100% { background: #f5a623; }
+            50% { background: #2ea36b; }
+        }
         .vue { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
         .vue[hidden] { display: none; }
         /*
@@ -329,6 +343,13 @@
     </style>
 </head>
 <body>
+@if ($portailVientDouvrir ?? false)
+    {{-- Annonce l'ouverture automatique du portail (AutoOuvrirPortail) :
+         overlay plutot qu'un bandeau qui pousserait le reste de l'ecran,
+         disparait tout seul en JS apres 10 s -- pas la peine de rester
+         affiche plus longtemps que l'ouverture elle-meme. --}}
+    <div id="annonce-portail" role="status">Portail en cours d'ouverture</div>
+@endif
 @if (! $vehicle || ! $telemetry)
     <h1>Aucun relevé disponible</h1>
     <p class="note">Le boîtier n'a encore rien publié.</p>
@@ -800,6 +821,14 @@
 @endif
 
 <script>
+    (function () {
+        var annonce = document.getElementById('annonce-portail');
+
+        if (annonce) {
+            setTimeout(function () { annonce.parentNode.removeChild(annonce); }, 10000);
+        }
+    })();
+
     // Les deux vues sont rendues d'avance et permutees ici : sur un reseau
     // mobile, un aller-retour serveur pour changer d'onglet se sentirait.
     (function () {

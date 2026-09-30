@@ -54,11 +54,17 @@ class VehicleState
      * fois la cadence mesuree du boitier, donc une donnee jusqu'a deux fois
      * plus vieille que necessaire au pire des cas -- accepte au profit de
      * moitie moins de requetes/rechargements sur cet ecran en particulier.
+     *
+     * **Trente secondes a l'arret** (2026-09-30, demande explicite) : etait
+     * soixante, une voiture a l'arret n'ayant rien de neuf a montrer aussi
+     * souvent -- resserre malgre tout, pour qu'InfoCar recharge plus vite
+     * apres une ouverture automatique du portail (voir AutoOuvrirPortail) et
+     * affiche l'annonce sans trop tarder.
      */
     public const REFRESH_SECONDS = [
         self::CHARGING => 10,
         self::DRIVING => 20,
-        self::PARKED => 60,
+        self::PARKED => 30,
         self::OFFLINE => 60,
     ];
 
