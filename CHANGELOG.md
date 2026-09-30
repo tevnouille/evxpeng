@@ -12,6 +12,11 @@ Le journal est rédigé pour qui se sert de l'application, pas depuis l'historiq
 Git : les messages de commit parlent de code, et une bonne moitié d'entre eux ne
 change rien de visible. La même liste s'affiche sur `/changelog`.
 
+## 30 septembre 2026
+
+- **Nouveauté** — Le portail d'entrée s'ouvre désormais tout seul quand la voiture approche du domicile (moins de 300 m, en roulant) — plus besoin de passer par l'écran de la voiture dans ce cas précis. Le garage n'est pas concerné, il reste manuel.
+- **Correction** — « Info voiture », onglet Portail : après une fermeture pourtant réussie, la tuile pouvait continuer d'afficher « Ouvert » — l'état était relu trop tôt, avant que la porte ait fini sa course.
+
 ## 25 septembre 2026
 
 - **Nouveauté** — « Info voiture » gagne un onglet Portail : ouvrir/fermer le garage et le portail d'entrée (Meross) directement depuis l'écran de la voiture, avec une tuile illustrée par entrée et le dernier état connu.
