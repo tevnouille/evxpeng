@@ -83,99 +83,6 @@ class InfoCarController extends Controller
     private const ECART_PRESSION_PNEU_BAR = 0.2;
 
     /**
-     * Serie temporelle de l'autonomie estimee, pour le graphique de l'onglet
-     * « Courbe ». Aucun signal de charge separe n'est ajoute : une pente
-     * montante en fin de courbe le dit deja aussi clairement qu'un badge.
-     *
-     * @param  \Illuminate\Support\Collection<int, \App\Models\VehicleTelemetry>  $history
-     * @return array<int, array{at: \Illuminate\Support\Carbon, km: int}>
-     */
-    private function rangeSeries(\Illuminate\Support\Collection $history, ?float $netCapacity, ?float $consumption): array
-    {
-        if (! $netCapacity || ! $consumption) {
-            return [];
-        }
-
-        return $history
-            ->filter(fn ($releve) => $releve->soc !== null)
-            ->map(fn ($releve) => [
-                'at' => $releve->recorded_at,
-                'km' => (int) round((float) $releve->soc / 100 * $netCapacity / $consumption * 100),
-            ])
-            ->values()
-            ->all();
-    }
-
-    /**
-     * Coordonnees SVG pretes a l'emploi pour tracer la serie ci-dessus, sans
-     * bibliotheque de graphique : la page reste une seule requete, condition
-     * deja posee pour le reste d'« Info voiture ».
-     *
-     * @param  array<int, array{at: \Illuminate\Support\Carbon, km: int}>  $series
-     * @return array<string, mixed>|null
-     */
-    private function rangeChart(array $series): ?array
-    {
-        if (count($series) < 2) {
-            return null;
-        }
-
-        $width = 600;
-        $height = 220;
-        // Marges asymetriques : de la place a gauche pour les valeurs km, en
-        // bas pour l'horodatage. Un simple sous-titre sous le graphique s'est
-        // revele repousse hors ecran par le SVG (flex: 1 1 auto, qui prend
-        // tout l'espace vertical disponible) sur l'ecran sans defilement de
-        // la voiture — l'horodatage doit donc faire partie du dessin lui-meme.
-        $margeHaut = 16;
-        $margeBas = 32;
-        $margeGauche = 44;
-        $margeDroite = 10;
-
-        $instants = array_map(fn ($point) => $point['at']->getTimestamp(), $series);
-        $valeurs = array_column($series, 'km');
-
-        $tempsMin = min($instants);
-        // Jamais nulle : un seul instant sur toute la serie ne tracerait rien.
-        $tempsEtendue = max(1, max($instants) - $tempsMin);
-
-        $kmMin = min($valeurs);
-        $kmMax = max($valeurs);
-        // Autonomie parfaitement stable sur la fenetre : sans ce plancher, tous
-        // les points tomberaient sur la meme ligne et la division par zero
-        // renverrait NAN.
-        $kmEtendue = max(1, $kmMax - $kmMin);
-
-        $largeurTrace = $width - $margeGauche - $margeDroite;
-        $hauteurTrace = $height - $margeHaut - $margeBas;
-
-        $points = [];
-
-        foreach ($series as $i => $point) {
-            $x = $margeGauche + ($instants[$i] - $tempsMin) / $tempsEtendue * $largeurTrace;
-            $y = $margeHaut + $hauteurTrace - ($point['km'] - $kmMin) / $kmEtendue * $hauteurTrace;
-            $points[] = round($x, 1).','.round($y, 1);
-        }
-
-        return [
-            'points' => implode(' ', $points),
-            'width' => $width,
-            'height' => $height,
-            'km_min' => $kmMin,
-            'km_max' => $kmMax,
-            // Coordonnees des etiquettes, calculees ici plutot que devinees
-            // dans le gabarit : la vue n'a pas a connaitre les marges.
-            'km_max_y' => round($margeHaut + 4, 1),
-            'km_min_y' => round($margeHaut + $hauteurTrace, 1),
-            'label_x' => round($margeGauche, 1),
-            'temps_y' => round($height - 8, 1),
-            'temps_fin_x' => round($width - $margeDroite, 1),
-            'debut' => $series[0]['at'],
-            'fin' => end($series)['at'],
-        ];
-    }
-
-    /**
      * Temps de charge depuis le niveau actuel, par puissance de borne.
      *
      * Le calcul est celui du planificateur et de la page « Courbe de recharge »
@@ -535,8 +442,6 @@ class InfoCarController extends Controller
             ? $this->geocoder->city($position['lat'], $position['lon'])
             : null;
 
-        $rangeChart = $this->rangeChart($this->rangeSeries($history, $netCapacity, $consumption));
-
         // Pression des pneus : absente du boitier OBD/MQTT (aucun PID connu
         // pour ca, voir ObdReadings), disponible en revanche cote export
         // officiel Xpeng (XpengDataController) -- pas de notion de vehicule
@@ -607,7 +512,6 @@ class InfoCarController extends Controller
                 ?? VehicleState::REFRESH_SECONDS[VehicleState::PARKED],
             'cibles' => self::CIBLES,
             'recharges' => $this->recharges($courbe, $soc),
-            'rangeChart' => $rangeChart,
             'dernieresVilles' => $this->dernieresVilles($vehicle),
             'positionsDuJour' => $this->positionsDuJour($vehicle),
         ]);

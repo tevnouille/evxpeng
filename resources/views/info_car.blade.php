@@ -323,7 +323,6 @@
         /* Vraie carte Leaflet (pas un iframe) : height/min-height necessaires,
            Leaflet ne se dimensionne jamais tout seul. */
         #carte { height: 100%; min-height: 55vh; border-radius: 8px; overflow: hidden; }
-        #courbe-autonomie { width: 100%; flex: 1 1 auto; min-height: 0; }
         .atteint { color: #2ea36b; font-weight: 600; }
         .inconnu { color: #9a9a9a; font-weight: 400; }
         @media (prefers-color-scheme: dark) {
@@ -404,13 +403,6 @@
                 <path d="M5 18H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.2M15 6h2a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-3.2"/>
                 <line x1="23" y1="13" x2="23" y2="11"/>
                 <polyline points="11 6 7 12 13 12 9 18"/>
-            </svg>
-        </button>
-        <button type="button" data-vue="courbe" aria-label="Courbe" title="Courbe">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#9b59b6" stroke-width="2"
-                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <polyline points="22 7 14 15 10 11 2 19"/>
-                <polyline points="16 7 22 7 22 13"/>
             </svg>
         </button>
         @if ($position)
@@ -614,38 +606,6 @@
         @endif
     </div>
 
-    <div class="vue" id="vue-courbe" hidden>
-        @if ($rangeChart === null)
-            <p class="note">
-                Pas assez de données pour tracer l'autonomie
-                (consommation non renseignée sur la fiche du véhicule, ou historique insuffisant).
-            </p>
-        @else
-            {{-- Etiquettes dans le dessin lui-meme, pas dans un sous-titre a
-                 part : un texte hors du SVG s'est revele repousse hors ecran
-                 par le graphique, qui s'etire pour prendre toute la hauteur
-                 disponible (flex: 1 1 auto) sur l'ecran sans defilement de la
-                 voiture. fill="currentColor" suit la couleur du texte de la
-                 page, y compris en mode sombre. --}}
-            <svg id="courbe-autonomie" viewBox="0 0 {{ $rangeChart['width'] }} {{ $rangeChart['height'] }}"
-                 role="img"
-                 aria-label="Autonomie estimée entre {{ $rangeChart['km_min'] }} et {{ $rangeChart['km_max'] }} km, de {{ $rangeChart['debut']->timezone(config('app.timezone'))->format('H:i') }} à {{ $rangeChart['fin']->timezone(config('app.timezone'))->format('H:i') }}">
-                <polyline points="{{ $rangeChart['points'] }}" fill="none" stroke="#2ea36b"
-                          stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
-                <text x="{{ $rangeChart['label_x'] }}" y="{{ $rangeChart['km_max_y'] }}"
-                      font-size="15" fill="currentColor" dominant-baseline="hanging">{{ $rangeChart['km_max'] }} km</text>
-                <text x="{{ $rangeChart['label_x'] }}" y="{{ $rangeChart['km_min_y'] }}"
-                      font-size="15" fill="currentColor">{{ $rangeChart['km_min'] }} km</text>
-                <text x="{{ $rangeChart['label_x'] }}" y="{{ $rangeChart['temps_y'] }}"
-                      font-size="15" fill="currentColor" opacity=".7">{{ $rangeChart['debut']->timezone(config('app.timezone'))->format('H:i') }}</text>
-                <text x="{{ $rangeChart['temps_fin_x'] }}" y="{{ $rangeChart['temps_y'] }}"
-                      font-size="15" fill="currentColor" opacity=".7" text-anchor="end">{{ $rangeChart['fin']->timezone(config('app.timezone'))->format('H:i') }}</text>
-            </svg>
-            <p class="note">
-                Une pente montante en fin de courbe signale une charge en cours.
-            </p>
-        @endif
-    </div>
 
     @if ($position)
         {{-- La carte n'est inseree qu'a l'ouverture de l'onglet : sans ce
@@ -779,9 +739,9 @@
 
     {{-- Ecran de batterie du jour : contenu vide au chargement, rempli en
          JS des l'ouverture puis toutes les minutes tant qu'il reste affiche.
-         Pas de rendu cote serveur ici -- contrairement a l'onglet Courbe --
-         le premier affichage a l'ouverture appelle de toute facon le meme
-         point d'entree, autant n'avoir qu'un seul chemin qui dessine. --}}
+         Pas de rendu cote serveur ici : le premier affichage a l'ouverture
+         appelle de toute facon le meme point d'entree, autant n'avoir qu'un
+         seul chemin qui dessine. --}}
     <div class="recouvrement" id="recouvrement-batterie" hidden>
         <div class="carte" role="dialog" aria-label="Batterie aujourd'hui">
             <div class="entete">
@@ -852,7 +812,7 @@
         }
 
         var ongletDepuisAncre = window.location.hash.replace('#', '');
-        afficher(['recharge', 'courbe', 'position', 'pneus', 'portail'].indexOf(ongletDepuisAncre) !== -1 ? ongletDepuisAncre : 'info');
+        afficher(['recharge', 'position', 'pneus', 'portail'].indexOf(ongletDepuisAncre) !== -1 ? ongletDepuisAncre : 'info');
     })();
 
     (function () {
@@ -922,7 +882,7 @@
         // panneau reste cache pendant l'echange (ouvre() suspend deja le
         // rechargement tant qu'il est affiche), le remplacement est donc
         // invisible pour qui le regarde.
-        var ZONES_A_RAFRAICHIR = ['vue-info', 'vue-recharge', 'vue-courbe', 'vue-pneus', 'recouvrement-villes'];
+        var ZONES_A_RAFRAICHIR = ['vue-info', 'vue-recharge', 'vue-pneus', 'recouvrement-villes'];
 
         /*
          * Le rechargement se decide sur l'horloge et non sur un delai pose une
