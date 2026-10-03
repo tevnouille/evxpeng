@@ -8,6 +8,7 @@ use App\Services\MerossClient;
 use App\Services\VehicleState;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Ouvre automatiquement le portail d'entree quand la voiture s'en approche
@@ -94,6 +95,18 @@ class AutoOuvrirPortail extends Command
             ->get();
 
         $etat = $state->describe($telemetry, $history);
+
+        // Trace a chaque passage dans le rayon d'approche, meme sans
+        // declenchement : sans ca, un incident (portail pas ouvert alors que
+        // la voiture etait bien proche) ne laisse aucune donnee a inspecter
+        // apres coup -- vecu le 02/10/2026, impossible de dire ensuite ce que
+        // la commande avait vu a cet instant precis.
+        Log::info('Portail auto : dans le rayon d\'approche', [
+            'distance_m' => round($distanceM),
+            'etat' => $etat['state'] ?? null,
+            'releve' => $telemetry->recorded_at->toIso8601String(),
+            'verrou_deja_pose' => Cache::has('portail_auto_declenche'),
+        ]);
 
         if (($etat['state'] ?? null) !== VehicleState::DRIVING) {
             return self::SUCCESS;
