@@ -1,0 +1,46 @@
+name: Release
+
+# Crée le tag et la release GitHub : Actions → Release → « Run workflow »,
+# ou via l'API (workflow_dispatch). Le tag est posé sur le dernier commit de la
+# branche choisie (main par défaut).
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version, ex. v1.0.2"
+        required: true
+        type: string
+      notes:
+        description: "Description de la release (vide : générée depuis les commits)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Valider la version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if ! [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Version invalide : '$VERSION' (attendu : vX.Y.Z)" >&2
+            exit 1
+          fi
+
+      - name: Créer le tag et la release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          NOTES: ${{ inputs.notes }}
+        run: |
+          if [ -n "$NOTES" ]; then
+            gh release create "$VERSION" --target "$GITHUB_SHA" --title "$VERSION" --notes "$NOTES"
+          else
+            gh release create "$VERSION" --target "$GITHUB_SHA" --title "$VERSION" --generate-notes
+          fi
