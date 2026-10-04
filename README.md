@@ -7,6 +7,18 @@ Elle enregistre chaque session de charge, calcule les coûts, les compare à
 l'équivalent essence/diesel au prix réel du jour, et présente l'historique et
 les courbes de charge du véhicule.
 
+## Captures d'écran
+
+Données de démonstration fictives.
+
+| | |
+| --- | --- |
+| **Dashboard** : coûts, énergie, équivalent carburant<br>[![Dashboard](docs/screenshots/dashboard.png)](docs/screenshots/dashboard.png) | **Recharges** : saisie et liste du mois<br>[![Recharges](docs/screenshots/recharges.png)](docs/screenshots/recharges.png) |
+| **Courbe de recharge** : puissance et temps restant<br>[![Courbe de recharge](docs/screenshots/courbe-de-recharge.png)](docs/screenshots/courbe-de-recharge.png) | **Ma voiture** : télémétrie du boîtier OBD<br>[![Ma voiture](docs/screenshots/ma-voiture.png)](docs/screenshots/ma-voiture.png) |
+| **Historique** par mois<br>[![Historique](docs/screenshots/historique.png)](docs/screenshots/historique.png) | **Carburants** : prix et équivalence<br>[![Carburants](docs/screenshots/carburants.png)](docs/screenshots/carburants.png) |
+| **Info voiture** : écran du navigateur embarqué<br>[![Info voiture](docs/screenshots/info-voiture.png)](docs/screenshots/info-voiture.png) | **Administration → Utilisateurs**<br>[![Utilisateurs](docs/screenshots/administration-utilisateurs.png)](docs/screenshots/administration-utilisateurs.png) |
+| **Connexion**<br>[![Connexion](docs/screenshots/connexion.png)](docs/screenshots/connexion.png) | **Mon compte**<br>[![Mon compte](docs/screenshots/mon-compte.png)](docs/screenshots/mon-compte.png) |
+
 ## Fonctionnalités
 
 ### Saisie des recharges
