@@ -1,0 +1,276 @@
+@import 'bulma/css/versions/bulma-no-dark-mode.min.css';
+
+body {
+    background-color: #f5f7f5;
+}
+
+.navbar {
+    margin-bottom: 1.5rem;
+}
+
+/* Evite que les tableaux debordent sur mobile plutot que de casser le layout */
+.table-container {
+    overflow-x: auto;
+}
+
+@media (max-width: 768px) {
+    .box {
+        padding: 1rem;
+    }
+}
+
+/* Tableau long : hauteur limitee avec en-tete fige au scroll. */
+.table-scroll {
+    max-height: 480px;
+    overflow-y: auto;
+}
+
+.table-scroll thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    /* Fond opaque obligatoire : sans lui les lignes defilent en transparence sous l'en-tete. */
+    background-color: #fff;
+}
+
+/* Listes de suggestions (adresses du planificateur, bornes du formulaire de recharge).
+   .dropdown-content declare ses couleurs via des variables definies sur .dropdown ;
+   hors de ce contexte la liste s'affiche en transparence par-dessus le formulaire. */
+[data-suggestions] {
+    background-color: #fff;
+    border-radius: 6px;
+    box-shadow: 0 0.5em 1em -0.125em rgba(10, 10, 10, 0.15), 0 0 0 1px rgba(10, 10, 10, 0.05);
+    padding: 0.25rem 0;
+}
+
+[data-suggestions] .dropdown-item {
+    font-size: 0.875rem;
+    padding-right: 1rem;
+    white-space: normal;
+}
+
+[data-suggestions] .dropdown-item:hover,
+[data-suggestions] .dropdown-item.is-active {
+    background-color: #f5f7f5;
+    color: inherit;
+}
+
+/* Neuf entrees avec leur icone : la barre depasse la largeur disponible en
+   dessous de ~1440 px. Bulma ne laisse pas .navbar-menu retrecir, l'entree
+   "Administration" se retrouvait alors coupee hors ecran. On resserre un peu
+   les entrees et on autorise le repli sur une seconde ligne. */
+@media (min-width: 1024px) {
+    .navbar {
+        min-height: auto;
+    }
+
+    .navbar-menu {
+        flex-shrink: 1;
+    }
+
+    .navbar-menu .navbar-start {
+        flex-wrap: wrap;
+    }
+
+    .navbar-menu .navbar-item {
+        padding-left: 0.6rem;
+        padding-right: 0.6rem;
+    }
+}
+
+/* Nom de la borne a cote de sa pastille, sur la carte des trajets favoris.
+   Etiquette discrete : elle doit se lire sans masquer le fond de carte, et il
+   peut y en avoir une quinzaine a l'ecran. */
+.leaflet-tooltip.station-label {
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(10, 10, 10, 0.12);
+    box-shadow: none;
+    color: #363636;
+    font-size: 0.7rem;
+    font-weight: 500;
+    padding: 1px 5px;
+    max-width: 15rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.leaflet-tooltip.station-label.is-favorite {
+    background: #ffdd57;
+    border-color: #363636;
+    font-weight: 700;
+}
+
+/* La fleche par defaut alourdit inutilement une etiquette de cette taille. */
+.leaflet-tooltip.station-label::before {
+    display: none;
+}
+
+
+/*
+ * Selecteur de reseaux a deux colonnes.
+ *
+ * Le navigateur dimensionne une liste `size="9"` sur le nombre d options
+ * visibles : filtrer la colonne de gauche la faisait retrecir, et les deux
+ * colonnes remontaient d un bloc. Une hauteur fixe garde la mise en page
+ * stable, filtre pose ou non.
+ */
+.network-picker .select.is-multiple select {
+    height: 20rem;
+    overflow-y: auto;
+}
+
+
+/*
+ * Calendrier mensuel des releves OBD.
+ *
+ * Grille fixe a sept colonnes commencant un lundi : une date tombe toujours
+ * dans la meme colonne d un mois a l autre, et les cases d avant le 1er restent
+ * vides plutot que d etre remplies par le mois precedent.
+ */
+.obd-calendar {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.35rem;
+    /* Sans largeur maximale, sept colonnes etirees sur un ecran large donnent
+       des cases de 150 px : un mois occupait alors toute la hauteur de l ecran. */
+    max-width: 32rem;
+}
+
+.obd-calendar-head {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #7a7a7a;
+    text-align: center;
+    padding-bottom: 0.25rem;
+}
+
+.obd-day {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 3.25rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #363636;
+    background: #f5f5f5;
+    text-decoration: none;
+}
+
+.obd-day.is-empty {
+    color: #c8c8c8;
+    font-weight: 400;
+}
+
+.obd-day-count {
+    font-size: 0.65rem;
+    font-weight: 400;
+    opacity: 0.75;
+}
+
+/*
+ * Quatre paliers d intensite : au-dela, l oeil ne distingue plus les nuances.
+ * Le texte passe au blanc sur les deux plus soutenus, ou le contraste ne
+ * suffirait plus.
+ */
+.obd-day.level-1 { background: #d3ecd8; }
+.obd-day.level-2 { background: #9adcaa; }
+.obd-day.level-3 { background: #48c78e; color: #fff; }
+.obd-day.level-4 { background: #257953; color: #fff; }
+
+.obd-day.is-current {
+    outline: 2px solid #3e8ed0;
+    outline-offset: 1px;
+}
+
+.obd-chart {
+    max-height: 150px;
+}
+
+
+/*
+ * Superposition d une recharge et de la courbe du vehicule.
+ *
+ * maintainAspectRatio est desactive pour que la largeur soit celle de la boite :
+ * sans hauteur maximale, le canvas s etire alors sur tout ce qu on lui laisse.
+ */
+.curve-compare {
+    max-height: 260px;
+}
+
+
+/*
+ * Jauge de batterie : degrade qui traverse la partie remplie.
+ *
+ * L'element reste un <progress> — c'est lui qui porte le sens et l'accessibilite ;
+ * seule la partie remplie est repeinte. Le degrade fait deux fois la largeur de
+ * la barre et se deplace, ce qui donne un flux continu sans que la valeur bouge.
+ *
+ * Les deux pseudo-elements sont ecrits separement, et c est indispensable : un
+ * navigateur qui ne connait pas l un des deux selecteurs jette la regle entiere
+ * s ils sont groupes, et l animation disparaitrait ailleurs que chez lui.
+ */
+@keyframes batterie-flux {
+    from { background-position: 200% 0; }
+    to   { background-position: -100% 0; }
+}
+
+.progress.batterie::-webkit-progress-value {
+    background-image: linear-gradient(
+        100deg,
+        #2ea36b 0%, #2ea36b 38%,
+        #7ee2b0 50%,
+        #2ea36b 62%, #2ea36b 100%
+    );
+    background-size: 300% 100%;
+    background-repeat: no-repeat;
+    animation: batterie-flux 3.2s linear infinite;
+}
+
+.progress.batterie::-moz-progress-bar {
+    background-image: linear-gradient(
+        100deg,
+        #2ea36b 0%, #2ea36b 38%,
+        #7ee2b0 50%,
+        #2ea36b 62%, #2ea36b 100%
+    );
+    background-size: 300% 100%;
+    background-repeat: no-repeat;
+    animation: batterie-flux 3.2s linear infinite;
+}
+
+/* Une barre trop fine ne laisse rien voir du degrade. */
+.progress.batterie { height: .85rem; }
+
+@media (prefers-reduced-motion: reduce) {
+    .progress.batterie::-webkit-progress-value { animation: none; }
+    .progress.batterie::-moz-progress-bar { animation: none; }
+}
+
+
+/*
+ * En-tetes de colonnes triables.
+ *
+ * La fleche est en ::after pour ne pas decaler le libelle : reserver la place
+ * en permanence evite que la ligne d en-tete sursaute au premier clic.
+ */
+th.is-sortable {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+th.is-sortable::after {
+    content: "\2195";
+    margin-left: .35em;
+    opacity: .3;
+    font-weight: 400;
+}
+
+th.is-sortable[data-direction="asc"]::after { content: "\2191"; opacity: 1; }
+th.is-sortable[data-direction="desc"]::after { content: "\2193"; opacity: 1; }
+
+th.is-sortable:hover::after { opacity: .7; }

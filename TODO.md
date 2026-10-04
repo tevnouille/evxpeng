@@ -1,0 +1,105 @@
+# TODO
+
+Rien en attente pour l'instant.
+
+Les neuf idées notées le 2026-09-10 ont toutes été livrées ce jour-là — la
+liste ci-dessous garde trace de ce qui a été tranché et pourquoi, pour qui
+retomberait sur un besoin voisin. Détail complet dans CHANGELOG.md.
+
+« Corrélation météo/consommation » est livrée : colonnes consommation
+apparente et température sur le tableau quotidien de « Ma voiture »
+(`App\Services\WeatherService`, Open-Meteo, mis en cache dans `daily_weather`).
+Nécessaire car le boîtier ne remonte jamais de température extérieure malgré
+la colonne `ext_temp` prévue pour — vérifié sur l'historique complet, aucun
+relevé ne la porte.
+
+« Carte agrégée des trajets récurrents » est livrée, page « Trajets
+habituels » (`TripMapController::recurring()`) : traces semi-transparentes
+superposées sur une fenêtre glissante (14 à 180 jours), sans bibliothèque de
+heatmap — l'effet vient du cumul d'opacité. Chaque trajet est ramené à 150
+points maximum avant l'envoi au navigateur.
+
+« Santé batterie (SoH) dans le temps » est livrée sous une forme différente de
+la note initiale : le SoH lui-même reste figé à 99 % sur toute la période
+collectée (vérifié), donc c'est l'écart entre cellules — déjà le signal
+avant-coureur retenu sur `/infoCar` — qui est tracé jour par jour, dans un
+nouveau graphique « Équilibre des cellules » sur « Ma voiture ». Voir
+`App\Services\BatteryHealth` et le CHANGELOG.md du 2026-09-10.
+
+« Alerte SMS sur écart de recharge significatif » est livrée : le calcul est
+extrait dans `App\Services\ChargeCurveComparison` (une seule implémentation
+pour la page et l'alerte), et `App\Services\ChargeGapNotifier` envoie le SMS,
+appelé depuis `IngestMqttTelemetry::handleCharging()` au moment où le boîtier
+publie la session terminée — pas de sondage séparé. Dédoublonnage par la
+colonne `gap_alert_delivered` sur `telemetry_charging_sessions`, sur le même
+principe que `delivered` dans `ChargeAlert`. Voir le CHANGELOG.md du 2026-09-10.
+
+« Cumul "économisé depuis le début" » est livré, sous forme plus simple que la
+note initiale : le calcul cumulé existait déjà en fait (sélectionner « Toutes
+les années » sur le dashboard le donnait), il manquait une carte toujours
+visible sans avoir à changer de filtre. `DashboardController::lifetime()`
+réutilise `FuelPriceService::equivalentTotals()` sur l'ensemble des recharges
+du compte. Voir le CHANGELOG.md du 2026-09-10.
+
+« Alerte si le prix du carburant dépasse un seuil » est livrée. La question
+ouverte est tranchée en faveur du seuil par utilisateur (`users.fuel_alert_essence_price`
+/ `fuel_alert_diesel_price`, réglables dans /mon-compte) plutôt que global :
+même logique que les identifiants Free Mobile, déjà propres à chaque compte,
+et aucun prix « raisonnable » à deviner à la place de qui que ce soit.
+`App\Services\FuelPriceAlertNotifier` notifie sur le franchissement (comparaison
+au relevé le plus récent avant celui du jour, pas seulement la veille au cas où
+un jour aurait manqué), appelé par la nouvelle commande planifiée
+`fuel-prices:check` (7h30 chaque matin) — jusqu'ici le prix n'était rafraîchi
+que par une visite de page. Voir le CHANGELOG.md du 2026-09-10.
+
+« Coût réel au km glissant » est livré, sur « Ma voiture »
+(`MyVehicleController::costPerKm()`), même fenêtre glissante que le reste de
+la page. Question tranchée : pas d'abonnement domicile/box dans le calcul —
+ce concept n'existe nulle part ailleurs dans le modèle de données, l'ajouter
+serait une fonctionnalité à part entière, pas une hypothèse à glisser ici.
+Piège rencontré et corrigé en route : le coût doit être borné à la période
+*réellement couverte par l'odomètre*, pas aux jours demandés — sinon une
+fenêtre large compte des recharges d'avant l'installation du boîtier,
+faussant le ratio sans que rien ne le signale. Voir le CHANGELOG.md du
+2026-09-10.
+
+« Comparaison trajet planifié vs trajet réellement effectué » est livrée, sur
+« Déplacements » (`TripMapController::comparison()`). La question ouverte
+(risque de faux rapprochements) est tranchée en évitant complètement la
+détection automatique : deux menus déroulants laissent choisir soi-même le
+déplacement du jour et le trajet favori à confronter. Seuls les trajets
+favoris sont comparables (pas de plan éphémère du planificateur : rien n'y
+est persisté tant qu'il n'est pas enregistré en favori), et seule la durée
+routière (OSRM, sans arrêt imposé) est estimée — le planificateur ne prévoit
+pas de pauses, donc l'écart observé inclut toute recharge ou pause réelle.
+Voir le CHANGELOG.md du 2026-09-10.
+
+« Notes personnelles sur les bornes » est livrée, page `/mes-bornes`
+(`App\Models\ChargingStationNote`). Question tranchée : une note par
+(utilisateur, borne), pas par visite — la réécrire remplace l'observation
+précédente. `App\Services\RouteCorridor::stations()` centralise l'affichage :
+notes ajoutées après coup sur les résultats, une seule requête, donc
+planificateur et favoris les récupèrent sans rien changer côté contrôleur.
+Recherche de borne : `ChargerLookupController::stations()` expose désormais
+`id` (utilisé nulle part ailleurs avant), sur le même mécanisme que
+« Rechercher bornes » côté saisie de recharge. Voir le CHANGELOG.md du
+2026-09-10.
+
+« Estimation "prochaine recharge nécessaire" » est livrée, en version
+délibérément minimale vu le doute initial sur sa valeur : une ligne sous
+« Autonomie estimée » sur « Ma voiture »
+(`MyVehicleController::nextChargeEstimate()`), pas de nouvelle page ni
+d'alerte. Moyenne linéaire km/jour sur la période couverte par l'odomètre
+(≥ 3 jours de recul exigés, sinon tue plutôt que d'afficher un instantané
+trompeur), comparée à l'autonomie déjà calculée. Corrigé en route :
+`Carbon::diffInDays()` rend un flottant depuis Carbon 3, même piège que
+`diffInMinutes()` sur la comparaison de trajets. Voir le CHANGELOG.md du
+2026-09-10.
+
+« État de charge en cours sur la page de partage de position » est livrée :
+bandeau puissance/niveau/temps restant si la voiture charge au moment où le
+lien est consulté (`PublicPositionShareController::chargingNow()`,
+`ChargeCurveSimulator` déjà partagé avec `InfoCarController`), plus un point
+jaune sur la carte pour tout relevé pris en charge. Vérifié avec un relevé de
+test inséré puis retiré aussitôt (45,5 kW, 62 % → ~52 min jusqu'à 100 %,
+calcul correct) — jamais laissé en base. Voir le CHANGELOG.md du 2026-09-10.

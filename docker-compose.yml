@@ -1,0 +1,110 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: ev-app
+    restart: unless-stopped
+    volumes:
+      - ./storage:/var/www/html/storage
+      - ./public/build:/var/www/html/public/build:ro
+      - ./app:/var/www/html/app:ro
+      - ./bootstrap/app.php:/var/www/html/bootstrap/app.php:ro
+      - ./config:/var/www/html/config:ro
+      - ./database:/var/www/html/database:ro
+      - ./resources:/var/www/html/resources:ro
+      - ./routes:/var/www/html/routes:ro
+      # Les dependances PHP montees depuis l'hote plutot que figees dans
+      # l'image : une mise a jour Composer devient immediate, sans
+      # reconstruction ni recreation de conteneur — c'est cette recreation,
+      # avec un docker-compose incompatible, qui avait coupe le site.
+      # Non montes en lecture seule : composer doit pouvoir y ecrire.
+      - ./vendor:/var/www/html/vendor
+      - ./composer.json:/var/www/html/composer.json
+      - ./composer.lock:/var/www/html/composer.lock
+      # upload_max_filesize/post_max_size par defaut de l'image (2M/8M) sont
+      # trop bas pour l'import manuel d'un export Xpeng (my-vehicle.xpeng.importer).
+      - ./docker/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
+    env_file:
+      - .env
+    depends_on:
+      - mariadb
+    networks:
+      - default
+
+  nginx:
+    image: nginx:alpine
+    container_name: ev-nginx
+    restart: unless-stopped
+    ports:
+      # Par defaut local a la machine (127.0.0.1) : placer un reverse proxy TLS
+      # devant, ou mettre HTTP_BIND=0.0.0.0 dans .env pour publier le port.
+      - "${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-8098}:80"
+    volumes:
+      - ./public:/var/www/html/public:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    networks:
+      - default
+      - ev-net
+
+  mariadb:
+    image: mariadb:11
+    container_name: ev-mariadb
+    restart: unless-stopped
+    environment:
+      - MARIADB_DATABASE=${DB_DATABASE:-ev}
+      - MARIADB_USER=${DB_USERNAME:-ev}
+      - MARIADB_PASSWORD=${DB_PASSWORD}
+      - MARIADB_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+    volumes:
+      - dbdata:/var/lib/mysql
+    networks:
+      - default
+
+  # Broker MQTT : XPCarData (application Android reliee au dongle OBD) y publie
+  # les releves du vehicule. Authentification obligatoire (docker/mosquitto).
+  # Le port 1883 est en clair : l'exposer a Internet impose un tunnel TLS ou un
+  # VPN devant, voir INSTALL.md.
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: ev-mosquitto
+    restart: unless-stopped
+    profiles: ["mqtt"]
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./docker/mosquitto:/mosquitto/config:ro
+      - mosquittodata:/mosquitto/data
+    networks:
+      - default
+
+  # Abonne au broker et depose chaque message dans un fichier tampon que
+  # `php artisan telemetry:ingest-mqtt` relit (pas de client MQTT en PHP).
+  mqtt-ingest:
+    image: eclipse-mosquitto:2
+    container_name: ev-mqtt-ingest
+    restart: unless-stopped
+    profiles: ["mqtt"]
+    environment:
+      - MQTT_USER=${MQTT_USER}
+      - MQTT_PASSWORD=${MQTT_PASSWORD}
+    volumes:
+      - ./storage/app/system:/data
+    entrypoint: ["sh", "-c"]
+    command:
+      - exec mosquitto_sub -h mosquitto -u "$$MQTT_USER" -P "$$MQTT_PASSWORD" -t 'vehicles/#' -v >> /data/mqtt-inbox.jsonl
+    depends_on:
+      - mosquitto
+    networks:
+      - default
+
+volumes:
+  dbdata:
+  mosquittodata:
+
+networks:
+  default: {}
+  ev-net:
+    name: ev-net

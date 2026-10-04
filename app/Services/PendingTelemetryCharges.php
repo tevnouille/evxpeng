@@ -1,0 +1,144 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\ChargingSession;
+use App\Models\IgnoredTelemetryCharge;
+use App\Models\TelemetryChargingSession;
+use App\Models\Vehicle;
+
+/**
+ * Recharges reperees par la telemetrie et pas encore saisies.
+ *
+ * Le rapprochement se fait sur l'horodatage de debut : une recharge saisie
+ * depuis une detection porte ce marqueur (charging_sessions.telemetry_started_at)
+ * et n'est donc plus proposee. Les saisies manuelles, elles, ne portent aucun
+ * marqueur et n'empechent rien — deux recharges au meme instant restent un cas
+ * que l'utilisateur tranche lui-meme.
+ */
+class PendingTelemetryCharges
+{
+    private const DEFAULT_DAYS = 30;
+
+    /**
+     * Energie en dessous de laquelle une recharge n'est plus proposee a la saisie.
+     *
+     * Depuis que les releves arrivent au quart de minute, le detecteur voit
+     * chaque scintillement de `isCharging` en roulage — de la regeneration au
+     * freinage, pas une recharge : sessions d'une minute, zero kWh, niveau qui
+     * baisse. Le seuil les ecarte sans les effacer, la page laissant toujours
+     * de quoi les reafficher.
+     */
+    public const MIN_KWH = 5.0;
+
+    /**
+     * Une proposition merite-t-elle d'etre saisie ?
+     *
+     * @param  array<string, mixed>  $charge
+     */
+    public static function isSignificant(array $charge): bool
+    {
+        return (float) ($charge['kwh'] ?? 0) >= self::MIN_KWH;
+    }
+
+    public function __construct(
+        private readonly TelemetrySessionDetector $detector,
+        private readonly ChargingCurveRepository $curves,
+        private readonly ChargeContextGuesser $context,
+        private readonly MeasuredChargingSessions $measured,
+    ) {
+    }
+
+    /**
+     * Detections ecartees, indexees « vehicule|debut » pour un test direct.
+     *
+     * @param  array<int, int>  $vehicleIds
+     * @return array<string, true>
+     */
+    public static function ignoredKeys(array $vehicleIds): array
+    {
+        return IgnoredTelemetryCharge::whereIn('vehicle_id', $vehicleIds)
+            ->get()
+            ->mapWithKeys(fn (IgnoredTelemetryCharge $row) => [
+                $row->vehicle_id.'|'.$row->started_at->format('Y-m-d H:i:s') => true,
+            ])
+            ->all();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>  Les plus recentes d'abord.
+     */
+    public function all(int $days = self::DEFAULT_DAYS): array
+    {
+        $recorded = array_flip(
+            ChargingSession::whereNotNull('telemetry_started_at')
+                ->pluck('telemetry_started_at')
+                ->map(fn ($date) => $date->format('Y-m-d H:i:s'))
+                ->all()
+        );
+
+        $pending = [];
+
+        $vehicles = Vehicle::whereNotNull('mqtt_client_id')->orderBy('name')->get();
+
+        // Ecartees a la main : deja saisies autrement, ou sans interet. Elles
+        // restent visibles sur Ma voiture, ou l'on peut les retablir.
+        $ignored = self::ignoredKeys($vehicles->modelKeys());
+
+        foreach ($vehicles as $vehicle) {
+            $curve = $vehicle->charging_curve ? $this->curves->find($vehicle->charging_curve) : null;
+
+            // Le boitier OBD publie des sessions completes, energie mesuree au
+            // compteur du BMS. Elles priment sur tout ce qu'on reconstitue :
+            // l'estimation par SoC x capacite s'est revelee 29 % sous le compte.
+            $measured = $this->measured->forVehicle($vehicle, $days);
+
+            foreach ($measured as $row) {
+                $key = $row->started_at->format('Y-m-d H:i:s');
+
+                if (isset($recorded[$key]) || isset($ignored[$vehicle->id.'|'.$key])) {
+                    continue;
+                }
+
+                $pending[] = $this->measured->toArray($row, $vehicle);
+            }
+
+            $rows = $vehicle->telemetries()
+                ->where('recorded_at', '>=', now()->subDays($days))
+                ->orderBy('recorded_at')
+                ->get();
+
+            foreach ($this->detector->detect($rows, $curve['battery_net_kwh'] ?? null) as $session) {
+                // La meme recharge vue deux fois — une fois mesuree, une fois
+                // reconstituee depuis les relevés — ne doit etre proposee qu'une.
+                if ($this->measured->overlaps($measured, $session)) {
+                    continue;
+                }
+
+                // Une charge en cours n'a pas encore de duree ni d'energie finales.
+                if ($session['in_progress']) {
+                    continue;
+                }
+
+                if (isset($recorded[$session['started_at']->format('Y-m-d H:i:s')])) {
+                    continue;
+                }
+
+                if (isset($ignored[$vehicle->id.'|'.$session['started_at']->format('Y-m-d H:i:s')])) {
+                    continue;
+                }
+
+                $session = $this->measured->normalise($session);
+                $session['vehicle'] = $vehicle;
+                // Lieu, fournisseur et puissance devines depuis la position :
+                // ne reste a saisir que ce que la telemetrie ignore, le cout.
+                $session['context'] = $this->context->guess($session['lat'], $session['lon']);
+                $pending[] = $session;
+            }
+        }
+
+        usort($pending, fn ($a, $b) => $b['started_at'] <=> $a['started_at']);
+
+        return $pending;
+    }
+}
