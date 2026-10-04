@@ -21,14 +21,10 @@ change rien de visible. La même liste s'affiche sur `/changelog`.
 
 ## 30 septembre 2026
 
-- **Nouveauté** — Le portail d'entrée s'ouvre désormais tout seul quand la voiture approche du domicile (moins de 300 m, en roulant) — plus besoin de passer par l'écran de la voiture dans ce cas précis. Le garage n'est pas concerné, il reste manuel.
-- **Nouveauté** — « Info voiture » affiche un bandeau clignotant pendant 10 secondes quand le portail s'ouvre automatiquement à l'approche du domicile.
 - **Amélioration** — « Info voiture » : le rafraîchissement automatique de la page à l'arrêt passe de 60 à 30 secondes.
-- **Correction** — « Info voiture », onglet Portail : après une fermeture pourtant réussie, la tuile pouvait continuer d'afficher « Ouvert » — l'état était relu trop tôt, avant que la porte ait fini sa course.
 
 ## 25 septembre 2026
 
-- **Nouveauté** — « Info voiture » gagne un onglet Portail : ouvrir/fermer le garage et le portail d'entrée (Meross) directement depuis l'écran de la voiture, avec une tuile illustrée par entrée et le dernier état connu.
 - **Amélioration** — « Info voiture » : le rafraîchissement automatique de la page en roulage passe de 10 à 20 secondes.
 - **Correction** — « Info voiture » : la tuile « Limite de vitesse » disparaissait parfois plus longtemps que nécessaire après un simple pépin du service de cartographie public — un échec temporaire n'est plus traité comme une absence confirmée de limite.
 - **Correction** — « Info voiture » : la tuile d'autonomie annoncée par le véhicule (CLTC) affichait une valeur sans rapport avec la réalité (79 km à 100 % de batterie) — le champ du boîtier ne contenait pas ce que son nom indiquait, retiré.

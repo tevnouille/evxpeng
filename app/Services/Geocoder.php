@@ -71,8 +71,8 @@ class Geocoder
      *
      * `label` et `context` sont separes a dessein : le contexte sert a
      * departager deux homonymes a l'ecran, mais l'accoler au libelle rendrait le
-     * texte inexploitable par la BAN — "Villabe (91, Essonne, Ile-de-France)"
-     * renvoie un chemin de Corbeil-Essonnes.
+     * texte inexploitable par la BAN — "Lyon (69, Rhone, Auvergne-Rhone-Alpes)"
+     * renvoie un chemin d'une autre commune.
      *
      * @return array<int, array{label: string, context: string, lat: float, lon: float}>
      */

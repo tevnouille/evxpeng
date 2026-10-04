@@ -31,7 +31,7 @@
                         <label class="label" for="depart">Départ</label>
                         <div class="control" style="position: relative;">
                             <input class="input" type="text" id="depart" name="depart" required
-                                   value="{{ old('depart') }}" placeholder="Villabé, une adresse, ou 48.5836, 2.4436"
+                                   value="{{ old('depart') }}" placeholder="Paris, une adresse, ou 48.8566, 2.3522"
                                    data-address-input autocomplete="off">
                             <input type="hidden" name="depart_lat" value="{{ old('depart_lat') }}">
                             <input type="hidden" name="depart_lon" value="{{ old('depart_lon') }}">

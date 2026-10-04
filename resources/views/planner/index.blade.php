@@ -23,7 +23,7 @@
                         <label class="label" for="depart">Départ</label>
                         <div class="control" style="position: relative;">
                             <input class="input" type="text" id="depart" name="depart"
-                                   value="{{ $form['from'] }}" placeholder="Villabé, une adresse, ou 48.5836, 2.4436" required
+                                   value="{{ $form['from'] }}" placeholder="Paris, une adresse, ou 48.8566, 2.3522" required
                                    data-address-input autocomplete="off">
                             <input type="hidden" name="depart_lat" value="{{ request()->query('depart_lat') }}">
                             <input type="hidden" name="depart_lon" value="{{ request()->query('depart_lon') }}">

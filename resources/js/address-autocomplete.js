@@ -32,8 +32,8 @@ export function wireAddressInputs() {
                 }
             },
             pick: (suggestion) => {
-                // Le libelle seul, sans le contexte affiche a cote : "Villabe
-                // (91, Essonne...)" renvoie a la BAN un chemin d'une commune
+                // Le libelle seul, sans le contexte affiche a cote : "Lyon
+                // (69, Rhone...)" renvoie a la BAN un chemin d'une commune
                 // voisine.
                 input.value = suggestion.label;
                 setPoint(suggestion);

@@ -415,42 +415,6 @@ Le contrôle du code à 6 chiffres est extrait dans une méthode dédiée
 sans ce doublon, le second aurait été une porte laissée grande ouverte à côté
 de la première.
 
-### Pilotage du garage/portail (Meross) : un service interne, pas un appel direct
-
-`ev-app` ne peut parler ni MQTT (contrainte structurelle déjà documentée plus
-bas pour la télémétrie OBD) ni au socket Docker de l'hôte pour lancer un
-conteneur à la demande — deux chemins fermés pour piloter des appareils
-Meross (portes de garage/portail MSG100), dont l'API cloud n'est pas
-documentée publiquement et se pilote en pratique via MQTT vers leur broker,
-comme le fait l'application mobile.
-
-Solution retenue (2026-09-25) : un **service interne permanent**,
-`docker/meross/` (Python + `meross_iot` + Flask), ajouté à
-`docker-compose.yml` sous le nom `meross`, jamais publié sur l'hôte —
-atteint uniquement par `ev-app` via le réseau Docker interne du projet
-(`http://meross:8000/control`), même principe que `ev-app` → `ev-mariadb`.
-`App\Services\MerossClient` s'y limite à un appel HTTP synchrone.
-
-**Différent du mécanisme fichier-déposé-puis-cron** déjà utilisé pour les
-mises à jour serveur (`storage/app/system/server-update.request`, ramassé
-par un cron hôte à la minute) : cette latence (jusqu'à une minute) est
-inacceptable pour un bouton qu'on presse en s'attendant à un effet en
-quelques secondes. Le service reste donc allumé en permanence plutôt que
-lancé à la demande — reconnexion complète à Meross à chaque appel (~3-5 s),
-pas de session gardée ouverte, l'action restant manuelle et peu fréquente.
-
-**Pas d'interrogation d'état automatique.** `/v1/telemetry`-style polling
-régulier n'existe pas ici : l'état affiché sur chaque tuile
-(`InfoCarController::show()`) vient uniquement du cache rempli après une
-action réellement déclenchée (`controlerPortail()`), jamais d'une lecture au
-chargement de la page — celle-ci se recharge seule toutes les 10-60 s, un
-aller-retour Meross prendrait le pas sur tout le reste.
-
-**`meross_actions` n'a pas de `user_id`** : InfoCar n'a pas de session
-applicative (voir plus haut, l'en-tête est toujours vidé), le code à 6
-chiffres est un filtre, pas un compte. Ce journal dit quand une porte a été
-actionnée, pas par qui.
-
 ## Télémétrie : aucune rétention, jamais
 
 Les relevés de `vehicle_telemetries` sont conservés **indéfiniment**, y compris la

@@ -52,16 +52,12 @@ class Changelog
         [
             'date' => '2026-09-30',
             'entries' => [
-                ['type' => 'nouveaute', 'text' => "Le portail d'entrée s'ouvre désormais tout seul quand la voiture approche du domicile (moins de 300 m, en roulant) — plus besoin de passer par l'écran de la voiture dans ce cas précis. Le garage n'est pas concerné, il reste manuel."],
-                ['type' => 'nouveaute', 'text' => "« Info voiture » affiche un bandeau clignotant pendant 10 secondes quand le portail s'ouvre automatiquement à l'approche du domicile."],
                 ['type' => 'amelioration', 'text' => "« Info voiture » : le rafraîchissement automatique de la page à l'arrêt passe de 60 à 30 secondes."],
-                ['type' => 'correction', 'text' => "« Info voiture », onglet Portail : après une fermeture pourtant réussie, la tuile pouvait continuer d'afficher « Ouvert » — l'état était relu trop tôt, avant que la porte ait fini sa course."],
             ],
         ],
         [
             'date' => '2026-09-25',
             'entries' => [
-                ['type' => 'nouveaute', 'text' => "« Info voiture » gagne un onglet Portail : ouvrir/fermer le garage et le portail d'entrée (Meross) directement depuis l'écran de la voiture, avec une tuile illustrée par entrée et le dernier état connu."],
                 ['type' => 'amelioration', 'text' => "« Info voiture » : le rafraîchissement automatique de la page en roulage passe de 10 à 20 secondes."],
                 ['type' => 'correction', 'text' => "« Info voiture » : la tuile « Limite de vitesse » disparaissait parfois plus longtemps que nécessaire après un simple pépin du service de cartographie public — un échec temporaire n'est plus traité comme une absence confirmée de limite."],
                 ['type' => 'correction', 'text' => "« Info voiture » : la tuile d'autonomie annoncée par le véhicule (CLTC) affichait une valeur sans rapport avec la réalité (79 km à 100 % de batterie) — le champ du boîtier ne contenait pas ce que son nom indiquait, retiré."],

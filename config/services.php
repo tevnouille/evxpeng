@@ -39,7 +39,7 @@ return [
     'donate' => [
         // Lien PayPal (ex. https://paypal.me/votrenom) du bouton « Offrez-moi une
         // biere » en bas de page. Vide : aucun bouton.
-        'url' => env('DONATE_URL'),
+        'url' => env('DONATE_URL', 'https://paypal.me/tevnouille'),
     ],
 
     'osrm' => [
@@ -89,33 +89,6 @@ return [
         'access_token' => env('XPENG_ACCESS_TOKEN'),
         'enterprise_name' => env('XPENG_ENTERPRISE_NAME'),
         'scope_code' => env('XPENG_SCOPE_CODE'),
-    ],
-
-    'meross' => [
-        // Identifiants du compte Meross (App\Services\MerossClient) : les
-        // memes que l'application mobile, Meross n'ayant pas d'API publique
-        // avec cle dediee. L'appel reel part du service interne "meross"
-        // (docker/meross/), jamais de ev-app directement (ni acces MQTT ni
-        // acces au socket Docker de l'hote).
-        'email' => env('MEROSS_EMAIL'),
-        'password' => env('MEROSS_PASSWORD'),
-        // UUID stables, decouverts une fois via l'API Meross -- pas des
-        // secrets, mais autant les laisser en config que les coder en dur
-        // dans le service.
-        'devices' => [
-            'garage' => env('MEROSS_GARAGE_UUID', '1911082967173290804648e1e9112e49'),
-            'portail' => env('MEROSS_PORTAIL_UUID', '1911082759724990804648e1e9111938'),
-        ],
-    ],
-
-    // Domicile (App\Console\Commands\AutoOuvrirPortail) : geocode une seule
-    // fois le 30/09/2026 via App\Services\Geocoder (62 rue Henri Berreau,
-    // 91100 Corbeil-Essonnes) -- coordonnees stables, meme raison de les
-    // garder en config plutot qu'en recalcul a chaque execution que les UUID
-    // Meross ci-dessus.
-    'domicile' => [
-        'lat' => (float) env('DOMICILE_LAT', 48.595264),
-        'lon' => (float) env('DOMICILE_LON', 2.476097),
     ],
 
 ];

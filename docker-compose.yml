@@ -62,23 +62,6 @@ services:
     networks:
       - default
 
-  # Portail/garage Meross (App\Services\MerossClient) : ev-app n'a ni acces
-  # MQTT (contrainte deja connue, voir CLAUDE.md) ni au socket Docker de
-  # l'hote pour lancer un conteneur a la demande. Ce service reste donc en
-  # place en permanence, jamais publie sur l'hote (atteint seulement par
-  # "meross" sur le reseau interne, comme ev-app -> ev-mariadb).
-  meross:
-    build:
-      context: .
-      dockerfile: docker/meross/Dockerfile
-    container_name: ev-meross
-    restart: unless-stopped
-    environment:
-      - MEROSS_EMAIL=${MEROSS_EMAIL}
-      - MEROSS_PASSWORD=${MEROSS_PASSWORD}
-    networks:
-      - default
-
   # Broker MQTT : XPCarData (application Android reliee au dongle OBD) y publie
   # les releves du vehicule. Authentification obligatoire (docker/mosquitto).
   # Le port 1883 est en clair : l'exposer a Internet impose un tunnel TLS ou un

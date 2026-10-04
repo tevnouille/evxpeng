@@ -53,10 +53,3 @@ Schedule::command('fuel-prices:check')->dailyAt('07:30')->withoutOverlapping();
 foreach (['05:00', '09:00', '13:00', '17:00', '21:00'] as $heure) {
     Schedule::command('xpeng:sync')->dailyAt($heure)->withoutOverlapping();
 }
-
-// Ouvre le portail d'entree quand la voiture s'en approche (demande
-// explicite du 30/09/2026). Meme cadence que telemetry:ingest-mqtt en
-// roulage : une approche dure typiquement moins d'une minute, un pas plus
-// large la manquerait ou la declencherait trop tard pour que le portail ait
-// fini de s'ouvrir a l'arrivee.
-Schedule::command('portail:auto-ouverture')->everyFifteenSeconds()->withoutOverlapping();
