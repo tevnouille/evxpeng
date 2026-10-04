@@ -36,7 +36,7 @@ class ReverseGeocoder
      */
     private const BATCH = 400;
 
-    private const AGENT = 'ev.lolinux.org (suivi de vehicule, usage personnel)';
+    private const AGENT = 'EV-Recharges (suivi de vehicule, usage personnel)';
 
     /** Un lot de plusieurs centaines de points prend le temps qu'il faut. */
     private const DELAI_LOT = 60;

@@ -25,7 +25,7 @@ return new class extends Migration
             return;
         }
 
-        $owner = User::firstWhere('email', env('EV_OWNER_EMAIL', 'atran@lolinux.org'))
+        $owner = User::firstWhere('email', env('EV_OWNER_EMAIL', 'admin@example.com'))
             ?? User::orderBy('id')->first();
 
         if ($owner === null || filled($owner->free_mobile_user)) {

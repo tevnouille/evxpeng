@@ -36,11 +36,10 @@ return [
     ],
 
 
-    'passkey' => [
-        // Passerelle qui authentifie et pose l'en-tete d'identite. L'application
-        // n'est joignable que par elle ; cette adresse ne sert qu'a construire
-        // le lien de deconnexion, la passerelle etant seule a tenir une session.
-        'url' => env('PASSKEY_GATEWAY_URL', 'https://pk.lolinux.org'),
+    'donate' => [
+        // Lien PayPal (ex. https://paypal.me/votrenom) du bouton « Offrez-moi une
+        // biere » en bas de page. Vide : aucun bouton.
+        'url' => env('DONATE_URL'),
     ],
 
     'osrm' => [
@@ -71,10 +70,9 @@ return [
     ],
 
     'position_share' => [
-        // Domaine dedie des liens de partage de position, distinct du domaine
-        // principal de l'appli : un vhost a part, entierement public, qui ne
-        // passe pas par la passerelle passkey (docker/share/README.md).
-        'domain' => env('POSITION_SHARE_DOMAIN', 's.lolinux.fr'),
+        // Domaine dedie (optionnel) des liens de partage de position. Vide : le
+        // lien est servi sur le domaine principal.
+        'domain' => env('POSITION_SHARE_DOMAIN'),
     ],
 
     'xpeng' => [
@@ -93,35 +91,6 @@ return [
         'scope_code' => env('XPENG_SCOPE_CODE'),
     ],
 
-    'ford' => [
-        // API FordConnect (App\Services\FordClient) : client_id/client_secret
-        // viennent de l'inscription sur developer.ford.com. Distinct de
-        // l'autorisation par vehicule (access_token/refresh_token), qui elle
-        // vit en base (App\Models\FordOAuthToken) et non ici : le
-        // refresh_token tourne a chaque utilisation cote Ford.
-        // "FordConnect Query" (v1/garage, v1/telemetry) : le programme actuel,
-        // distinct de l'ancien api.mps.ford.com/api/fordconnect/vehicles/v3
-        // (toujours documente ca et la, mais pas ce que expose ce compte).
-        'base_url' => env('FORD_BASE_URL', 'https://api.vehicle.ford.com/fcon-query'),
-        // Domaine + tenant + politique propres a FordConnect Query (verifies
-        // le 22/09/2026 via le client officiel d'evcc, apres un premier essai
-        // rate sur le tenant/politique B2C generique -- kid introuvable pour
-        // le JWE, la politique ne correspondait pas a celle qui a emis le code).
-        'token_url' => env('FORD_TOKEN_URL', 'https://api.vehicle.ford.com/dah2vb2cprod.onmicrosoft.com/oauth2/v2.0/token?p=B2C_1A_FCON_AUTHORIZE'),
-        // Point d'entree reel de l'autorisation FordConnect, confirme le
-        // 22/09/2026 -- absent de developer.ford.com, gere lui-meme la
-        // redirection vers la connexion Ford/FordPass puis vers redirect_uri.
-        'authorize_url' => env('FORD_AUTHORIZE_URL', 'https://api.vehicle.ford.com/fcon-public/v1/auth/init'),
-        // Constante publique du programme FordConnect, exigee en en-tete de
-        // chaque appel a l'API (vue dans plusieurs implementations tierces
-        // publiques) -- ne s'obtient pas depuis developer.ford.com.
-        'application_id' => env('FORD_APPLICATION_ID', 'AFDC085B-377A-4351-B23E-5E1D35FB3700'),
-        'client_id' => env('FORD_CLIENT_ID'),
-        'client_secret' => env('FORD_CLIENT_SECRET'),
-        'vin' => env('FORD_VIN'),
-        'redirect_uri' => env('FORD_REDIRECT_URI'),
-    ],
-
     'meross' => [
         // Identifiants du compte Meross (App\Services\MerossClient) : les
         // memes que l'application mobile, Meross n'ayant pas d'API publique
@@ -132,7 +101,7 @@ return [
         'password' => env('MEROSS_PASSWORD'),
         // UUID stables, decouverts une fois via l'API Meross -- pas des
         // secrets, mais autant les laisser en config que les coder en dur
-        // dans le service, meme convention que Ford application_id.
+        // dans le service.
         'devices' => [
             'garage' => env('MEROSS_GARAGE_UUID', '1911082967173290804648e1e9112e49'),
             'portail' => env('MEROSS_PORTAIL_UUID', '1911082759724990804648e1e9111938'),

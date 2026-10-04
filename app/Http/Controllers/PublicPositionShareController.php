@@ -12,10 +12,8 @@ use Illuminate\View\View;
 /**
  * Vue du destinataire d'un lien de partage de position.
  *
- * Servie sans identite applicative : App\Http\Middleware\IdentifyUser laisse
- * passer explicitement la route position-shares.show (voir son commentaire),
- * et le vhost dedie de s.lolinux.fr ne passe pas par la passerelle passkey —
- * cf. docker/share/README.md. Le token, genere aleatoirement et jamais
+ * Servie sans session : App\Http\Middleware\IdentifyUser laisse passer
+ * explicitement la route position-shares.show (voir son commentaire). Le token, genere aleatoirement et jamais
  * devinable, est la seule protection : exactement celle d'un lien de partage
  * classique.
  */

@@ -134,35 +134,48 @@ comme estimés dans l'interface.
 
 ## 9. Activer la télémétrie du véhicule (optionnel)
 
-Permet de récupérer automatiquement le niveau de charge de la voiture.
+La télémétrie vient d'un dongle OBD-II lu par l'application Android
+[XPCarData](https://github.com/stevelea/xpcardata), qui publie en MQTT. Il faut donc
+un **serveur MQTT** : le `docker-compose.yml` en fournit un (Mosquitto).
 
-1. Sur [abetterrouteplanner.com](https://abetterrouteplanner.com/home/app/api-keys/telemetry),
-   générer une clé API « Telemetry-Only » (gratuite) et la placer dans le `.env` :
+1. Choisir un compte MQTT et l'inscrire dans le `.env` :
 
    ```
-   ABRP_API_KEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+   MQTT_USER=ev
+   MQTT_PASSWORD=un-mot-de-passe-solide
    ```
 
-   Recréer ensuite le conteneur applicatif pour que la variable soit prise en compte :
+2. Créer le fichier de mots de passe du broker (non versionné) :
 
    ```bash
-   docker-compose rm -sf app && docker-compose up -d --no-deps app
+   source .env
+   docker run --rm -v "$(pwd)/docker/mosquitto:/mosquitto/config" eclipse-mosquitto:2 \
+       mosquitto_passwd -b -c /mosquitto/config/passwd "$MQTT_USER" "$MQTT_PASSWORD"
    ```
 
-2. Dans l'application ABRP : Settings &rarr; Car model &rarr; le véhicule &rarr;
-   **Live data**. Y activer **Enode** (nécessite un abonnement ABRP Premium ; c'est
-   lui qui alimente réellement la donnée), puis relever le token affiché dans
-   l'option **Generic**.
-
-3. Coller ce token dans `/admin/vehicules`, colonne « Token ABRP ».
-
-4. Vérifier :
+3. Démarrer le broker et le service d'ingestion :
 
    ```bash
-   docker exec ev-app php artisan telemetry:poll
+   docker compose up -d mosquitto mqtt-ingest
    ```
 
-5. Installer le scheduler sur l'hôte pour que la récupération soit périodique :
+   Le port 1883 est **en clair** : sur Internet, passer par un VPN ou un tunnel TLS
+   (par exemple un `stream` nginx avec certificat) plutôt que d'ouvrir le port tel quel.
+
+4. Dans XPCarData, renseigner l'adresse du broker, le compte ci-dessus et un
+   identifiant de véhicule (topics `vehicles/<identifiant>/data`, `/charging`,
+   `/status`).
+
+5. Saisir ce même identifiant dans `/admin/vehicules`, champ « Identifiant MQTT ».
+
+6. Vérifier que les messages arrivent, puis qu'ils sont ingérés :
+
+   ```bash
+   docker compose logs --tail 20 mqtt-ingest
+   docker exec ev-app php artisan telemetry:ingest-mqtt
+   ```
+
+7. Installer le scheduler sur l'hôte pour que l'ingestion soit périodique :
 
    ```
    * * * * * sudo /usr/bin/docker exec ev-app php artisan schedule:run >/dev/null 2>&1
@@ -181,29 +194,22 @@ Compter trois à quatre minutes pour environ 57 000 stations. Une tâche planifi
 le rejoue chaque lundi à 4 h 30 ; il n'y a rien d'autre à configurer, aucune clé
 n'est nécessaire.
 
-## 11. Ouvrir l'application à plusieurs utilisateurs
+## 11. Créer le premier administrateur
 
-L'identité est fournie par la passerelle passkey. Sur l'hébergement actuel (VPS
-Hostinger), c'est le **nginx de l'hôte** qui la sert, dans son vhost
-(`/etc/nginx/sites-available/ev.lolinux.org`, hors de ce dépôt — voir la section
-« Page publique `/infoCar` » de `CLAUDE.md`). Le `location /` doit y transmettre
-l'email de la session à l'application :
+L'application n'a pas d'inscription : l'accès se fait par email et mot de passe,
+et les comptes sont gérés par les administrateurs. Créer le premier en ligne de
+commande (12 caractères minimum pour le mot de passe)&nbsp;:
 
-```nginx
-auth_request_set $sso_email $upstream_http_x_sso_email;
-proxy_set_header X-SSO-Email $sso_email;
+```bash
+docker exec -it ev-app php artisan user:create admin@exemple.fr --admin
 ```
 
-`proxy_set_header` écrase systématiquement ce qu'un client aurait pu envoyer :
-l'en-tête n'est pas falsifiable depuis l'extérieur. Sans lui, l'application répond
-403 sur toutes ses pages.
-
-Pour restreindre l'accès à un seul compte, ajouter `?required_email=...` à
-l'`proxy_pass` du `location = /_sso_check` ; sans ce paramètre, tous les passkeys
-enregistrés sont acceptés et chacun obtient son propre espace.
+Se connecter ensuite sur `/login` ; les autres comptes se créent depuis
+**Administration &rarr; Utilisateurs**.
 
 Le `.env` porte `EV_OWNER_EMAIL`, le compte auquel la migration rattache les
-données existantes lors du passage au multi-comptes.
+données existantes lors d'une mise à niveau depuis une base mono-compte (sans
+effet sur une installation neuve).
 
 ## Mise à jour
 

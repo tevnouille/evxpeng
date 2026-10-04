@@ -5,9 +5,9 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * VIN du vehicule : c'est lui qui rattache les donnees constructeur (Ford,
- * services.ford.vin) a un vehicule, donc a son proprietaire -- plutot qu'une
- * liste d'adresses email, comme deja pour mqtt_client_id et le boitier OBD.
+ * VIN du vehicule : c'est lui qui rattache les donnees constructeur a un
+ * vehicule, donc a son proprietaire -- plutot qu'une liste d'adresses email,
+ * comme deja pour mqtt_client_id et le boitier OBD.
  */
 return new class extends Migration
 {

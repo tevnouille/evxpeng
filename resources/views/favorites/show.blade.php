@@ -198,7 +198,7 @@
         @if ($others->isEmpty())
             <p class="has-text-grey">
                 Aucun autre compte pour l'instant. La copie sera proposée ici dès qu'une autre
-                personne se sera connectée avec son passkey.
+                personne se sera connectée.
             </p>
         @else
             <form method="POST" action="{{ route('favorites.copy', $route) }}">

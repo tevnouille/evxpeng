@@ -41,6 +41,15 @@ class Changelog
 
     private const DATA = [
         [
+            'date' => '2026-10-04',
+            'entries' => [
+                ['type' => 'nouveaute', 'text' => "Un bouton « Offrez-moi une bière » (PayPal) en bas de page, pour qui veut laisser un petit pourboire — facultatif, bien sûr."],
+                ['type' => 'nouveaute', 'text' => "Connexion par email et mot de passe. Les comptes sont créés par un administrateur depuis « Administration » → « Utilisateurs » : création, passage administrateur, changement de mot de passe, désactivation, suppression. Chacun peut changer son mot de passe dans « Mon compte »."],
+                ['type' => 'amelioration', 'text' => "« Déconnexion » ferme désormais uniquement la session de ce navigateur."],
+                ['type' => 'amelioration', 'text' => "L'application se concentre sur Xpeng : la page « Données » d'un autre constructeur est retirée."],
+            ],
+        ],
+        [
             'date' => '2026-09-30',
             'entries' => [
                 ['type' => 'nouveaute', 'text' => "Le portail d'entrée s'ouvre désormais tout seul quand la voiture approche du domicile (moins de 300 m, en roulant) — plus besoin de passer par l'écran de la voiture dans ce cas précis. Le garage n'est pas concerné, il reste manuel."],
@@ -61,22 +70,14 @@ class Changelog
         [
             'date' => '2026-09-23',
             'entries' => [
-                ['type' => 'nouveaute', 'text' => "« Données Ford » affiche enfin les vraies données de la batterie de traction (charge, autonomie, énergie restante), l'état de la prise et la tension/courant de charge, en plus des pressions de pneus — jusqu'ici seule la batterie 12V était accessible."],
-                ['type' => 'nouveaute', 'text' => "« Données Ford » affiche le nom et le modèle du véhicule, et un bouton « Lancer la récupération des données » ouvert à tous les comptes qui voient la page (pas seulement l'administrateur)."],
-                ['type' => 'nouveaute', 'text' => "« Données Ford » signale les valeurs anciennes (plus d'une heure) directement sur chaque tuile, avec l'heure exacte du dernier relevé — la voiture ne remonte rien tant qu'elle est à l'arrêt."],
                 ['type' => 'nouveaute', 'text' => "« Données Xpeng » gagne elle aussi un bouton « Lancer la récupération des données », et affiche la date de la dernière donnée disponible."],
                 ['type' => 'amelioration', 'text' => "La récupération quotidienne des données Xpeng passe de deux tentatives (6h15 puis 8h15 en cas d'échec) à cinq relevés répartis dans la journée (5h, 9h, 13h, 17h, 21h), pour des chiffres plus proches de l'heure réelle."],
                 ['type' => 'correction', 'text' => "Le téléchargement d'un fichier depuis « Données Xpeng » renvoyait une erreur serveur (500) au lieu du fichier."],
-                ['type' => 'correction', 'text' => "Sur « Données Ford », la tuile « Batterie » affichait en réalité la charge de la batterie 12V, pas celle de la batterie de traction — renommée « Batterie 12V » pour éviter la confusion."],
-                ['type' => 'nouveaute', 'text' => "« Données Ford » affiche une petite carte avec la dernière position connue, et une estimation de la capacité réelle de la batterie de traction (moyenne sur 7 jours), Ford ne publiant aucun indicateur d'usure direct."],
-                ['type' => 'nouveaute', 'text' => "« Données Ford » repère désormais les recharges, comme « Données Xpeng » — à reporter à la main dans Recharges si besoin, prix et borne n'étant pas connus de Ford."],
             ],
         ],
         [
             'date' => '2026-09-22',
             'entries' => [
-                ['type' => 'nouveaute', 'text' => "Nouvelle page « Données Ford » dans le menu Ma voiture : batterie, kilométrage, tension 12V et températures, en graphiques sur les 30 derniers jours. Source distincte du boîtier OBD et de l'API Xpeng — l'API officielle FordConnect, interrogée toutes les 30 minutes. Nécessite d'autoriser l'accès une fois avec le compte Ford/FordPass propriétaire du véhicule, depuis un lien sur cette même page."],
-                ['type' => 'nouveaute', 'text' => "« Données Ford » affiche aussi une photo du véhicule, fournie par l'API constructeur."],
                 ['type' => 'nouveaute', 'text' => "Sur « Info voiture », le bouton d'onglet « Info » passe en rouge si le boîtier n'a rien publié depuis plus de deux minutes — jusqu'ici rien ne distinguait un relevé périmé des chiffres à jour."],
                 ['type' => 'nouveaute', 'text' => "Sur « Info voiture », l'onglet Position affiche désormais un petit bouton par position retenue de la journée directement sur la carte, plutôt qu'un seul point fixe. Toucher un bouton zoome sur ce point précis ; un bouton « Vue du jour » permet de revenir à l'ensemble."],
                 ['type' => 'nouveaute', 'text' => "« Info voiture » gagne une tuile « Limite de vitesse », d'après le tag OpenStreetMap de la route la plus proche — pas une lecture de panneau, elle peut donc manquer sur les petites routes. La tuile « Autonomie estimée » alterne aussi une estimation du véhicule lui-même (CLTC) et une autonomie calculée d'après la consommation réellement observée, en plus du calcul habituel."],
@@ -146,8 +147,7 @@ class Changelog
                 ['type' => 'nouveaute', 'text' => "Le dashboard affiche une carte « Depuis le début » : nombre de recharges, énergie, montant payé et gain (ou surcoût) face à la valeur réelle, calculés sur l'ensemble du compte — indépendamment du filtre par année ou véhicule utilisé plus bas sur la page. L'équivalent carburant (essence/diesel économisés) s'y ajoute si l'option est activée dans « Mon compte »."],
                 ['type' => 'nouveaute', 'text' => "Un SMS part désormais quand une recharge se termine avec un écart significatif face à la courbe de référence : borne bridée, batterie froide, cellule faible. Jusqu'ici il fallait visiter « Recharges face à la courbe » pour le découvrir ; le jugement est le même (mêmes seuils, même exclusion de la montée en puissance) et ne signale que le pire écart de la session, pas chaque point. Nécessite les identifiants Free Mobile renseignés dans « Mon compte », comme les autres alertes."],
                 ['type' => 'nouveaute', 'text' => "« Ma voiture » affiche un nouveau graphique, « Équilibre des cellules » : l'écart entre la cellule la plus haute et la plus basse de la batterie, médiane du jour, sur la même période que le niveau de charge au-dessus. C'est le signal avant-coureur que la tuile « Santé batterie » ne donne pas : le SoH reste à 99 % pendant des années dans les relevés déjà collectés, un vrai déséquilibre s'y verrait bien avant. Les jours trop peu échantillonnés (téléphone resté hors de la voiture) sont omis plutôt que d'ajouter du bruit à la courbe."],
-                ['type' => 'nouveaute', 'text' => "Nouvelle page « Partager ma position », dans le menu « Trajets ». Elle crée un lien unique, valable jusqu'à la date et l'heure choisies, qui ouvre une carte montrant où se trouve la voiture : chaque point cliquable donne l'heure, le niveau de batterie, l'autonomie estimée et l'adresse. Le lien part par SMS — sur votre propre téléphone, pas celui du destinataire : l'API Free Mobile ne permet d'envoyer qu'à l'abonné propriétaire des identifiants, jamais à un numéro tiers. À vous de le retransmettre. Le lien lui-même vit sur un domaine séparé, s.lolinux.fr, entièrement public : celui qui le reçoit n'a besoin ni de compte ni de passkey sur cette application, et passé l'échéance choisie, il répond que le partage a expiré."],
-                ['type' => 'nouveaute', 'text' => "Un lien « Déconnexion » apparaît dans le menu, à droite, et un bouton sur « Mon compte ». Il n'y en avait aucun : une fois le passkey présenté, il fallait fermer le navigateur ou vider ses cookies pour repartir — impossible de passer d'un compte à l'autre sur la même machine. À noter, et c'est écrit sur « Mon compte » : l'application n'a pas de session à elle, votre identité lui est transmise à chaque page par la passerelle passkey. Se déconnecter ferme la session de cette passerelle, donc vous déconnecte de tous les services qu'elle protège, pas seulement de celui-ci. Pour revenir, il suffit de représenter son passkey."],
+                ['type' => 'nouveaute', 'text' => "Nouvelle page « Partager ma position », dans le menu « Trajets ». Elle crée un lien unique, valable jusqu'à la date et l'heure choisies, qui ouvre une carte montrant où se trouve la voiture : chaque point cliquable donne l'heure, le niveau de batterie, l'autonomie estimée et l'adresse. Le lien part par SMS — sur votre propre téléphone, pas celui du destinataire : l'API Free Mobile ne permet d'envoyer qu'à l'abonné propriétaire des identifiants, jamais à un numéro tiers. À vous de le retransmettre. Le lien est entièrement public : celui qui le reçoit n'a besoin d'aucun compte sur cette application, et passé l'échéance choisie, il répond que le partage a expiré."],
                 ['type' => 'amelioration', 'text' => "Sur « Déplacements », les relevés d'une journée sont désormais regroupés par déplacement : chaque trajet distinct — séparé du suivant par un écart de plus de quinze minutes entre deux relevés, signe que le boîtier ne remontait plus rien moteur coupé — a sa propre couleur sur la carte. Un sélecteur, visible dès qu'une journée compte plusieurs trajets, permet d'isoler l'un d'eux : la carte se recadre dessus et le tableau des relevés en dessous ne montre plus que ses lignes."],
                 ['type' => 'amelioration', 'text' => "« Recharges » affiche désormais tout le mois en cours au lieu des dix dernières recharges."],
             ],

@@ -44,7 +44,7 @@ class Vehicle extends Model
     }
 
     /**
-     * Derniere mesure remontee par ABRP, la plus recente selon l'horodatage du
+     * Derniere mesure remontee par le boitier, la plus recente selon l'horodatage du
      * constructeur (et non selon la date d'insertion chez nous).
      */
     public function latestTelemetry(): HasOne

@@ -11,7 +11,7 @@
                 <p class="heading">Identité</p>
                 <p class="title is-5">{{ $user->email }}</p>
                 <p class="has-text-grey is-size-7">
-                    Fournie par la passerelle passkey. Vos recharges, véhicules, localisations,
+                    Vos recharges, véhicules, localisations,
                     fournisseurs, puissances et trajets favoris vous sont propres&nbsp;: aucun autre
                     compte n'y a accès.
                 </p>
@@ -165,24 +165,47 @@
         </div>
     @endif
 
-    {{-- La deconnexion est expliquee ici, et pas seulement offerte dans le
-         menu : son effet deborde largement cette application. --}}
+    <form method="POST" action="{{ route('account.password') }}" class="box">
+        @csrf
+        @method('PUT')
+        <h2 class="subtitle">Mot de passe</h2>
+
+        <div class="field">
+            <label class="label" for="current_password">Mot de passe actuel</label>
+            <input class="input @error('current_password') is-danger @enderror" type="password"
+                   id="current_password" name="current_password" required autocomplete="current-password">
+            @error('current_password')
+                <p class="help is-danger">{{ $message }}</p>
+            @enderror
+        </div>
+        <div class="field">
+            <label class="label" for="password">Nouveau mot de passe</label>
+            <input class="input @error('password') is-danger @enderror" type="password"
+                   id="password" name="password" required minlength="12" autocomplete="new-password">
+            @error('password')
+                <p class="help is-danger">{{ $message }}</p>
+            @enderror
+            <p class="help">12 caractères minimum.</p>
+        </div>
+        <div class="field">
+            <label class="label" for="password_confirmation">Confirmer</label>
+            <input class="input" type="password" id="password_confirmation" name="password_confirmation"
+                   required minlength="12" autocomplete="new-password">
+        </div>
+        <button class="button is-link" type="submit">Changer le mot de passe</button>
+        <p class="help mt-2">Les sessions ouvertes sur vos autres appareils sont fermées.</p>
+    </form>
+
     <div class="box">
         <div class="columns is-vcentered">
             <div class="column">
-                <p>
-                    Se déconnecter ferme la session de la <strong>passerelle passkey</strong>.
-                    <br>
-                    <span class="has-text-grey is-size-7">
-                        Cette application n'a pas de session à elle&nbsp;: votre identité lui est
-                        transmise par la passerelle à chaque page. Fermer cette session vous
-                        déconnecte donc de <strong>tous</strong> les services qu'elle protège, pas
-                        seulement de celui-ci. Pour revenir, il suffit de représenter votre passkey.
-                    </span>
-                </p>
+                <p>Se déconnecter ferme la session de ce navigateur.</p>
             </div>
             <div class="column is-narrow">
-                <a class="button is-light" href="{{ route('logout') }}">Se déconnecter</a>
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button class="button is-light" type="submit">Se déconnecter</button>
+                </form>
             </div>
         </div>
     </div>

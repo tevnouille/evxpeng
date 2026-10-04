@@ -42,7 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
             '10.0.0.0/8',
         ]);
 
-        // Identite fournie par la passerelle passkey : sans elle, aucune page
+        // Session ouverte (login / mot de passe) exigee : sans elle, aucune page
         // n'est servie, et c'est elle qui cloisonne les donnees par compte.
         $middleware->web(append: [\App\Http\Middleware\IdentifyUser::class]);
     })

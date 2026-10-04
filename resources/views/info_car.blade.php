@@ -11,7 +11,7 @@
     <title>{{ $vehicle?->name ?? 'Véhicule' }}</title>
     {{-- Page entierement autonome vis-a-vis de CE depot : aucune feuille de
          style ni script de l'appli elle-meme, qui vivent derriere la
-         passerelle passkey — les ouvrir pour cette page exposerait tout le
+         connexion — les ouvrir pour cette page exposerait tout le
          front. Leaflet ci-dessous est une exception deliberee : bibliotheque
          publique generique (celle-la meme qui equipe deja « Deplacements »,
          resources/js/trips.js), chargee depuis un CDN public, elle ne revele

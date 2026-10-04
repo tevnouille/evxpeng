@@ -7,9 +7,7 @@ use App\Models\User;
 /**
  * Utilisateur de la requete en cours.
  *
- * L'application n'a pas de formulaire de connexion : l'identite vient de la
- * passerelle passkey, qui transmet l'email dans un en-tete. Ce porteur est pose
- * une fois par le middleware et sert de reference unique au cloisonnement des
+ * Ce porteur est pose une fois par le middleware (session ouverte) et sert de reference unique au cloisonnement des
  * donnees (voir le trait BelongsToUser).
  *
  * Etat statique assume : PHP-FPM traite une requete par processus. Sous un

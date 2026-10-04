@@ -119,46 +119,25 @@ find /var/docker/ev/storage/app/system -not -user claudecode
 rm /var/docker/ev/storage/app/system/server-update.lock
 ```
 
-## Tester une page sans passer par le passkey
+## Tester une page
 
-**Depuis le 2026-09-10 (VPS Hostinger)**, `ev-nginx` publie directement sur
-`127.0.0.1:8098` (port choisi côté hôte car 8095-8097 étaient déjà pris par
-d'autres projets du VPS — voir `docker-compose.yml`) : plus besoin de rejoindre
-un réseau Docker, un `curl` local suffit. La ligne ci-dessous décrivait
-l'ancien hébergement hostingtools, où rien n'était publié et où il fallait
-taper `ev-nginx` dans le réseau `ev-net` — méthode encore possible aujourd'hui
-(`ev-net` existe toujours sur le VPS) mais inutilement détournée quand le port
-est directement accessible.
-
-L'application exige l'en-tête posé par la passerelle : sans lui, `IdentifyUser`
-répond 403. Pour obtenir une page rendue comme pour un utilisateur :
+`ev-nginx` publie sur `127.0.0.1:8098` (voir `docker-compose.yml`). Toutes les
+pages, `/infoCar` et les liens de partage mis à part, exigent une session : se
+connecter d'abord avec un compte (le premier se crée avec
+`php artisan user:create <email> --admin`).
 
 ```bash
-curl -s -H "Host: ev.lolinux.org" -H "X-SSO-Email: atran@lolinux.org" \
-  http://127.0.0.1:8098/ma-page
+curl -s -c /tmp/cj -H "Host: ev.example.com" http://127.0.0.1:8098/login >/dev/null
+TOKEN=$(curl -s -b /tmp/cj -c /tmp/cj -H "Host: ev.example.com" http://127.0.0.1:8098/login \
+  | grep -o 'name="_token" value="[^"]*"' | head -1 | cut -d'"' -f4)
+curl -s -b /tmp/cj -c /tmp/cj -H "Host: ev.example.com" \
+  -d "_token=$TOKEN&email=<email>&password=<mot-de-passe>" http://127.0.0.1:8098/login
+curl -s -b /tmp/cj -H "Host: ev.example.com" http://127.0.0.1:8098/ma-page
 ```
 
 `Host:` est nécessaire même en local : `trustProxies` et les URL générées par
 Laravel (`route()`, `asset()`...) en dépendent, et un `Host` absent ou faux
-produirait des liens cassés dans la page rendue — piège rencontré en vérifiant
-le point de données `?flux=batterie` de `/infoCar` (2026-09-13).
-
-### Vue dans un vrai navigateur
-
-Pour une page protégée par la passkey (contrairement à `/infoCar`, seule
-adresse qui s'en passe déjà et se visite directement dans
-`https://ev.lolinux.org/infoCar`) : un conteneur nginx jetable qui pose
-l'en-tête à la place de la passerelle. **Éviter le port 8099** sur ce VPS,
-utilisé par le projet `patrimoine` (`127.0.0.1:8099`) — un choix de port en
-conflit ferait simplement échouer le démarrage du conteneur jetable, sans rien
-casser côté patrimoine, mais autant en changer plutôt que de tomber dessus par
-surprise. `proxy_set_header Host $http_host` est indispensable, sinon les
-redirections cassent. **Ce conteneur contourne l'authentification du site : le
-supprimer dès la vérification finie**, dans le même enchaînement de commandes.
-
-```bash
-sudo docker rm -f ev-devproxy && sudo rm -rf /var/docker/ev-devproxy
-```
+produirait des liens cassés dans la page rendue.
 
 ## CHANGELOG.md est genere
 
@@ -182,24 +161,9 @@ Ne pas editer `CHANGELOG.md` a la main : la prochaine regeneration l'ecraserait.
 
 ## Git
 
-Le remote est un GitLab auto-hébergé sur la même machine :
-`ssh://git@gitlab-local:2222/root/ev.git`. L'alias `gitlab-local` est défini
-dans le `~/.ssh/config` de l'utilisateur `claudecode`, donc **ne jamais préfixer
-les commandes git par `sudo`** — sudo perd cette configuration SSH et le push
-échoue.
-
-L'authentification passe par une **clé de déploiement dédiée**,
-`~/.ssh/id_ev_deploy`, déclarée en écriture sur le seul projet `root/ev`. Elle
-n'ouvre rien d'autre : un `git ls-remote` avec cette clé échoue sur les autres
-dépôts du GitLab. Le `ssh gitlab-local` répond « Welcome to GitLab, @root! » —
-c'est le propriétaire de la clé, **pas** son périmètre, ne pas s'en alarmer.
-
 **Pousser fait partie du travail, ce n'est pas une formalité de fin de session.**
-La sauvegarde quotidienne de ce projet ne couvre **pas** le code source
-(`ev.conf` n'archive que la base, `.env`, `docker-compose.yml`, `public/build`
-et `storage/app/system`), et il n'existe aucune copie locale sur le Mac. Un
-commit non poussé n'a donc **qu'un seul exemplaire** ; poussé, il entre dans la
-sauvegarde de GitLab, elle-même rapatriée hors du VPS chaque nuit.
+La sauvegarde quotidienne ne couvre **pas** le code source : un commit non
+poussé n'a qu'un seul exemplaire.
 
 ## Pièges Blade / Bulma rencontrés
 
@@ -211,9 +175,6 @@ sauvegarde de GitLab, elle-même rapatriée hors du VPS chaque nuit.
   `resources/css/app.css`) combine `max-height` + `overflow-y` sur le conteneur
   et `position: sticky` sur les `th`. Le `background-color` opaque sur les `th`
   est obligatoire, sinon les lignes défilent visiblement sous l'en-tête.
-- **nginx `if` + `auth_request`** ne font pas bon ménage dans les gates passkey :
-  utiliser le motif `error_page 418 = @named_location` plutôt qu'un `if`
-  englobant un `proxy_pass`.
 
 ## Équivalence carburant : deux « valeurs par défaut » à ne pas confondre
 
@@ -423,55 +384,31 @@ Depuis le 2026-09-16, Xpeng expose une API officielle
 
 ## Page publique `/infoCar`
 
-Seule adresse servie **sans passkey**, pour le navigateur embarqué de la
-voiture. **L'exemption se déclare à deux endroits, et les deux sont
-nécessaires** :
-
-1. Le vhost du **nginx de l'hôte du VPS Hostinger**,
-   `/etc/nginx/sites-available/ev.lolinux.org` — hors de ce dépôt, convention
-   du VPS (plusieurs projets y partagent le même nginx, aucun n'y versionne son
-   vhost). **Depuis la migration du 2026-09-10** : sur l'ancien hébergement
-   hostingtools, cette exemption vivait dans un conteneur dédié `ev-gate`,
-   décommissionné avec le reste de l'ancienne pile — `docker/gate/`, qui en
-   gardait une copie de référence, est retiré du dépôt le 2026-09-13 (plus
-   rien à quoi la comparer) ; l'historique complet reste dans `git log` ;
-2. `App\Http\Middleware\IdentifyUser::PUBLIC_PATHS` — sinon ce middleware,
-   appliqué à tout le groupe `web`, répond 403.
-
-**La passerelle ne protège pas en filtrant, elle protège en écrasant** :
-`proxy_set_header X-SSO-Email $sso_email`. Toute nouvelle `location` doit poser
-cet en-tête elle aussi — **à vide si elle est publique** — faute de quoi nginx
-transmet celui du client et n'importe qui se déclare propriétaire d'un compte.
-Vérifier toute exemption en forgeant l'en-tête depuis l'extérieur.
+Seule adresse servie **sans connexion**, pour le navigateur embarqué de la
+voiture. L'exemption se déclare dans
+`App\Http\Middleware\IdentifyUser::PUBLIC_PATHS` — sinon ce middleware,
+appliqué à tout le groupe `web`, redirige vers `/login`. Si un reverse proxy
+filtre les chemins en amont, il doit laisser passer cette adresse aussi.
 
 La page est **entièrement autonome** : aucune feuille de style ni script
-externe, les assets étant eux aussi derrière la passerelle. Elle doit tenir dans
-un écran qu'on ne peut ni défiler ni dézoomer. Sans build ni transpilation, le
-JS embarqué est volontairement **ES5** (`var`, pas d'arrow functions ni de
-`forEach` sur les NodeList) : le navigateur de la voiture est de provenance
-inconnue, mieux vaut ne rien supposer de récent.
+externe de l'application, ceux-ci vivant derrière la connexion. Elle doit tenir
+dans un écran qu'on ne peut ni défiler ni dézoomer. Sans build ni
+transpilation, le JS embarqué est volontairement **ES5** (`var`, pas d'arrow
+functions ni de `forEach` sur les NodeList) : le navigateur de la voiture est de
+provenance inconnue, mieux vaut ne rien supposer de récent.
 
 Elle expose délibérément plus que la seule batterie — position, communes
 traversées — comme le détaille le docblock d'`InfoCarController`. Protégée en
 plus par un code à 6 chiffres (`config('services.info_car.pin')`), un filtre
 contre qui tomberait sur l'adresse sans la connaître, pas une vraie identité.
 
-### Poser un point de données sans casser l'exemption
+### Poser un point de données
 
-**L'exemption nginx ne matche que le chemin exact `^/infocar/?$`, jamais un
-préfixe.** Une sous-route (`/infoCar/quelquechose`) retomberait derrière la
-passkey — la requête n'atteindrait même pas Laravel avec l'en-tête d'identité
-vidé, elle serait redirigée vers `pk.lolinux.org`.
-
-Le graphique de batterie du jour (2026-09-13) a donc besoin de données fraîches
-sans en ajouter : il réutilise le **même chemin** `GET /infoCar`, différencié
-par une chaîne de requête (`?flux=batterie`) plutôt qu'une route à part — le
-chemin ne change pas, donc l'exemption s'applique toujours, et
-`IdentifyUser::PUBLIC_PATHS` compare `$request->path()`, qui ignore lui aussi
-la chaîne de requête. **Vérifié sur le domaine public**, pas seulement en
-interne : `403 {"erreur":"verrouille"}` sans le cookie du code, `200` en JSON
-avec — jamais de redirection vers la passerelle passkey dans un cas comme dans
-l'autre.
+`IdentifyUser::PUBLIC_PATHS` compare le chemin exact (`$request->path()`), qui
+ignore la chaîne de requête. Une sous-route (`/infoCar/quelquechose`)
+retomberait donc derrière la connexion : le graphique de batterie du jour
+réutilise le **même chemin** `GET /infoCar`, différencié par une chaîne de
+requête (`?flux=batterie`) plutôt qu'une route à part.
 
 Le contrôle du code à 6 chiffres est extrait dans une méthode dédiée
 (`deverrouille()`), réutilisée par la vue HTML et par ce point de données :
@@ -509,7 +446,7 @@ action réellement déclenchée (`controlerPortail()`), jamais d'une lecture au
 chargement de la page — celle-ci se recharge seule toutes les 10-60 s, un
 aller-retour Meross prendrait le pas sur tout le reste.
 
-**`meross_actions` n'a pas de `user_id`** : InfoCar n'a pas d'identité
+**`meross_actions` n'a pas de `user_id`** : InfoCar n'a pas de session
 applicative (voir plus haut, l'en-tête est toujours vidé), le code à 6
 chiffres est un filtre, pas un compte. Ce journal dit quand une porte a été
 actionnée, pas par qui.
@@ -594,13 +531,10 @@ foi.
 
 ## Cloisonnement par utilisateur
 
-Depuis l'ouverture a plusieurs passkeys, chaque compte ne voit que ses donnees.
-Trois pieces :
+Chaque compte ne voit que ses donnees. Trois pieces :
 
-- `App\Http\Middleware\IdentifyUser` lit l'en-tete `X-SSO-Email` pose par la
-  passerelle, cree le compte a la premiere visite et refuse la requete (403) si
-  l'en-tete manque. La passerelle ecrase cet en-tete avec `proxy_set_header` :
-  un client ne peut pas se l'inventer.
+- `App\Http\Middleware\IdentifyUser` exige une session ouverte (login / mot de
+  passe, `LoginController`) et redirige vers `/login` sinon.
 - `App\Support\CurrentUser` porte l'utilisateur de la requete.
 - `App\Models\Concerns\BelongsToUser` ajoute un **scope global** et remplit
   `user_id` a la creation. Scope global et non `where` disperses : on ne peut pas
@@ -616,33 +550,25 @@ C'est voulu : `telemetry:poll` doit voir les vehicules de tous les comptes. Le
 corollaire est qu'une commande artisan travaille sur toute la base — y penser
 avant d'ecrire une commande qui modifie des donnees.
 
-### Se deconnecter, c'est deconnecter la passerelle
+### Comptes et authentification
 
-L'application **n'a pas de session a elle** : l'identite arrive dans l'en-tete a
-chaque requete. Il n'y a donc rien a detruire ici. `/deconnexion`
-(`LogoutController`) redirige vers `pk.lolinux.org/logout.php`, qui detruit la
-session de la passerelle — donc **deconnecte de tous les services qu'elle
-protege**, pas seulement de celui-ci. Le menu le dit au survol, « Mon compte »
-en toutes lettres. Ne pas essayer d'ajouter une deconnexion « locale » : elle
-n'aurait aucun effet, la page suivante reposerait l'identite.
+Pas d'inscription : les comptes sont crees par un administrateur, depuis
+`/admin/utilisateurs` ou `php artisan user:create <email> --admin` (premier
+compte). Mot de passe : 12 caracteres minimum, hache (cast `hashed`). Connexion
+limitee a 5 tentatives par minute (`throttle:5,1`), message d'erreur unique pour
+email inconnu / mauvais mot de passe / compte desactive.
 
-L'adresse de la passerelle est dans `services.passkey.url`
-(`PASSKEY_GATEWAY_URL`), pas recopiee dans les vues.
-
-`deconnexion` figure dans `PUBLIC_PATHS` a cote de `infocar`. **Ce n'est pas un
-trou** : la passerelle exige toujours un passkey pour atteindre l'adresse, c'est
-l'identite *applicative* qui n'y est pas requise. Sans cela, un compte en
-attente d'autorisation recevrait un 403 sans aucun moyen d'en changer.
+La deconnexion est un `POST /deconnexion` (jeton CSRF), pas un lien. `login`,
+`up` et `infocar` figurent dans `PUBLIC_PATHS`.
 
 Tables restees communes a dessein : `charging_stations` (IRVE) et `fuel_prices`,
 donnees publiques importees. `vehicle_telemetries` et `charge_alerts` sont
 cloisonnees par ricochet via leur vehicule.
 
-**L'autorisation d'acces est propre a l'application** (`users.approved_at`). Le SSO
-passkey est partage avec tevflix, frigate, emby, cuisine : en retirer quelqu'un
-couperait tout. `IdentifyUser` cree bien le compte a la premiere visite — pour que
-l'administrateur voie la demande — mais repond 403 tant qu'il n'est pas autorise.
-`users.is_admin` reserve `/admin/utilisateurs`.
+**`users.approved_at`** active ou desactive un compte (desactive : connexion
+refusee, donnees conservees). **`users.is_admin`** reserve `/admin/utilisateurs`
+et `/admin/serveur` ; un administrateur ne peut ni se desactiver, ni se
+retirer son role, ni se supprimer. **`users.xpeng_access`** ouvre « Donnees Xpeng ».
 
 `RequiresTelemetry` masque et ferme "Ma voiture" et "Deplacements" pour les comptes
 sans vehicule relie au boitier. Le critere est la presence d'un `mqtt_client_id`,

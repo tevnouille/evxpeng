@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 /**
  * Cloisonne les donnees par utilisateur.
  *
- * L'application etait mono-compte ; l'ouverture a plusieurs passkeys impose que
+ * L'application etait mono-compte ; l'ouverture a plusieurs comptes impose que
  * chacun ne voie que ses recharges, ses vehicules et ses listes de reference.
  *
  * Les tables restees communes le sont a dessein : `charging_stations` (base
@@ -85,7 +85,7 @@ return new class extends Migration
      */
     private function owner(): int
     {
-        $email = env('EV_OWNER_EMAIL', 'atran@lolinux.org');
+        $email = env('EV_OWNER_EMAIL', 'admin@example.com');
         $existing = DB::table('users')->where('email', $email)->value('id');
 
         if ($existing !== null) {

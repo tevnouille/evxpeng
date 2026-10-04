@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Log;
  */
 class HttpUserAgent
 {
-    private const AGENT = 'ev.lolinux.org (planificateur d\'itineraire, usage personnel)';
+    private const AGENT = 'EV-Recharges (planificateur d\'itineraire, usage personnel)';
 
     /**
      * @param  array<string, mixed>  $query

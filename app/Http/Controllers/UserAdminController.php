@@ -8,14 +8,12 @@ use App\Support\CurrentUser;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
 /**
- * Gestion des comptes.
- *
- * L'authentification reste le passkey : on n'y cree ni mot de passe ni identite,
- * on decide seulement qui, parmi les porteurs de passkey du domaine, a le droit
- * d'entrer ici et de voir ses propres donnees.
+ * Gestion des comptes, reservee aux administrateurs : creation, role,
+ * mot de passe, activation et suppression.
  */
 class UserAdminController extends Controller
 {
@@ -35,22 +33,60 @@ class UserAdminController extends Controller
         ]);
     }
 
-    /**
-     * Autorise un email avant meme sa premiere visite : la personne se connecte
-     * ensuite avec son passkey et trouve l'application prete.
-     */
+    /** Cree un compte avec son mot de passe initial, immediatement actif. */
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
+            'password' => ['required', 'string', Password::min(12), 'max:255'],
+            'is_admin' => ['sometimes', 'boolean'],
         ]);
 
-        $user = $this->provisioner->create($data['email']);
-        $user->approved_at = now();
+        $this->provisioner->create($data['email'], $data['password'], $request->boolean('is_admin'));
+
+        return redirect()->route('reference-data.users.index')
+            ->with('success', 'Compte '.$data['email'].' créé.');
+    }
+
+    /** Promeut ou retire le role administrateur. */
+    public function role(Request $request, User $user): RedirectResponse
+    {
+        $admin = $request->boolean('is_admin');
+
+        if (! $admin && $this->isMyself($user)) {
+            return redirect()->route('reference-data.users.index')
+                ->with('error', 'Vous ne pouvez pas retirer votre propre rôle administrateur.');
+        }
+
+        $user->is_admin = $admin;
         $user->save();
 
         return redirect()->route('reference-data.users.index')
-            ->with('success', $data['email'].' est autorisé. Il ne lui reste qu\'à se connecter avec son passkey.');
+            ->with('success', $user->email.($admin ? ' est administrateur.' : ' n\'est plus administrateur.'));
+    }
+
+    /** Donne ou retire l'acces aux donnees Xpeng. */
+    public function xpeng(Request $request, User $user): RedirectResponse
+    {
+        $user->xpeng_access = $request->boolean('xpeng_access');
+        $user->save();
+
+        return redirect()->route('reference-data.users.index')
+            ->with('success', 'Accès « Données Xpeng » '.($user->xpeng_access ? 'accordé à ' : 'retiré à ').$user->email.'.');
+    }
+
+    /** Definit un nouveau mot de passe pour le compte. */
+    public function password(Request $request, User $user): RedirectResponse
+    {
+        $data = $request->validate([
+            'password' => ['required', 'string', Password::min(12), 'max:255'],
+        ]);
+
+        $user->password = $data['password'];
+        $user->save();
+
+        return redirect()->route('reference-data.users.index')
+            ->with('success', 'Mot de passe de '.$user->email.' modifié.');
     }
 
     public function approve(User $user): RedirectResponse
@@ -58,21 +94,21 @@ class UserAdminController extends Controller
         $user->approved_at = now();
         $user->save();
 
-        return redirect()->route('reference-data.users.index')->with('success', $user->email.' est autorisé.');
+        return redirect()->route('reference-data.users.index')->with('success', $user->email.' est activé.');
     }
 
     public function revoke(User $user): RedirectResponse
     {
         if ($this->isMyself($user)) {
             return redirect()->route('reference-data.users.index')
-                ->with('error', 'Retirer sa propre autorisation vous enfermerait dehors.');
+                ->with('error', 'Désactiver son propre compte vous enfermerait dehors.');
         }
 
         $user->approved_at = null;
         $user->save();
 
         return redirect()->route('reference-data.users.index')
-            ->with('success', 'Accès retiré à '.$user->email.'. Ses données sont conservées.');
+            ->with('success', 'Compte de '.$user->email.' désactivé. Ses données sont conservées.');
     }
 
     public function destroy(User $user): RedirectResponse

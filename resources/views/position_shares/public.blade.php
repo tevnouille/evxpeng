@@ -5,9 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <title>Position de {{ $vehicle->name }}</title>
-    {{-- Domaine dedie, entierement public (docker/share/README.md) : a la
-         difference d'/infoCar, les assets du site sont ici accessibles sans
-         passkey, on peut donc s'appuyer sur le meme Bulma que le reste. --}}
+    {{-- Page entierement publique : a la difference d'/infoCar, on peut
+         s'appuyer sur le meme Bulma que le reste du site. --}}
     @vite(['resources/css/app.css', 'resources/js/position-share.js'])
 </head>
 <body>

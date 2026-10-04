@@ -6,10 +6,9 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Acces explicite a « Donnees Xpeng », accorde par l'administrateur -- comme
- * is_admin/approved_at, pas une liste d'emails dans le code. Contrairement a
- * Ford (App\Models\User::hasFordData, base sur le VIN du vehicule possede),
- * le vehicule Xpeng n'appartient pas forcement au compte qu'on veut y
- * autoriser : aucune relation de possession naturelle a exploiter ici.
+ * is_admin/approved_at, pas une liste d'emails dans le code. Le vehicule Xpeng
+ * n'appartient pas forcement au compte qu'on veut y autoriser : aucune
+ * relation de possession naturelle a exploiter ici.
  */
 return new class extends Migration
 {

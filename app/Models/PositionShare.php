@@ -43,6 +43,10 @@ class PositionShare extends Model
 
     public function url(): string
     {
-        return 'https://'.config('services.position_share.domain').'/'.$this->token;
+        $domain = config('services.position_share.domain');
+
+        return $domain
+            ? 'https://'.$domain.'/'.$this->token
+            : route('position-shares.show', $this->token);
     }
 }

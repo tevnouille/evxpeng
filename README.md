@@ -5,9 +5,6 @@ Elle enregistre chaque session de charge, calcule les coûts, les compare à
 l'équivalent essence/diesel au prix réel du jour, et présente l'historique et
 les courbes de charge du véhicule.
 
-En production : <https://ev.lolinux.org> (accès protégé par passkey, compte
-unique).
-
 ## Fonctionnalités
 
 ### Saisie des recharges
@@ -86,8 +83,8 @@ Page dédiée à l'état du véhicule : niveau de charge, énergie disponible, a
 (à partir de la consommation saisie sur la fiche), position, courbe du niveau de charge sur
 7 à 90 jours, et **recharges détectées**.
 
-ABRP n'expose aucune notion de session : elles sont reconstituées à partir des transitions du
-booléen « en charge » entre deux relevés. L'énergie affichée est celle *entrée dans la batterie*
+Elles sont reconstituées à partir des transitions du booléen « en charge » entre deux
+relevés (ou lues directement quand le boîtier publie la recharge mesurée). L'énergie affichée est celle *entrée dans la batterie*
 (écart de niveau × capacité utile), donc inférieure à celle *facturée à la borne*. D'où un bouton
 « Pré-remplir » qui amène vers le formulaire de saisie avec la date, la durée et l'énergie estimée,
 plutôt qu'un enregistrement automatique.
@@ -106,25 +103,42 @@ Sans limite sélectionnée le facteur vaut 1, et la page retrouve exactement les
 Les indicateurs de tête, les deux tableaux, les graphiques et le temps restant depuis le niveau
 réel suivent tous la borne choisie.
 
-### Télémétrie du véhicule (ABRP)
+### Télémétrie du véhicule (dongle OBD, XPCarData et MQTT)
 
-Le niveau de charge réel de la voiture est récupéré automatiquement via l'API
-d'A Better Routeplanner, qui s'alimente elle-même auprès du cloud du constructeur
-(Enode). Aucun boîtier OBD n'est nécessaire.
+Le niveau de charge, la position, l'odomètre, la tension de batterie et les
+compteurs d'énergie viennent d'un **dongle OBD-II** branché dans la voiture, lu
+par l'application Android
+[**XPCarData**](https://github.com/stevelea/xpcardata) (projet de stevelea, conçu
+pour les Xpeng) qui les publie en MQTT&nbsp;:
 
+```
+voiture → dongle OBD → XPCarData (Android) → broker MQTT (Mosquitto)
+        → service mqtt-ingest → telemetry:ingest-mqtt → base
+```
+
+- **Un serveur MQTT est fourni** : le `docker-compose.yml` lance un broker
+  Mosquitto (`mosquitto`, authentification obligatoire) et un service
+  `mqtt-ingest` qui s'y abonne et dépose les messages dans un fichier tampon, que
+  `telemetry:ingest-mqtt` relit toutes les 5 à 15 secondes via le scheduler.
+  La création du broker et de son compte est détaillée dans
+  [INSTALL.md](INSTALL.md), section 9.
+- Dans XPCarData, renseigner l'adresse du broker, le compte MQTT et un
+  identifiant de véhicule (`vehicles/<identifiant>/data`, `/charging`,
+  `/status`). Ce même identifiant se saisit dans `/admin/vehicules`, champ
+  « Identifiant MQTT » : c'est lui qui rattache la télémétrie au véhicule.
 - La page **Courbe de recharge** affiche le niveau actuel, l'énergie disponible,
   le temps restant jusqu'à 80 / 90 / 100 % et surligne la ligne correspondante
   dans les deux tableaux.
 - Chaque mesure est historisée dans `vehicle_telemetries` (SoC, en charge ou non,
-  position, horodatage constructeur).
-- La récupération tourne toutes les 15 minutes via le scheduler.
+  position, horodatage). Les recharges mesurées par le BMS publiées par le boîtier
+  sont enregistrées avec leur courbe complète.
 
-À savoir : la donnée est rafraîchie **environ une fois par heure véhicule à l'arrêt**,
-plus souvent en charge, et le backend d'ABRP applique 60 s de traitement par lots.
-Ce n'est donc pas du temps réel.
+Les valeurs sont celles que le boîtier interroge à tour de rôle : ce n'est pas du
+temps réel strict, et un champ peut manquer d'un relevé à l'autre.
 
-Configuration : `ABRP_API_KEY` dans le `.env` (clé « Telemetry-Only », gratuite) et
-un token par véhicule dans `/admin/vehicules`.
+*A Better Routeplanner (ABRP), utilisé au départ comme relais, a été retiré : les
+données arrivaient déjà du boîtier, au prix d'un détour par un cloud tiers qui les
+appauvrissait.*
 
 ### Planificateur d'itinéraire
 
@@ -168,28 +182,28 @@ elle reste affichée même si l'import IRVE suivant la fait disparaître.
 
 ### Plusieurs utilisateurs, données cloisonnées
 
-L'application est ouverte à tous les passkeys enregistrés. **Chaque compte ne voit
-que ses propres données** : recharges, véhicules, localisations, fournisseurs,
-puissances, trajets favoris et journal SMS. Rien n'est partagé, à deux exceptions
-assumées&nbsp;: la base nationale des bornes et l'historique des prix des
-carburants, qui sont des données publiques importées.
+L'accès se fait par **email et mot de passe**. Il n'y a pas d'inscription : les
+comptes sont créés par un administrateur, depuis **Administration &rarr;
+Utilisateurs** (créer un compte, passer administrateur, changer un mot de passe,
+désactiver ou supprimer un compte avec tout ce qu'il contient). Le premier
+administrateur se crée en ligne de commande&nbsp;:
 
-L'identité vient de la passerelle passkey, qui transmet l'email dans l'en-tête
-`X-SSO-Email`&nbsp;; il n'y a ni inscription ni mot de passe côté application.
+```bash
+docker exec -it ev-app php artisan user:create admin@exemple.fr --admin
+```
 
-**Posséder un passkey ne suffit pas à entrer** : le SSO est partagé avec les autres
-services du domaine, l'application tient donc sa propre liste. Une première visite
-crée un compte *en attente* et affiche un refus&nbsp;; l'administrateur l'autorise
-depuis **Administration &rarr; Utilisateurs**, où il peut aussi autoriser un email
-d'avance, retirer un accès (les données sont conservées) ou supprimer un compte avec
-tout ce qu'il contient. Retirer l'accès ici ne touche pas au passkey, qui continue
-d'ouvrir les autres services.
+Chacun change son mot de passe dans **Mon compte**.
 
-Un compte autorisé démarre avec les puissances de borne usuelles pré-remplies.
+**Chaque compte ne voit que ses propres données** : recharges, véhicules,
+localisations, fournisseurs, puissances, trajets favoris et journal SMS. Rien n'est
+partagé, à deux exceptions assumées&nbsp;: la base nationale des bornes et
+l'historique des prix des carburants, qui sont des données publiques importées.
+
+Un compte créé démarre avec les puissances de borne usuelles pré-remplies.
 
 Les pages **Ma voiture** et **Déplacements** n'apparaissent que pour les comptes
-disposant d'un véhicule relié à A Better Routeplanner — ce qui suppose un abonnement
-ABRP Premium à soi. Le critère est la présence d'un token, pas une liste d'emails :
+disposant d'un véhicule relié au boîtier OBD. Le critère est la présence d'un
+identifiant MQTT, pas une liste d'emails :
 elles apparaissent d'elles-mêmes le jour où quelqu'un renseigne le sien.
 
 Le cloisonnement est un *scope global* Eloquent (`App\Models\Concerns\BelongsToUser`)
@@ -215,8 +229,7 @@ destinataire reçoit un trajet à lui, qu'il peut modifier ou supprimer sans tou
 - **React 19** uniquement sur le dashboard ; les autres pages utilisent du
   JavaScript standard
 - **Vite** pour le build des assets
-- Déploiement Docker (`ev-app` PHP-FPM, `ev-nginx`, `ev-mariadb`), derrière une
-  passerelle passkey et HAProxy
+- Déploiement Docker (`ev-app` PHP-FPM, `ev-nginx`, `ev-mariadb`)
 
 ## Installation
 
@@ -231,12 +244,13 @@ Seuls Docker et Docker Compose sont nécessaires sur la machine hôte.
 | Commande | Rôle |
 | --- | --- |
 | `php artisan fuel-prices:backfill` | Importe l'historique annuel des prix des carburants |
-| `php artisan telemetry:poll` | Récupère le niveau de charge des véhicules auprès d'ABRP |
+| `php artisan telemetry:ingest-mqtt` | Ingère les messages du boîtier OBD reçus sur le broker MQTT |
 | `php artisan irve:import` | Importe la base nationale des bornes de recharge (planificateur) |
+| `php artisan user:create <email> [--admin]` | Crée un compte (le premier administrateur) |
 | `php artisan view:clear` | Vide le cache des vues après modification d'un Blade |
 
 ## Notes pour les agents
 
 Voir [CLAUDE.md](CLAUDE.md) : déploiement par bind-mount, build des assets,
-contournements docker-compose, test des pages derrière le passkey et pièges
+contournements docker-compose, test des pages derrière la connexion et pièges
 rencontrés.

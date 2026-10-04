@@ -10,11 +10,10 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DetectedChargeController;
 use App\Http\Controllers\DataSourceController;
 use App\Http\Controllers\FavoriteRouteController;
-use App\Http\Controllers\FordAuthController;
-use App\Http\Controllers\FordDataController;
 use App\Http\Controllers\FuelPriceController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\InfoCarController;
+use App\Http\Controllers\LoginController;
 use App\Http\Controllers\LogoutController;
 use App\Http\Controllers\MileageController;
 use App\Http\Controllers\MyVehicleController;
@@ -28,6 +27,9 @@ use App\Http\Controllers\RoutePlannerController;
 use App\Http\Controllers\ServerInfoController;
 use App\Http\Controllers\TripMapController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/login', [LoginController::class, 'show'])->name('login');
+Route::post('/login', [LoginController::class, 'login'])->middleware('throttle:5,1')->name('login.store');
 
 Route::redirect('/', '/recharges');
 
@@ -56,19 +58,15 @@ Route::post('/recharges-detectees/retablir', [DetectedChargeController::class, '
 //
 // GET /infoCar?flux=batterie (meme route, differenciee par la chaine de
 // requete) sert les donnees du graphique de batterie en JSON. Reutilise
-// deliberement ce chemin plutot qu'une sous-route : l'exemption ci-dessus, au
-// niveau du nginx de l'hote, ne matche que le chemin EXACT (^/infocar/?$),
-// pas un prefixe -- une sous-route y retomberait derriere la passkey. Verifie
-// sur le domaine public : la chaine de requete traverse la reecriture sans
-// probleme.
+// deliberement ce chemin plutot qu'une sous-route : l'exemption
+// (IdentifyUser::PUBLIC_PATHS) ne matche que le chemin EXACT, pas un prefixe
+// -- une sous-route retomberait derriere la connexion.
 Route::get('/infoCar', [InfoCarController::class, 'show'])
     ->middleware('throttle:60,1')
     ->name('info-car');
 
-// Meme chemin que la page elle-meme (GET/POST distincts sur /infoCar) : la
-// location nginx dediee (vhost de l'hote, ev.lolinux.org) ne filtre que sur le
-// chemin, pas sur la methode, donc rien a resynchroniser cote passerelle pour
-// ce second verbe. Idem pour IdentifyUser::PUBLIC_PATHS, qui compare le chemin.
+// Meme chemin que la page elle-meme (GET/POST distincts sur /infoCar) :
+// IdentifyUser::PUBLIC_PATHS compare le chemin, pas la methode.
 Route::post('/infoCar', [InfoCarController::class, 'unlock'])
     ->middleware('throttle:10,1')
     ->name('info-car.unlock');
@@ -89,34 +87,6 @@ Route::get('/ma-voiture/statistiques-obd', [ObdStatsController::class, 'index'])
 Route::get('/ma-voiture/kilometrage', [MileageController::class, 'index'])
     ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
     ->name('my-vehicle.mileage');
-
-// Pas RequiresTelemetry : la Ford n'a pas de boitier OBD. Acces par le VIN
-// du vehicule (User::hasFordData), administrateur et proprietaire.
-Route::get('/ma-voiture/donnees-ford', [FordDataController::class, 'index'])
-    ->middleware(\App\Http\Middleware\RequiresFordData::class)
-    ->name('my-vehicle.ford');
-
-// Relance manuelle de ford:sync, ouverte a qui voit la page : les donnees ne
-// concernent que ce vehicule. Throttle par prudence, Ford ayant deja repondu
-// 429 a une rafale d'appels manuels.
-Route::post('/ma-voiture/donnees-ford/synchroniser', [FordDataController::class, 'synchroniser'])
-    ->middleware([\App\Http\Middleware\RequiresFordData::class, 'throttle:3,1'])
-    ->name('my-vehicle.ford.synchroniser');
-
-// Lance l'autorisation FordConnect : reconstruit le lien de connexion Ford
-// faute de le trouver expose sur developer.ford.com (voir le docblock de
-// FordAuthController::authorize).
-Route::get('/ma-voiture/donnees-ford/autoriser', [FordAuthController::class, 'authorize'])
-    ->middleware(\App\Http\Middleware\RequiresAdmin::class)
-    ->name('my-vehicle.ford.authorize');
-
-// Point de retour de l'autorisation FordConnect (OAuth2) : a enregistrer
-// comme redirect_uri sur developer.ford.com pour l'app dont FORD_CLIENT_ID/
-// FORD_CLIENT_SECRET viennent en .env. Reserve a l'administrateur : ecrit un
-// jeton d'acces valable pour tout le compte (App\Models\FordOAuthToken).
-Route::get('/ma-voiture/donnees-ford/callback', [FordAuthController::class, 'callback'])
-    ->middleware(\App\Http\Middleware\RequiresAdmin::class)
-    ->name('my-vehicle.ford.callback');
 
 // API constructeur (App\Services\XpengClient), distincte du boitier OBD/MQTT
 // ci-dessus : pas de telemetrie en direct, juste le suivi d'un export
@@ -157,8 +127,8 @@ Route::get('/deplacements/recurrents', [TripMapController::class, 'recurring'])
 
 // Partage temporaire de la position du vehicule par lien unique. Le lien lui-
 // meme (position-shares.show) est declare plus bas, sous le domaine dedie
-// s.lolinux.fr : ces trois routes-ci restent sur le domaine principal, donc
-// derriere le passkey.
+// domaine dedie (POSITION_SHARE_DOMAIN) : ces trois routes-ci restent sur le
+// domaine principal, donc derriere la connexion.
 Route::get('/partager-ma-position', [PositionShareController::class, 'index'])
     ->middleware(\App\Http\Middleware\RequiresTelemetry::class)
     ->name('position-shares.index');
@@ -194,15 +164,12 @@ Route::get('/historique/{year}/{month}', [HistoryController::class, 'show'])->wh
 
 Route::get('/mon-compte', [AccountController::class, 'index'])->name('account.index');
 Route::put('/mon-compte', [AccountController::class, 'update'])->name('account.update');
+Route::put('/mon-compte/mot-de-passe', [AccountController::class, 'updatePassword'])->name('account.password');
 Route::put('/mon-compte/preferences', [AccountController::class, 'updatePreferences'])->name('account.preferences');
 Route::post('/mon-compte/sms-test', [AccountController::class, 'testSms'])->name('account.test-sms');
 Route::put('/mon-compte/alerte-carburant', [AccountController::class, 'updateFuelAlert'])->name('account.fuel-alert');
 
-// Deconnexion : detruit la session de la passerelle, pas une session locale —
-// l'application n'en a pas. Un controleur invocable plutot qu'une fermeture,
-// pour que `route:cache` continue de fonctionner : une fermeture n'est pas
-// serialisable et ferait echouer la mise en cache des routes.
-Route::get('/deconnexion', LogoutController::class)->name('logout');
+Route::post('/deconnexion', LogoutController::class)->name('logout');
 
 // Journal des nouveautes : ouvert a tous les comptes.
 Route::get('/changelog', [ChangelogController::class, 'index'])->name('changelog');
@@ -228,6 +195,9 @@ Route::middleware(\App\Http\Middleware\RequiresAdmin::class)->group(function () 
 Route::middleware(\App\Http\Middleware\RequiresAdmin::class)->group(function () {
     Route::get('/admin/utilisateurs', [UserAdminController::class, 'index'])->name('reference-data.users.index');
     Route::post('/admin/utilisateurs', [UserAdminController::class, 'store'])->name('reference-data.users.store');
+    Route::put('/admin/utilisateurs/{user}/role', [UserAdminController::class, 'role'])->name('reference-data.users.role');
+    Route::put('/admin/utilisateurs/{user}/xpeng', [UserAdminController::class, 'xpeng'])->name('reference-data.users.xpeng');
+    Route::put('/admin/utilisateurs/{user}/mot-de-passe', [UserAdminController::class, 'password'])->name('reference-data.users.password');
     Route::put('/admin/utilisateurs/{user}/autoriser', [UserAdminController::class, 'approve'])->name('reference-data.users.approve');
     Route::put('/admin/utilisateurs/{user}/retirer', [UserAdminController::class, 'revoke'])->name('reference-data.users.revoke');
     Route::delete('/admin/utilisateurs/{user}', [UserAdminController::class, 'destroy'])->name('reference-data.users.destroy');
@@ -253,15 +223,18 @@ Route::post('/admin/puissances', [ReferenceDataController::class, 'storePowerRat
 Route::put('/admin/puissances/{powerRating}', [ReferenceDataController::class, 'updatePowerRating'])->name('reference-data.power-ratings.update');
 Route::delete('/admin/puissances/{powerRating}', [ReferenceDataController::class, 'destroyPowerRating'])->name('reference-data.power-ratings.destroy');
 
-// Lien de partage de position : domaine dedie, distinct de celui de l'appli.
-// Le token (40 caracteres alphanumeriques generes par PositionShare) fait
-// office de mot de passe ; la contrainte where() evite aussi toute collision
-// avec un futur chemin court sur ce meme domaine. Documente dans
-// docker/share/README.md, a cote du vhost qui route ce domaine ici sans
-// passer par la passerelle passkey.
-Route::domain(config('services.position_share.domain'))->group(function () {
-    Route::get('/{token}', [PublicPositionShareController::class, 'show'])
-        ->where('token', '[A-Za-z0-9]{40}')
-        ->middleware('throttle:60,1')
-        ->name('position-shares.show');
-});
+// Lien de partage de position. Le token (40 caracteres alphanumeriques generes
+// par PositionShare) fait office de mot de passe ; la contrainte where() evite
+// aussi toute collision avec un futur chemin court. Si POSITION_SHARE_DOMAIN
+// est renseigne, le lien n'est servi que sur ce domaine dedie ; sinon sur le
+// domaine principal.
+$positionShareRoute = fn () => Route::get('/{token}', [PublicPositionShareController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]{40}')
+    ->middleware('throttle:60,1')
+    ->name('position-shares.show');
+
+if ($domain = config('services.position_share.domain')) {
+    Route::domain($domain)->group($positionShareRoute);
+} else {
+    $positionShareRoute();
+}

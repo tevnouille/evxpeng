@@ -6,15 +6,15 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Adapte la table users heritee du squelette Laravel a une authentification
- * par passkey deleguee, et accueille les identifiants SMS propres a chacun.
+ * externe, et accueille les identifiants SMS propres a chacun.
  */
 return new class extends Migration
 {
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            // Personne ne se connecte par mot de passe : l'identite vient de la
-            // passerelle passkey.
+            // Nullable a l'origine ; un mot de passe est defini a la creation du
+            // compte par un administrateur.
             $table->string('password')->nullable()->change();
 
             // Compte Free Mobile de l'utilisateur, pour ses propres alertes de

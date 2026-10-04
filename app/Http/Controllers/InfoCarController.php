@@ -21,10 +21,10 @@ use Illuminate\View\View;
 /**
  * Etat du vehicule, affiche sans authentification.
  *
- * Destine au navigateur de la voiture, ou une ceremonie passkey n'a pas sa
- * place. La page est donc lisible par quiconque connait l'adresse.
+ * Destine au navigateur de la voiture, ou un formulaire de connexion n'a pas
+ * sa place. La page est donc lisible par quiconque connait l'adresse.
  *
- * La position y figure a la demande d'atran, qui en a pese la portee : elle est
+ * La position y figure a la demande du proprietaire, qui en a pese la portee : elle est
  * publique comme le reste de la page. Le bouton ne la dissimule pas — les
  * coordonnees sont dans la source — il evite seulement d'envoyer la position a
  * OpenStreetMap a chaque affichage, comme le fait deja « Ma voiture ».
@@ -78,7 +78,7 @@ class InfoCarController extends Controller
      * demande par l'utilisateur en voyant un arriere droit a 2,81 bar contre
      * ~3,04 bar pour les trois autres (ecart de 0,23). Absolu plutot que
      * relatif a une pression de plaque constructeur : l'export Xpeng n'en
-     * fournit aucune (contrairement a Ford, qui a wheelPlacardFront/Rear).
+     * fournit aucune.
      */
     private const ECART_PRESSION_PNEU_BAR = 0.2;
 
@@ -346,8 +346,8 @@ class InfoCarController extends Controller
         // (5 a 20 s selon l'etat du vehicule) : le rouvrir a chaque fois
         // ferait clignoter le reste de l'ecran. Meme chemin public que la
         // page elle-meme -- voir routes/web.php -- pour beneficier sans rien
-        // dupliquer de l'exemption passkey du nginx de l'hote, qui ne filtre
-        // que sur le chemin et ignore la chaine de requete.
+        // dupliquer de l'exemption de IdentifyUser::PUBLIC_PATHS, qui ne
+        // filtre que sur le chemin et ignore la chaine de requete.
         if ($request->query('flux') === 'batterie') {
             if (! $this->deverrouille($request)) {
                 return response()->json(['erreur' => 'verrouille'], 403);
@@ -524,8 +524,8 @@ class InfoCarController extends Controller
      *
      * Sert aussi de point d'entree au pilotage du garage/portail (presence
      * du champ `appareil`) : meme chemin public que la page elle-meme
-     * (POST /infoCar), l'exemption nginx ne matchant que le chemin exact --
-     * une sous-route dediee retomberait derriere la passkey (meme principe
+     * (POST /infoCar), l'exemption ne matchant que le chemin exact --
+     * une sous-route dediee retomberait derriere la connexion (meme principe
      * que le flux `?flux=batterie` du docblock de show()).
      */
     public function unlock(Request $request): RedirectResponse|JsonResponse

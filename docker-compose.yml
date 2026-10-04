@@ -37,8 +37,7 @@ services:
     container_name: ev-nginx
     restart: unless-stopped
     ports:
-      # Sur le VPS, la passerelle ev-gate est remplacee par le nginx de l'hote,
-      # qui a besoin d'un point d'entree. 8098 : 8095/8096/8097 sont deja pris.
+      # Point d'entree pour le reverse proxy de l'hote (TLS).
       - "127.0.0.1:8098:80"
     volumes:
       - ./public:/var/www/html/public:ro
@@ -80,8 +79,44 @@ services:
     networks:
       - default
 
+  # Broker MQTT : XPCarData (application Android reliee au dongle OBD) y publie
+  # les releves du vehicule. Authentification obligatoire (docker/mosquitto).
+  # Le port 1883 est en clair : l'exposer a Internet impose un tunnel TLS ou un
+  # VPN devant, voir INSTALL.md.
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: ev-mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./docker/mosquitto:/mosquitto/config:ro
+      - mosquittodata:/mosquitto/data
+    networks:
+      - default
+
+  # Abonne au broker et depose chaque message dans un fichier tampon que
+  # `php artisan telemetry:ingest-mqtt` relit (pas de client MQTT en PHP).
+  mqtt-ingest:
+    image: eclipse-mosquitto:2
+    container_name: ev-mqtt-ingest
+    restart: unless-stopped
+    environment:
+      - MQTT_USER=${MQTT_USER}
+      - MQTT_PASSWORD=${MQTT_PASSWORD}
+    volumes:
+      - ./storage/app/system:/data
+    entrypoint: ["sh", "-c"]
+    command:
+      - exec mosquitto_sub -h mosquitto -u "$$MQTT_USER" -P "$$MQTT_PASSWORD" -t 'vehicles/#' -v >> /data/mqtt-inbox.jsonl
+    depends_on:
+      - mosquitto
+    networks:
+      - default
+
 volumes:
   dbdata:
+  mosquittodata:
 
 networks:
   default: {}

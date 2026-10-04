@@ -43,19 +43,15 @@
                 </div>
                 @php
                     $avecTelemetrie = (bool) \App\Support\CurrentUser::get()?->hasTelemetry();
-                    $avecFord = (bool) \App\Support\CurrentUser::get()?->hasFordData();
                     $avecXpeng = (bool) \App\Support\CurrentUser::get()?->hasXpengData();
                 @endphp
-                {{-- Trois acces independants : le boitier OBD (la plupart des
-                     entrees), les donnees Ford (rattachees au VIN du vehicule
-                     possede -- la Ford n'a pas de boitier) et les donnees
-                     Xpeng (accordees explicitement, aucune relation de
-                     possession a exploiter). Un compte qui n'en a qu'un
-                     sous-ensemble voit un menu reduit a celui-ci. --}}
-                @if ($avecTelemetrie || $avecFord || $avecXpeng)
+                {{-- Deux acces independants : le boitier OBD et les donnees Xpeng
+                     (accordees explicitement). Un compte qui n'en a qu'un voit
+                     un menu reduit a celui-ci. --}}
+                @if ($avecTelemetrie || $avecXpeng)
                     <div class="navbar-item has-dropdown is-hoverable">
                         <a class="navbar-link {{ request()->routeIs('my-vehicle.*') ? 'is-active' : '' }}"
-                           href="{{ $avecTelemetrie ? route('my-vehicle.index') : ($avecFord ? route('my-vehicle.ford') : route('my-vehicle.xpeng')) }}">
+                           href="{{ $avecTelemetrie ? route('my-vehicle.index') : route('my-vehicle.xpeng') }}">
                             @include('layouts._icon', ['name' => 'voiture'])Ma voiture
                         </a>
                         <div class="navbar-dropdown">
@@ -75,13 +71,8 @@
                                     Données Xpeng
                                 </a>
                             @endif
-                            @if ($avecFord)
-                                <a class="navbar-item {{ request()->routeIs('my-vehicle.ford') ? 'is-active' : '' }}" href="{{ route('my-vehicle.ford') }}">
-                                    Données Ford
-                                </a>
-                            @endif
                             @if ($avecTelemetrie)
-                                {{-- Adresse servie sans passkey : ouverte dans un
+                                {{-- Adresse servie sans connexion : ouverte dans un
                                      onglet a part, pour ne pas donner a croire qu'on
                                      quitte la session, et signalee comme publique. --}}
                                 <a class="navbar-item" href="{{ route('info-car') }}" target="_blank" rel="noopener">
@@ -147,13 +138,12 @@
                     <a class="navbar-item {{ request()->routeIs('account.*') ? 'is-active' : '' }}" href="{{ route('account.index') }}">
                         @include('layouts._icon', ['name' => 'compte']){{ $user->email }}
                     </a>
-                    {{-- Deconnexion de la passerelle, donc de tous les services
-                         qu'elle protege. Le titre le dit au survol ; « Mon
-                         compte » l'explique en toutes lettres. --}}
-                    <a class="navbar-item" href="{{ route('logout') }}"
-                       title="Déconnecte de la passerelle passkey, donc de tous les services qu'elle protège">
-                        @include('layouts._icon', ['name' => 'deconnexion'])Déconnexion
-                    </a>
+                    <form method="POST" action="{{ route('logout') }}" class="navbar-item">
+                        @csrf
+                        <button type="submit" class="button is-ghost p-0" style="text-decoration:none;color:inherit;">
+                            @include('layouts._icon', ['name' => 'deconnexion'])Déconnexion
+                        </button>
+                    </form>
                 @endif
             </div>
         </div>
@@ -180,5 +170,15 @@
             @yield('content')
         </div>
     </section>
+
+    @if ($donate = config('services.donate.url'))
+        <footer class="footer py-4">
+            <p class="has-text-centered">
+                <a class="button is-warning is-light" href="{{ $donate }}" target="_blank" rel="noopener noreferrer">
+                    🍺&nbsp;Offrez-moi une bière
+                </a>
+            </p>
+        </footer>
+    @endif
 </body>
 </html>

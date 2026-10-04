@@ -6,6 +6,8 @@ use App\Services\FreeMobileSms;
 use App\Support\CurrentUser;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
 /**
@@ -51,6 +53,28 @@ class AccountController extends Controller
         $user->save();
 
         return redirect()->route('account.index')->with('success', 'Compte mis à jour.');
+    }
+
+    public function updatePassword(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', Password::min(12), 'max:255', 'confirmed'],
+        ]);
+
+        $user = CurrentUser::get();
+
+        if (! Hash::check($data['current_password'], (string) $user->password)) {
+            return back()->withErrors(['current_password' => 'Mot de passe actuel incorrect.']);
+        }
+
+        $user->password = $data['password'];
+        $user->save();
+
+        // Les autres sessions de ce compte (autres appareils) sont invalidees.
+        auth()->logoutOtherDevices($data['password']);
+
+        return redirect()->route('account.index')->with('success', 'Mot de passe modifié.');
     }
 
     /**

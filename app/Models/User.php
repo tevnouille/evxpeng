@@ -18,8 +18,6 @@ class User extends Authenticatable
     /** Memorisation par instance : la navigation pose la question a chaque page. */
     private ?bool $hasTelemetry = null;
 
-    private ?bool $hasFordData = null;
-
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
@@ -53,8 +51,8 @@ class User extends Authenticatable
     /**
      * Ce compte dispose-t-il d'une telemetrie ?
      *
-     * Autrement dit : au moins un vehicule relie a A Better Routeplanner, ce qui
-     * suppose un abonnement ABRP Premium a soi. C'est ce qui conditionne l'acces
+     * Autrement dit : au moins un vehicule relie au boitier OBD (un identifiant MQTT).
+     * C'est ce qui conditionne l'acces
      * aux pages "Ma voiture" et "Deplacements".
      *
      * Le scope global est retire explicitement : la question porte sur ce
@@ -69,25 +67,10 @@ class User extends Authenticatable
     }
 
     /**
-     * Acces a « Donnees Ford » : l'administrateur, et le proprietaire du
-     * vehicule dont le VIN est celui autorise chez Ford (services.ford.vin).
-     * Independant du boitier OBD -- la Ford n'en a pas.
-     */
-    public function hasFordData(): bool
-    {
-        $vin = config('services.ford.vin');
-
-        return $this->hasFordData ??= $this->is_admin || ($vin && Vehicle::withoutGlobalScope('user')
-            ->where('user_id', $this->id)
-            ->where('vin', $vin)
-            ->exists());
-    }
-
-    /**
      * Acces a « Donnees Xpeng » : l'administrateur, et qui l'a reçu
-     * explicitement (xpeng_access). Contrairement a hasFordData(), pas de
-     * relation de possession a exploiter -- le vehicule Xpeng n'appartient
-     * pas forcement au compte qu'on veut y autoriser.
+     * explicitement (xpeng_access). Pas de relation de possession a exploiter --
+     * le vehicule Xpeng n'appartient pas forcement au compte qu'on veut y
+     * autoriser.
      */
     public function hasXpengData(): bool
     {

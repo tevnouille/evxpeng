@@ -8,11 +8,8 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Autorisation d'acces propre a l'application.
  *
- * Le SSO passkey est partage avec les autres services du domaine : posseder un
- * passkey ne doit pas suffire a entrer ici. Un compte est cree a la premiere
- * visite mais reste en attente tant qu'il n'a pas ete autorise, ce qui laisse
- * l'administrateur decider sans avoir a toucher au systeme de passkeys commun
- * (l'en retirer couperait aussi l'acces aux autres applications).
+ * Un compte peut etre desactive sans etre supprime : ses donnees sont
+ * conservees, seul l'acces est coupe. L'administrateur decide.
  */
 return new class extends Migration
 {

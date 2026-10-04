@@ -41,7 +41,7 @@ MAX_LOG_ENTRIES = 40
 
 NODE_IMAGE = 'node:22-alpine'
 COMPOSER_IMAGE = 'composer:latest'
-HEALTH_URL = 'http://ev-nginx/recharges'
+HEALTH_URL = 'http://ev-nginx/up'
 
 
 def now():
@@ -199,7 +199,7 @@ def site_answers():
         ok, out = run([
             'sudo', '-n', 'docker', 'run', '--rm', '--network', 'ev-net',
             'curlimages/curl', '-s', '-o', '/dev/null', '-w', '%{http_code}',
-            '-H', 'X-SSO-Email: atran@lolinux.org', HEALTH_URL,
+            HEALTH_URL,
         ], timeout=60)
         if ok and out.strip() == '200':
             return True
